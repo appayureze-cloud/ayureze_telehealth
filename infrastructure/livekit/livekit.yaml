@@ -1,0 +1,57 @@
+# AyurEze Telehealth — LiveKit self-hosted server configuration (REFERENCE)
+#
+# This file documents the structural LiveKit configuration and is the
+# source of truth for review purposes. The actually-deployed docker-compose
+# service (infrastructure/docker/docker-compose.yml) passes the equivalent
+# config via the LIVEKIT_CONFIG environment variable instead of mounting
+# this file directly, so that the Redis password can be injected from .env
+# without ever being written to a file on disk. API keys/secrets are never
+# stored in either place - they come from LIVEKIT_KEYS at container start.
+# If you change settings here, mirror the change in docker-compose.yml.
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: false
+  # STUN/TURN is provided by the coturn service for clients behind
+  # restrictive NATs/firewalls. LiveKit's built-in TURN relay is disabled
+  # here in favor of the dedicated coturn service defined in
+  # infrastructure/coturn/turnserver.conf.
+  enable_loopback_candidate: false
+
+turn:
+  enabled: false # dedicated coturn service is used instead of embedded TURN
+
+redis:
+  address: redis:6379
+  # password: injected as REDIS_PASSWORD via LIVEKIT_CONFIG in
+  # docker-compose.yml — never hardcoded here.
+
+room:
+  auto_create: false # rooms MUST be created explicitly by the Go session service
+  empty_timeout: 300 # seconds - close empty rooms automatically
+  departure_timeout: 20
+
+# Webhooks let the Go API observe LiveKit-side room/participant/track events
+# for audit logging and session-state reconciliation without ever handling
+# media itself.
+webhook:
+  api_key: "" # set to the same key configured in `keys` (via LIVEKIT_KEYS)
+  urls:
+    - http://api:8080/internal/webhooks/livekit
+
+# Structured JSON logs -> shipped to Loki via the otel-collector / promtail
+# pipeline. Never log encryption keys or media payloads (LiveKit does not
+# have access to E2EE keys in the first place - see docs/e2ee/).
+logging:
+  json: true
+  level: info
+
+# Prometheus metrics are scraped by observability/prometheus/prometheus.yml
+prometheus:
+  port: 6789
+
+development: true # set to false for production deployments

@@ -1,0 +1,35 @@
+{
+  "title": "AyurEze Telehealth — Platform Health",
+  "uid": "ayureze-platform-health",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "infrastructure"],
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Up targets",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "up", "legendFormat": "{{job}}" }]
+    },
+    {
+      "id": 2,
+      "title": "otel-collector accepted spans/sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "rate(otelcol_receiver_accepted_spans_total[5m])", "legendFormat": "accepted" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Service log volume (Loki)",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [{ "expr": "{service=~\".+\"}" }]
+    }
+  ]
+}

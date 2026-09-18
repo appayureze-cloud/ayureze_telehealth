@@ -1,0 +1,66 @@
+# --- Secrets / environment ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+!infrastructure/**/*.example.crt
+secrets/
+infrastructure/livekit/livekit.yaml.local
+
+# --- Go ---
+apps/api/bin/
+apps/api/**/*.test
+apps/api/vendor/
+*.exe
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+apps/ai-agent/.pytest_cache/
+apps/ai-agent/models/
+apps/ai-agent/**/*.onnx
+apps/ai-agent/**/*.pt
+apps/ai-agent/**/*.bin
+
+# --- Node / Web ---
+node_modules/
+dist/
+build/
+.next/
+sdk/web/dist/
+apps/playground/**/node_modules/
+apps/playground/**/dist/
+
+# --- Flutter / Dart ---
+sdk/flutter/.dart_tool/
+sdk/flutter/build/
+sdk/flutter/.packages
+sdk/flutter/pubspec.lock
+
+# --- Docker / data volumes ---
+infrastructure/docker/data/
+postgres-data/
+redis-data/
+loki-data/
+grafana-data/
+prometheus-data/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Test / coverage ---
+coverage/
+coverage.out
+.nyc_output/
