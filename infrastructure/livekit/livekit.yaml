@@ -16,11 +16,17 @@ rtc:
   port_range_start: 50000
   port_range_end: 50100
   use_external_ip: false
+  # Single-machine local dev only: advertises the host loopback address in
+  # ICE candidates (reachable via the docker-compose port mappings) since
+  # browser clients on the host cannot route to LiveKit's internal
+  # container IP. Production deployments must set use_external_ip: true
+  # with a STUN server, or a real routable node IP, instead.
+  node_ip: 127.0.0.1
+  enable_loopback_candidate: true
   # STUN/TURN is provided by the coturn service for clients behind
   # restrictive NATs/firewalls. LiveKit's built-in TURN relay is disabled
   # here in favor of the dedicated coturn service defined in
   # infrastructure/coturn/turnserver.conf.
-  enable_loopback_candidate: false
 
 turn:
   enabled: false # dedicated coturn service is used instead of embedded TURN

@@ -35,6 +35,10 @@ build/
 sdk/web/dist/
 apps/playground/**/node_modules/
 apps/playground/**/dist/
+apps/playground/test-results/
+apps/playground/playwright-report/
+apps/playground/blob-report/
+apps/playground/tsconfig.tsbuildinfo
 
 # --- Flutter / Dart ---
 sdk/flutter/.dart_tool/

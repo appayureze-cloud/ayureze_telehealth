@@ -1,0 +1,39 @@
+// Package roomsvc wraps LiveKit's RoomServiceClient so that rooms are only
+// ever created explicitly by this service (LiveKit's own auto_create is
+// disabled — see infrastructure/livekit/livekit.yaml) rather than implicitly
+// whenever a client happens to connect with a valid-looking token.
+package roomsvc
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/livekit/protocol/livekit"
+	lksdk "github.com/livekit/server-sdk-go/v2"
+)
+
+type Service struct {
+	client *lksdk.RoomServiceClient
+}
+
+func New(url, apiKey, apiSecret string) *Service {
+	return &Service{client: lksdk.NewRoomServiceClient(url, apiKey, apiSecret)}
+}
+
+// EnsureRoom creates the room if it doesn't already exist. CreateRoom is
+// idempotent on the LiveKit server side (calling it for an already-existing
+// room returns that room rather than erroring), so this is safe to call on
+// every join attempt.
+func (s *Service) EnsureRoom(ctx context.Context, roomName string, emptyTimeoutSeconds uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := s.client.CreateRoom(ctx, &livekit.CreateRoomRequest{
+		Name:         roomName,
+		EmptyTimeout: emptyTimeoutSeconds,
+	})
+	if err != nil {
+		return fmt.Errorf("ensure room %q: %w", roomName, err)
+	}
+	return nil
+}

@@ -60,7 +60,7 @@ services:
   # Real-time media (SFU) + TURN
   # ---------------------------------------------------------------------
   livekit:
-    image: livekit/livekit-server:v1.8.0
+    image: livekit/livekit-server:v1.13.7
     restart: unless-stopped
     # LiveKit is configured entirely through LIVEKIT_CONFIG here (rather than
     # a mounted file) so the Redis password from .env can be injected without
@@ -76,7 +76,14 @@ services:
           port_range_start: ${LIVEKIT_RTC_UDP_PORT_RANGE_START:-50000}
           port_range_end: ${LIVEKIT_RTC_UDP_PORT_RANGE_END:-50100}
           use_external_ip: false
-          enable_loopback_candidate: false
+          # Single-machine local dev only: forces ICE candidates to
+          # advertise the host loopback address (reachable via the
+          # docker-compose port mappings below) instead of LiveKit's
+          # internal container IP, which browser clients on the host
+          # cannot route to. Production deployments must instead set
+          # use_external_ip: true with a STUN server, or a real node IP.
+          node_ip: ${LIVEKIT_NODE_IP:-127.0.0.1}
+          enable_loopback_candidate: true
         turn:
           enabled: false
         redis:
