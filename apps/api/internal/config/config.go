@@ -22,13 +22,31 @@ type Config struct {
 	// Day 3 and is intentionally short-lived and role-restricted.
 	DevTokenTTL time.Duration
 
+	// JoinTokenTTL bounds how long a Day-3 authenticated session-join
+	// LiveKit token may live.
+	JoinTokenTTL time.Duration
+
+	DatabaseURL string
+
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
+
+	JWTSigningSecret string
+	AccessTokenTTL   time.Duration
+	RefreshTokenTTL  time.Duration
+
+	CORSAllowedOrigins string
+	RateLimitPerMinute int
+
 	Environment string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		HTTPPort:    getEnvDefault("API_HTTP_PORT", "8080"),
-		Environment: getEnvDefault("ENVIRONMENT", "development"),
+		HTTPPort:           getEnvDefault("API_HTTP_PORT", "8080"),
+		Environment:        getEnvDefault("ENVIRONMENT", "development"),
+		CORSAllowedOrigins: os.Getenv("API_CORS_ALLOWED_ORIGINS"),
 	}
 
 	var err error
@@ -45,14 +63,59 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	ttlSeconds := getEnvDefault("API_ACCESS_TOKEN_TTL_SECONDS", "300")
-	seconds, err := strconv.Atoi(ttlSeconds)
-	if err != nil {
-		return nil, fmt.Errorf("invalid API_ACCESS_TOKEN_TTL_SECONDS: %w", err)
+	if cfg.DevTokenTTL, err = envSeconds("API_ACCESS_TOKEN_TTL_SECONDS", 300); err != nil {
+		return nil, err
 	}
-	cfg.DevTokenTTL = time.Duration(seconds) * time.Second
+	cfg.JoinTokenTTL = cfg.DevTokenTTL
+	if cfg.AccessTokenTTL, err = envSeconds("API_ACCESS_TOKEN_TTL_SECONDS", 300); err != nil {
+		return nil, err
+	}
+	if cfg.RefreshTokenTTL, err = envSeconds("API_REFRESH_TOKEN_TTL_SECONDS", 604800); err != nil {
+		return nil, err
+	}
+
+	cfg.DatabaseURL, err = requireEnv("DATABASE_URL")
+	if err != nil {
+		return nil, err
+	}
+
+	redisHost, err := requireEnv("REDIS_HOST")
+	if err != nil {
+		return nil, err
+	}
+	redisPort := getEnvDefault("REDIS_PORT", "6379")
+	cfg.RedisAddr = fmt.Sprintf("%s:%s", redisHost, redisPort)
+	cfg.RedisPassword, err = requireEnv("REDIS_PASSWORD")
+	if err != nil {
+		return nil, err
+	}
+	redisDB, err := strconv.Atoi(getEnvDefault("REDIS_DB", "0"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_DB: %w", err)
+	}
+	cfg.RedisDB = redisDB
+
+	cfg.JWTSigningSecret, err = requireEnv("API_JWT_SIGNING_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	rateLimit, err := strconv.Atoi(getEnvDefault("API_RATE_LIMIT_PER_MINUTE", "120"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid API_RATE_LIMIT_PER_MINUTE: %w", err)
+	}
+	cfg.RateLimitPerMinute = rateLimit
 
 	return cfg, nil
+}
+
+func envSeconds(key string, def int) (time.Duration, error) {
+	v := getEnvDefault(key, strconv.Itoa(def))
+	seconds, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s: %w", key, err)
+	}
+	return time.Duration(seconds) * time.Second, nil
 }
 
 func requireEnv(key string) (string, error) {

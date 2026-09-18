@@ -89,7 +89,57 @@ All health checks passed.
   bound to 127.0.0.1, not any shipped artifact).
 
 ## Day 3 — Go session platform
-`NOT IMPLEMENTED` — not started yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| Postgres schema (tenants/users/sessions/participants/consents/session_events/audit_events) | IMPLEMENTED | `apps/api/internal/db/migrations/0001_core_schema.{up,down}.sql`, applied via embedded `golang-migrate` (`internal/db/migrate.go`) |
+| Auth: login/refresh/logout | IMPLEMENTED | `internal/authsvc`; bcrypt password hashing, HS256 app JWTs with unique `jti`, Redis-backed single-use refresh tokens (hash-only storage) |
+| Tenant isolation | IMPLEMENTED | Every tenant-owned query scoped by the caller's JWT `tid`; verified cross-tenant `GET`/`join`/`create` all return `404` |
+| RBAC (role + per-session resource checks) | IMPLEMENTED | `internal/sessionsvc`, `internal/consentsvc`; only a session's own doctor/patient (or admin) can act on it — role alone is never sufficient |
+| Session service: create / join / end | IMPLEMENTED | Join mints a LiveKit token only after checking the `participants` table (not merely "has a token"); ending deletes the LiveKit room |
+| Participant lifecycle | IMPLEMENTED | `authorized` (at session creation) → `joined`/`left` (driven by verified LiveKit webhooks) → `revoked` |
+| Consent module (schema + grant/revoke CRUD) | IMPLEMENTED | `internal/consentsvc`; enforcement into the (not-yet-existing) AI agent's join path is Day 4/5 scope, explicitly deferred |
+| Audit events | IMPLEMENTED | Every authn/authz decision (success and denied, with a reason) recorded to `audit_events`; verified in Postgres during manual + automated testing |
+| LiveKit webhook consumer | IMPLEMENTED | Signature-verified (`webhook.ReceiveWebhookEvent` + `LIVEKIT_API_KEY/SECRET`) `participant_joined`/`participant_left`/`room_finished` → participant status + Redis presence + `session_events` |
+| Redis usage: refresh tokens, presence, rate limiting | IMPLEMENTED | `internal/redisstate`; rate limiting moved off the Day 2 in-memory limiter to a Redis-backed one shared across replicas |
+| `GET /ready` checks real dependencies | IMPLEMENTED | Now pings Postgres + Redis, returns `503` if either is down (Day 2 was a static "ready") |
+| Automated tests | IMPLEMENTED | Unit: `internal/token`, `internal/httpapi` (existing + unaffected by Day 3 changes). Integration (`-tags integration`, real Postgres/Redis/LiveKit, no mocks): 9 tests covering login success/failure modes, refresh single-use, RBAC denial, full create→join→consent→end lifecycle, tenant isolation, missing/invalid token rejection, readiness, and signed-webhook-driven participant status transitions — all passing |
+| Dev seed command | IMPLEMENTED | `apps/api/cmd/seed` (wrapped by `scripts/db-seed.sh`); refuses to run with `ENVIRONMENT=production`; local-dev-only, documented as such |
+
+**Validation command output** (this session):
+```
+$ go build ./... && go vet ./... && gofmt -l .   # clean
+$ go test ./...                                   # ok (internal/httpapi, internal/token)
+$ go test -tags integration ./test/integration/... -count=1
+ok  	github.com/ayureze/telehealth/api/test/integration	1.481s   (9/9 tests passing)
+```
+Also manually verified end-to-end via curl against the live stack: login,
+RBAC-denied session creation by a patient, session create/join/consent
+grant+revoke/end, join-after-ended rejection (409), cross-tenant 404s on
+GET/join/create, bad-password/unknown-tenant/no-token/garbage-token all
+`401`, and confirmed `audit_events`/`session_events` rows in Postgres with
+no secrets in `audit_events.metadata` or the structured JSON logs.
+
+Re-ran the full Day 2 Playwright suite (5/5) after these changes to confirm
+no regression from the shared middleware refactor (rate limiter, router).
+
+**Known limitations / carried forward:**
+- LiveKit webhooks are validated end-to-end via directly-signed test
+  requests (`TestWebhook_*`), not yet via a real LiveKit container calling
+  back into the host-run API process — `infrastructure/docker/docker-compose.yml`
+  points the webhook URL at `http://api:8080/...`, which only resolves once
+  `apps/api` itself runs inside the compose network (planned for the Day 7
+  Dockerfile/hardening pass). The verification and state-update logic
+  itself is fully tested; only the container-to-container network hop is
+  unexercised so far.
+- `admin`-created sessions (specifying a doctor explicitly) are
+  intentionally rejected today (`"admin-created sessions ... not yet
+  supported"`) rather than half-implemented.
+- No self-service registration endpoint — user provisioning is via
+  `cmd/seed` (dev-only) pending a real integration with the main AyurEze
+  platform's account system.
+- `GET /ready`'s dependency checks are liveness-style pings, not deep
+  health (e.g. doesn't verify migrations are current).
 
 ## Day 4 — E2EE + consent
 `NOT IMPLEMENTED` — not started yet.

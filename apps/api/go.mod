@@ -1,13 +1,18 @@
 module github.com/ayureze/telehealth/api
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/go-chi/chi/v5 v5.3.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/livekit/protocol v1.49.0
 	github.com/livekit/server-sdk-go/v2 v2.18.1
 	github.com/prometheus/client_golang v1.24.1
+	github.com/redis/go-redis/v9 v9.22.0
+	golang.org/x/crypto v0.57.0
 	golang.org/x/time v0.15.0
 )
 
@@ -27,12 +32,17 @@ require (
 	github.com/gammazero/deque v1.2.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/cel-go v0.29.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jxskiss/base62 v1.1.0 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/lithammer/shortuuid/v4 v4.3.0 // indirect
 	github.com/livekit/mageutil v0.0.0-20250511045019-0f1ff63f7731 // indirect
 	github.com/livekit/mediatransportutil v0.0.0-20260605212259-862d4a7bcb1e // indirect
@@ -62,7 +72,6 @@ require (
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
-	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/twitchtv/twirp v8.1.3+incompatible // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
@@ -72,14 +81,13 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

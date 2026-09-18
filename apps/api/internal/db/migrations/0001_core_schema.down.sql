@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS session_events;
+DROP TABLE IF EXISTS consents;
+DROP TABLE IF EXISTS participants;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS tenants;

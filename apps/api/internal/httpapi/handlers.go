@@ -1,13 +1,22 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
+	lkauth "github.com/livekit/protocol/auth"
+
+	"github.com/ayureze/telehealth/api/internal/apperr"
+	"github.com/ayureze/telehealth/api/internal/authn"
+	"github.com/ayureze/telehealth/api/internal/authsvc"
+	"github.com/ayureze/telehealth/api/internal/consentsvc"
 	"github.com/ayureze/telehealth/api/internal/roomsvc"
+	"github.com/ayureze/telehealth/api/internal/sessionsvc"
 	"github.com/ayureze/telehealth/api/internal/token"
+	"github.com/ayureze/telehealth/api/internal/webhooksvc"
 )
 
 type Server struct {
@@ -16,10 +25,38 @@ type Server struct {
 	rooms       *roomsvc.Service
 	devTokenTTL time.Duration
 	environment string
+
+	issuer   *authn.Issuer
+	auth     *authsvc.Service
+	sessions *sessionsvc.Service
+	consents *consentsvc.Service
+
+	webhookKeyProvider *lkauth.SimpleKeyProvider
+	webhooks           *webhooksvc.Service
+
+	dbPing    func(context.Context) error
+	redisPing func(context.Context) error
 }
 
 func NewServer(logger *slog.Logger, minter *token.Minter, rooms *roomsvc.Service, devTokenTTL time.Duration, environment string) *Server {
 	return &Server{logger: logger, minter: minter, rooms: rooms, devTokenTTL: devTokenTTL, environment: environment}
+}
+
+// WithAuthenticatedServices wires in the Day 3 authenticated login/session
+// platform. Left unset, only the Day 2 dev-token endpoint and health checks
+// are available (used by lightweight tests that don't need a database).
+func (s *Server) WithAuthenticatedServices(issuer *authn.Issuer, auth *authsvc.Service, sessions *sessionsvc.Service, consents *consentsvc.Service) *Server {
+	s.issuer = issuer
+	s.auth = auth
+	s.sessions = sessions
+	s.consents = consents
+	return s
+}
+
+func (s *Server) WithReadiness(dbPing, redisPing func(context.Context) error) *Server {
+	s.dbPing = dbPing
+	s.redisPing = redisPing
+	return s
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -32,14 +69,63 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]string{"error": code, "message": message})
 }
 
+// writeAppError maps internal/apperr kinds to HTTP status codes in one
+// place, so authorization decisions made in the service layer are never
+// re-interpreted (and potentially loosened) by a handler.
+func writeAppError(w http.ResponseWriter, err error) {
+	appErr, ok := apperr.As(err)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "internal_error", "an internal error occurred")
+		return
+	}
+	status := http.StatusInternalServerError
+	switch appErr.Kind {
+	case apperr.KindNotFound:
+		status = http.StatusNotFound
+	case apperr.KindForbidden:
+		status = http.StatusForbidden
+	case apperr.KindUnauthorized:
+		status = http.StatusUnauthorized
+	case apperr.KindConflict:
+		status = http.StatusConflict
+	case apperr.KindInvalid:
+		status = http.StatusBadRequest
+	}
+	writeError(w, status, string(appErr.Kind), appErr.Message)
+}
+
 func (s *Server) Health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) Ready(w http.ResponseWriter, r *http.Request) {
-	// Day 2: no external dependencies to check yet beyond process health.
-	// Day 3 extends this to verify Postgres/Redis connectivity.
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+	checks := map[string]string{}
+	healthy := true
+
+	if s.dbPing != nil {
+		if err := s.dbPing(r.Context()); err != nil {
+			checks["database"] = "unhealthy"
+			healthy = false
+		} else {
+			checks["database"] = "healthy"
+		}
+	}
+	if s.redisPing != nil {
+		if err := s.redisPing(r.Context()); err != nil {
+			checks["redis"] = "unhealthy"
+			healthy = false
+		} else {
+			checks["redis"] = "healthy"
+		}
+	}
+
+	status := http.StatusOK
+	statusText := "ready"
+	if !healthy {
+		status = http.StatusServiceUnavailable
+		statusText = "not_ready"
+	}
+	writeJSON(w, status, map[string]any{"status": statusText, "checks": checks})
 }
 
 type devTokenRequest struct {

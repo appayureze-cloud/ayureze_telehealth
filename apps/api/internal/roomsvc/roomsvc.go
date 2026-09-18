@@ -37,3 +37,15 @@ func (s *Service) EnsureRoom(ctx context.Context, roomName string, emptyTimeoutS
 	}
 	return nil
 }
+
+// DeleteRoom disconnects everyone and removes the room. Called when a
+// session is explicitly ended rather than left to LiveKit's empty_timeout.
+func (s *Service) DeleteRoom(ctx context.Context, roomName string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := s.client.DeleteRoom(ctx, &livekit.DeleteRoomRequest{Room: roomName})
+	if err != nil {
+		return fmt.Errorf("delete room %q: %w", roomName, err)
+	}
+	return nil
+}
