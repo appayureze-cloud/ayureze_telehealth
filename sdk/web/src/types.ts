@@ -48,6 +48,32 @@ export interface AyurezeParticipant {
 }
 
 /**
+ * A LiveKit frame-decryption failure — e.g. an incompatible or wrong key
+ * for a given participant. Surfaced so a consuming app's "E2EE: ON"
+ * indicator can be backed by something more meaningful than a static
+ * flag: an app should treat any of these as E2EE NOT actually working for
+ * that participant, regardless of what `joinSession()` returned. See
+ * `docs/e2ee/VALIDATION.md`.
+ */
+export type AyurezeEncryptionErrorReason = "invalid_key" | "missing_key" | "internal_error";
+
+export interface AyurezeEncryptionError {
+  reason: AyurezeEncryptionErrorReason;
+  participantIdentity: string | undefined;
+  message: string;
+}
+
+/**
+ * Per-participant encryption diagnostics, queried synchronously. Backed by
+ * LiveKit's own `Room.isE2EEEnabled` / `Participant.isEncrypted` — never
+ * derived from application state alone.
+ */
+export interface AyurezeEncryptionDiagnostics {
+  e2eeEnabledForRoom: boolean;
+  participants: { identity: string; isLocal: boolean; isEncrypted: boolean }[];
+}
+
+/**
  * A live or translated caption delivered over the AI agent's data channel
  * (`ayureze.captions` topic — see apps/ai-agent/app/pipeline/streaming.py).
  */

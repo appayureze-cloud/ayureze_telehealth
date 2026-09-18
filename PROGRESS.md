@@ -332,3 +332,45 @@ feature as working" rule).
   currently emit their own application-level spans (only Prometheus
   metrics + structured logs) — no OTel SDK instrumentation was added to
   either service's code in this build.
+
+## Post-Day-7 — Real cross-platform E2EE interoperability validation
+
+Full detail in **`docs/e2ee/VALIDATION.md`**. Summary: E2EE had previously
+only been validated by source inspection and mocked unit tests — that was
+called out explicitly as insufficient (`docs/sdk/README.md`'s "What has
+not been validated"). A dedicated real-integration test harness
+(`apps/e2e-harness/`, Playwright against the real Go API/LiveKit/Postgres/
+Redis stack, plus a real native LiveKit participant via Python) was built
+to close that gap.
+
+| Item | Status | Notes |
+|---|---|---|
+| Web ↔ Web E2EE (audio+video) | VERIFIED | Real encrypted media both directions, LiveKit's own diagnostics (`Participant.isEncrypted`, zero `EncryptionError`s), clean leave |
+| Private Mode (AI absent) | VERIFIED | Real E2EE call, exactly 2 participants, `aiTranslationAuthorized: false` from the real API |
+| AI Translation Mode (authorized encrypted participant) | VERIFIED | Real consent grant → real AI-agent `/start` call → AI joins as `role: ai_agent`, `isEncrypted: true`, confirmed via the AI agent's real Prometheus metrics |
+| AI authorization boundaries (no consent, cross-tenant, revocation, session end) | VERIFIED | All 4 correctly rejected/stopped, against the real Go API and real AI agent |
+| Network loss/reconnect | VERIFIED | Real network cut via Playwright/CDP, real LiveKit reconnect, E2EE remains functional after |
+| Web ↔ native (Flutter/AI-agent) E2EE | **NOT VERIFIED — CONFIRMED BROKEN** | Real, reproducible key-derivation mismatch between the Web SDK and the native LiveKit stack (shared by Flutter and the Python AI agent); 4 candidate fixes tried, none worked; matches an unresolved upstream LiveKit issue (livekit/livekit#4247) |
+| Flutter (any combination) | BLOCKED | No Flutter SDK or Android emulator/device available in this environment |
+
+**Two real, previously-undetected bugs found and fixed** (neither visible
+from source inspection or mocked unit tests):
+1. `sdk/web`'s `ApiClient` called its default `fetch` unbound, which
+   throws `Illegal invocation` in every real browser — invisible because
+   every unit test injected its own mock `fetch`.
+2. `sdk/web`'s `joinSession()` never called LiveKit's
+   `room.setE2EEEnabled(true)` — **every session was publishing real,
+   unencrypted media** despite the SDK's "E2EE always on" claim. Only
+   real LiveKit server-reported track metadata caught this.
+
+Both are fixed, with real (not mocked) regression tests. The cross-
+platform key-derivation mismatch (Web ↔ native) is **not fixed** — left
+as an intentionally-failing regression trip-wire
+(`apps/e2e-harness/tests/kdf-compat.spec.ts`) with the full investigation
+documented, since no working fix was found in this pass and it traces to
+an open upstream LiveKit ambiguity, not a bug in this codebase alone.
+
+**Production implication, stated plainly**: do not deploy a configuration
+where Web clients and Flutter/native clients (including the AI agent) are
+expected to decrypt each other's encrypted media, until Finding 3 in
+`docs/e2ee/VALIDATION.md` is resolved.

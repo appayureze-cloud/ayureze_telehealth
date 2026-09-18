@@ -82,5 +82,14 @@ against the real stack.
   can be swapped without touching callers.
 - **Client-side SFrame integration** (actually enabling E2EE in the
   LiveKit Web/Flutter client SDKs using the key from the join response) is
-  Day 7 scope — this document describes the key-management side the
-  clients will consume.
+  implemented in `sdk/web` and `sdk/flutter` (Day 7) and was subjected to
+  a real cross-platform validation pass — see **`docs/e2ee/VALIDATION.md`**
+  for the full results. Summary: Web↔Web is verified working; Web↔native
+  (Flutter/the AI agent) is **confirmed broken** by a real, reproducible
+  key-derivation mismatch between the Web SDK and the native LiveKit
+  stack, matching an unresolved upstream LiveKit issue. Flutter itself
+  could not be tested at all in the sandbox this pass ran in (no Flutter/
+  Android toolchain available). Do not treat "E2EE is implemented" as
+  "E2EE interoperates across platforms" — read VALIDATION.md before
+  deploying any configuration that mixes Web and native (Flutter or AI
+  agent) participants in the same room.

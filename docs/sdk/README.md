@@ -52,20 +52,41 @@ a way to join without E2EE at all). See `sdk/web/README.md` for exact
 Vite/webpack snippets.
 
 **Validated in this build:** `tsc --noEmit` (0 errors against the real
-`livekit-client` types) and `vitest run` (18/18 passing — same coverage
-shape as the Flutter SDK), plus `npm run build` producing a clean
-ESM + `.d.ts` `dist/`.
+`livekit-client` types) and `vitest run` (19/19 passing), plus
+`npm run build` producing a clean ESM + `.d.ts` `dist/`.
 
-## What has *not* been validated
+**Two real bugs found and fixed via a real-browser test harness** (see
+`docs/e2ee/VALIDATION.md` for the full investigation) — neither was
+visible from source inspection or from unit tests with a mocked `fetch`/
+`Room`:
+1. `ApiClient`'s default `fetch` was called unbound (`this.fetchImpl(...)`
+   sets `this` to the `ApiClient` instance), which native browser `fetch`
+   rejects with `TypeError: ... Illegal invocation`. Fixed:
+   `fetch.bind(globalThis)`.
+2. `joinSession()` never called LiveKit's `room.setE2EEEnabled(true)` —
+   every session published via this SDK was sending **real, unencrypted
+   media** despite the SDK's own "E2EE is on by default" claim. Only real
+   LiveKit server-reported track metadata (`Participant.isEncrypted`)
+   surfaced this; a mocked Room would never catch it. Fixed: the SDK now
+   explicitly enables E2EE on the room right after connecting.
 
-Neither SDK has been exercised in a real browser/device against the live
-Go API + LiveKit + AI agent stack end-to-end (that would require a UI
-harness beyond a headless library's own test suite — `apps/playground`
-does this for raw LiveKit connectivity, but predates this SDK layer).
-Cross-SDK E2EE interop (a Flutter or Web client's media actually being
-decrypted by the Python AI agent using the same session key, or vice
-versa) is architecturally sound — all three follow LiveKit's standardized
-shared-key SFrame derivation — but has only been directly verified
-Python-to-Python (`apps/ai-agent/tests/test_pipeline_live_integration.py`).
-Marked here rather than silently assumed, per the project's "never report
-an untested feature as working" rule.
+## Real cross-platform E2EE validation — see `docs/e2ee/VALIDATION.md`
+
+A dedicated Playwright-based harness (`apps/e2e-harness/`) exercises both
+of the bugs above out of existence and then goes further: real Web↔Web
+(now **PASS**, both bugs fixed), real Private Mode and AI Translation
+Mode acceptance tests (**PASS**), real AI authorization-boundary tests —
+no consent, cross-tenant, revocation, session end (all **correctly
+rejected/stopped**), a real network-loss/reconnect test (**PASS**), and a
+real cross-platform key-derivation test between the Web SDK and a native
+LiveKit participant (Python, sharing Flutter's compiled frame-crypto
+core) — this one is **CONFIRMED BROKEN**: the Web SDK and the native
+LiveKit stack (Flutter, the Python AI agent) derive different encryption
+keys from the same raw session key, and every attempted fix in this pass
+failed to resolve it. This matches an unresolved upstream LiveKit report.
+**Do not mix Web clients with Flutter/native clients (including the AI
+agent) in the same encrypted room in production until this is resolved.**
+Flutter itself remains entirely unverified in real conditions — this
+sandbox has no Flutter SDK or Android emulator/device. Full detail,
+evidence, and the exact fixes attempted are in `docs/e2ee/VALIDATION.md`;
+this section is a summary, not a substitute for reading it.

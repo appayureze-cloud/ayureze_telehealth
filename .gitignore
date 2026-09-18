@@ -39,6 +39,12 @@ apps/playground/test-results/
 apps/playground/playwright-report/
 apps/playground/blob-report/
 apps/playground/tsconfig.tsbuildinfo
+apps/e2e-harness/**/node_modules/
+apps/e2e-harness/**/dist/
+apps/e2e-harness/test-results/
+apps/e2e-harness/playwright-report/
+apps/e2e-harness/blob-report/
+apps/e2e-harness/tsconfig.tsbuildinfo
 
 # --- Flutter / Dart ---
 sdk/flutter/.dart_tool/

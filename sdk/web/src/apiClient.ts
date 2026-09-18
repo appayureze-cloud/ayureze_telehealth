@@ -28,7 +28,14 @@ export interface JoinResult {
 export class ApiClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    // Bound to globalThis: calling `this.fetchImpl(...)` below invokes it
+    // with `this` set to the ApiClient instance, not `window`/`self` —
+    // native `fetch` is a WebIDL built-in that throws "TypeError: Failed
+    // to execute 'fetch' on 'Window': Illegal invocation" when called with
+    // any other receiver. Unit tests never caught this because they always
+    // pass a mock fetchImpl; only exercising this SDK in a real browser
+    // (see apps/e2e-harness) surfaced it.
+    private readonly fetchImpl: typeof fetch = fetch.bind(globalThis),
   ) {}
 
   private async decodeOrThrow(resp: Response): Promise<Record<string, unknown>> {

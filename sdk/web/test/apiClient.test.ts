@@ -86,6 +86,35 @@ describe("ApiClient.joinSession", () => {
   });
 });
 
+describe("ApiClient default fetchImpl (no mock injected)", () => {
+  // Regression test for a real bug: `this.fetchImpl(url, init)` invokes the
+  // stored function with `this` bound to the ApiClient instance, not
+  // `window`. Native browser `fetch` is a WebIDL built-in that throws
+  // "TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation"
+  // when called with any receiver other than window/self/a Window
+  // subclass — unit tests never caught this because every other test here
+  // injects its own mock fetchImpl. This test simulates that exact
+  // WebIDL receiver check (Node's own `fetch` is lenient about `this` and
+  // would not reproduce the bug) to prove the constructor's *default*
+  // fetchImpl is safe to call as `this.fetchImpl(...)`.
+  it("does not throw an illegal-invocation error when called unbound as a method", async () => {
+    const originalFetch = globalThis.fetch;
+    const receiverCheckingFetch = function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(new Response(JSON.stringify({ error: "unauthorized", message: "x" }), { status: 401 }));
+    };
+    globalThis.fetch = receiverCheckingFetch as unknown as typeof fetch;
+    try {
+      const client = new ApiClient("https://api.test"); // no fetchImpl override — exercises the real default
+      await expect(client.login("t", "e", "p")).rejects.toBeInstanceOf(ApiError); // reaches the mock response, not a TypeError
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("ApiClient consent endpoints", () => {
   it("grantAiTranslationConsent posts to the grant endpoint", async () => {
     let calledUrl: string | undefined;
