@@ -88,10 +88,15 @@ real cross-platform key-derivation test between the Web SDK and a native
 LiveKit participant (Python, sharing Flutter's compiled frame-crypto
 core) — this one is **CONFIRMED BROKEN**: the Web SDK and the native
 LiveKit stack (Flutter, the Python AI agent) derive different encryption
-keys from the same raw session key, and every attempted fix in this pass
-failed to resolve it. This matches an unresolved upstream LiveKit report.
-**Do not mix Web clients with Flutter/native clients (including the AI
-agent) in the same encrypted room in production until this is resolved.**
+keys from the same raw session key, and every attempted fix across three
+validation passes (8 parameter/version combinations total, including an
+explicit PBKDF2-vs-HKDF match on both sides and a Python SDK upgrade to
+1.1.7) failed to resolve it. This matches an unresolved upstream LiveKit
+report (livekit/livekit#4247, open, no maintainer comments) and is
+assessed as an **upstream LiveKit limitation**, not an AyurEze
+integration bug. **Do not mix Web clients with Flutter/native clients
+(including the AI agent) in the same encrypted room in production until
+this is resolved.**
 Flutter itself remains entirely unverified in real conditions — this
 sandbox has no Flutter SDK or Android emulator/device. Full detail,
 evidence, and the exact fixes attempted are in `docs/e2ee/VALIDATION.md`;

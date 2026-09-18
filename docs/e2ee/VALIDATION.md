@@ -61,7 +61,7 @@ rule.
 | LiveKit server | `livekit/livekit-server:v1.13.7` (docker-compose) |
 | `livekit-client` (JS) | 2.22.3 (resolved from `^2.7.5`) |
 | `livekit_client` (Dart) | 2.4.3 (installed, unused this pass — no Flutter runtime) |
-| `livekit` (Python) | 1.0.7 |
+| `livekit` (Python) | 1.1.7 (upgraded from 1.0.7 during the third pass — see below) |
 | Go API / AI agent | running as `docker compose` services (`api`, `ai-agent`), built from this repo's current commit |
 
 ## Flutter feasibility — BLOCKED, stated plainly
@@ -220,13 +220,80 @@ A follow-up session added two more forensic angles and a fifth candidate:
    step almost certainly happens in the C++ layer these calls don't
    reach anyway.
 
-None of the five parameter combinations tried produced a working
-cross-platform key. This matches a **known, unresolved upstream LiveKit
-report**: [livekit/livekit#4247](https://github.com/livekit/livekit/issues/4247)
-("E2E Encryption nodejs and python sdk"), closed as "not planned," where
-LiveKit's own maintainers did not provide a definitive mapping between
-the JS SDK's key-derivation options and the native SDKs' internal
-handling. Resolving this with certainty requires either LiveKit's own
+A third pass re-investigated this from scratch, specifically to answer
+whether a *different, officially supported version combination* — not a
+different client-side parameter — resolves it, per
+[livekit/livekit#4247](https://github.com/livekit/livekit/issues/4247)
+("E2E Encryption nodejs and python sdk"). Re-checked directly on GitHub:
+the issue is still open with **zero maintainer comments**, filed against
+`livekit-server-sdk-python`/`livekit-client` describing the same class of
+symptom reported here (JS and Python-side clients failing to decrypt each
+other's frames), and carries no resolution, no linked fix commit, and no
+"works as of vX" note. It is neither confirmed-fixed nor confirmed-
+unfixable by LiveKit — it is simply unaddressed upstream.
+
+The one concrete, version-specific lead found this pass: the Python
+`livekit` package's changelog between 1.0.7 and 1.1.7 lists a fix for "E2EE
+connection failure caused by missing required protobuf fields
+`key_ring_size` and `key_derivation_function` in `KeyProviderOptions`" —
+1.0.7 predates `KeyProviderOptions.key_derivation_function` existing at
+all as an API surface, meaning 1.0.7 could never have explicitly
+requested HKDF vs. PBKDF2 in the first place; it always used whatever the
+native core's default was. This looked like a strong candidate: it is
+the exact API surface issue #4247 discusses, present as a real change in
+a real, current release, not a guess.
+
+7. **Upgrade + retest, default/implicit KDF**: `apps/ai-agent/.venv`
+   upgraded `livekit` 1.0.7 → 1.1.7 (confirmed the new
+   `KeyProviderOptions.key_derivation_function` field and
+   `proto_e2ee.KeyDerivationFunction` enum — `PBKDF2 = 0`, `HKDF = 1` —
+   now exist), then `kdf-compat.spec.ts`'s forward test re-run unchanged
+   (native side still relying on the implicit/default KDF, now backed by
+   an explicit-capable SDK) against the Web SDK's committed PBKDF2 path
+   (candidate 4/`keySize:256`) → still **InvalidKey**, identical failure
+   signature.
+8. **Explicit HKDF matched on both sides**: to close out the "maybe the
+   *default* differs from what the Web SDK expects" possibility
+   completely, the native side was set explicitly to
+   `key_derivation_function=proto_e2ee.KeyDerivationFunction.HKDF` (via a
+   throwaway script, not committed to the permanent suite), matched
+   against a temporarily-reconfigured Web SDK using
+   `ExternalE2EEKeyProvider.setKey(ArrayBuffer)` (the JS SDK's HKDF code
+   path, confirmed by source reading, SHA-256 with a 128-byte zero `info`
+   buffer) → still **InvalidKey**, identical failure signature (same
+   `~70KB` of real audio bytes received, same `isEncrypted: true` remote /
+   `isEncrypted: false` local, same AES-GCM tag failure). This
+   experimental change was fully reverted afterward — `sdk/web/src/
+   client.ts` was restored via `git checkout --` to its exact
+   previously-committed content (PBKDF2, `keySize: 256`,
+   `setKey(base64Text)`) once the test concluded; nothing from this
+   experiment is left in the shipped SDK.
+
+Candidates 7 and 8 together are a **definitive result, not just another
+failed attempt**: they rule out "KDF algorithm choice" (PBKDF2 vs. HKDF)
+as the root cause entirely, because both algorithms were tested
+*explicitly matched* on both sides — not just "same default" — and both
+still fail identically. This directly answers the question issue #4247
+raises without resolving: the algorithm selection itself is not the
+mismatch. Something else in the derivation or frame-decryption path
+differs between the Web SDK and the native core — candidates not yet
+tested, and not testable without native C++ source access, include the
+literal byte content passed to the HKDF `info` parameter, the exact
+PBKDF2 iteration count and byte encoding used natively (only confirmed
+via `strings` that the function exists, not its exact call-site
+parameters), `ratchetSalt` encoding, or per-participant/key-index ratchet
+state handling in SFrame's `ParticipantKeyHandler`.
+
+Combined, **none of the eight parameter combinations tried across all
+three passes** (five from the first two passes, three more this pass —
+the 1.1.7 upgrade re-tested against both implicit-default and
+explicit-HKDF-matched native configurations, listed as 7 and 8 above; the
+FFI key-export probe from pass two is not a "combination" and isn't
+recounted here) produced a working cross-platform key. This matches the
+**known, unresolved upstream LiveKit report**: issue #4247 above, which
+remains open, uncommented-on by maintainers, and unresolved as of this
+pass — not fixed in a newer release, not confirmed unsupported, just
+silent. Resolving this with certainty requires either LiveKit's own
 clarification or read access to the native frame-crypto core's actual
 C++ source (not available via the compiled binaries + public docs used
 in this investigation) — genuinely beyond what black-box empirical
@@ -245,6 +312,14 @@ permanent, real regression trip-wire: it currently fails (correctly —
 that's the accurate signal), and should go green automatically the
 moment a working configuration is found or LiveKit resolves the upstream
 ambiguity, without anyone needing to remember to re-check it.
+
+The `apps/ai-agent` service is kept on `livekit==1.1.7` (upgraded from
+1.0.7 during the third pass) going forward regardless of this finding:
+it is a real, current, independently-justified fix (see changelog note
+above) unrelated to whether it resolves cross-platform E2EE, and it was
+re-verified safe on its own terms — the full `apps/ai-agent` unit suite
+(22/22) and the real `test_agent_integration.py::
+test_ai_agent_full_lifecycle` integration test both pass against it.
 
 **Practical implication for production**: **do not mix Web clients with
 Flutter/native clients (including the AI agent) in the same encrypted
@@ -320,7 +395,7 @@ silent plaintext fallback.
 |---|---|---|---|---|---|
 | E2EE-BUG-1 | High | `ApiClient`'s default `fetchImpl` called unbound (`this` ≠ `window`), which native `fetch` rejects | Web SDK, any real browser | `fetch.bind(globalThis)` | `sdk/web/test/apiClient.test.ts` |
 | E2EE-BUG-2 | Critical | `room.setE2EEEnabled(true)` was never called — local tracks published unencrypted despite the SDK's "always encrypted" claim | Web SDK, any real browser | `await room.setE2EEEnabled(true)` after `connect()` | `apps/e2e-harness/tests/web-web-e2ee.spec.ts` |
-| E2EE-FINDING-3 | Critical, **open** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; five candidate fixes tried across two sessions, none resolved it; matches an unresolved upstream LiveKit issue | Web ↔ (Flutter \| AI agent \| any native SDK) | None found across either pass | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
+| E2EE-FINDING-3 | Critical, **open — classified as upstream LiveKit limitation** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; eight candidate fixes/configurations tried across three sessions (including explicit PBKDF2-vs-HKDF matching on both sides), none resolved it; no officially supported version combination found that works; matches an unresolved, maintainer-uncommented upstream LiveKit issue | Web ↔ (Flutter \| AI agent \| any native SDK) | None found across any pass | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
 | E2EE-BUG-4 | High | `joinSession()` didn't wait for/verify E2EE-enable confirmation — a slow or failed worker handshake could return "success" before encryption was actually active | Web SDK, any real browser | `waitForE2EEConfirmed()`: wait for `room.isE2EEEnabled`, fail closed (disconnect + throw) on timeout/failure | `apps/e2e-harness/tests/fail-closed.spec.ts` |
 
 ## E2EE Assessment
@@ -368,6 +443,28 @@ certainly external (LiveKit maintainer input, or a controlled experiment
 with a debug build of the native core), not more guessing from this
 codebase alone. CI/CD readiness should wait on this — see the final
 report this document was produced alongside.
+
+**Third-pass note**: a dedicated compatibility investigation (not a fix
+attempt) re-checked whether a different, *officially supported*
+Server/Web/native version combination — as opposed to a different
+client-side parameter — resolves E2EE-FINDING-3. Re-confirmed
+issue #4247 is still open and uncommented by LiveKit maintainers. Found
+and tested the one concrete version-specific lead available (Python SDK
+1.1.7's new explicit `key_derivation_function` field, candidates 7 and 8
+above), including an explicit HKDF-matched-on-both-sides test that had
+never been tried before. Both failed identically to every prior attempt.
+This is a **definitive negative result**: it rules out "KDF algorithm
+choice" as the root cause with certainty (both algorithms tested,
+explicitly matched, both fail), which prior passes could not fully rule
+out (prior passes always left the native side on its implicit default).
+No version combination of LiveKit server (`v1.13.7`), Web SDK (`2.22.3`),
+or native/Python SDK (`1.0.7` or `1.1.7`) tested in this investigation
+achieves real cross-platform E2EE interoperability. Given three full
+passes, eight total parameter/version combinations, and no access to the
+native frame-crypto core's C++ source, this is now classified as an
+**upstream LiveKit limitation** (see the final report this document was
+produced alongside) rather than an AyurEze integration bug — further
+in-repo experimentation has no remaining credible hypotheses to test.
 
 ## Remaining Risks
 
@@ -448,3 +545,46 @@ report this document was produced alongside.
   flake was observed once on an unrelated test during a combined run,
   confirmed non-reproducing when re-run in isolation and on a full clean
   rerun, not a real regression).
+
+## Git — third pass (this commit)
+
+- **Branch**: `claude/ayureze-telehealth-build-vaf7sr`
+- **Purpose**: a compatibility *investigation* (per explicit instruction —
+  not a fix attempt, no arbitrary version changes, no production code
+  touched except the one independently-justified dependency bump below,
+  kept only after it was proven not to resolve E2EE-FINDING-3).
+- **Files changed**: `apps/ai-agent/requirements.txt` (`livekit` 1.0.7 →
+  1.1.7 — kept for its own documented bug fix, not because it resolves
+  cross-platform E2EE; it does not), this document.
+- **Files touched then fully reverted, nothing left uncommitted**:
+  `sdk/web/src/client.ts` was temporarily changed to test an explicit-HKDF
+  configuration (candidate 8 above), then restored via `git checkout --`
+  to its exact previously-committed content before any commit was made —
+  confirmed via `git status`/`git diff` showing zero changes to that file
+  in this pass's diff.
+- **Note on the running `ai-agent` Docker service**: the container
+  currently running in this sandbox's `docker compose` stack still runs
+  `livekit==1.0.7` — rebuilding its image to pick up the `requirements.txt`
+  bump failed in this sandboxed environment (the Docker build step cannot
+  reach PyPI through this session's outbound proxy without additional
+  build-time proxy/CA configuration, which was out of scope for an
+  investigation task). This does not affect this pass's findings: the
+  KDF-compatibility tests run the native participant directly via
+  `apps/ai-agent/.venv/bin/python3` (already upgraded in-place and used
+  for every test in this pass), not via the Docker container. The image
+  should be rebuilt as ordinary follow-up maintenance whenever this
+  environment (or CI) has full PyPI egress.
+- **Tests executed** (final confirmation, after all investigation and
+  before committing): `apps/ai-agent` unit suite (22/22, against the
+  upgraded 1.1.7 venv), `sdk/web` unit suite (19/19, confirming
+  `client.ts` is back to its clean committed state), Go unit suite
+  (`go test ./...`, all passing, unaffected — no Go code changed), full
+  `apps/e2e-harness` Playwright suite (12/13 passing — the 1 failure is
+  `kdf-compat.spec.ts`'s forward-direction test, still intentionally red,
+  still failing with the exact same `InvalidKey: Decryption failed:
+  OperationError` signature, now reconfirmed against the upgraded native
+  SDK: 38KB of real audio bytes received, remote `isEncrypted: true`).
+- **Conclusion**: no code change was needed or made to resolve
+  E2EE-FINDING-3, because none of the three passes' combined eight
+  parameter/version combinations found a working one. See the final
+  report delivered alongside this commit for the full classification.

@@ -396,3 +396,36 @@ mismatch and added a new, previously-untested security property check:
 - Full regression (Go unit+integration, Python unit, Web SDK unit, full
   Playwright e2e-harness suite) re-run clean except the expected,
   intentional `kdf-compat.spec.ts` forward-direction failure.
+
+### Third pass — compatibility investigation (version matrix, not a fix attempt)
+
+A dedicated pass, scoped strictly to answering "does an officially
+supported LiveKit Server/Web/Flutter/native version combination make
+Web ↔ native E2EE work" — not to redesigning anything.
+
+- **Issue #4247 re-checked directly**: still open, zero maintainer
+  comments, no linked fix, no "resolved as of vX" note.
+- **One concrete version-specific lead tested**: Python SDK 1.1.7 adds
+  `KeyProviderOptions.key_derivation_function`, letting the native side
+  explicitly select PBKDF2 or HKDF for the first time (1.0.7 never
+  exposed this at all). Upgraded `apps/ai-agent` to `livekit==1.1.7` and
+  retested twice: once with the native side left on its new implicit
+  default, once with it explicitly set to HKDF and matched against the
+  Web SDK's own HKDF code path. **Both failed identically** to every
+  prior attempt (`InvalidKey: Decryption failed: OperationError`).
+- **This rules out "KDF algorithm choice" as the root cause with
+  certainty** — the first time both algorithms were tested explicitly
+  matched on both sides, not just left on defaults. Across all three
+  passes, 8 total parameter/version combinations have been tried; none
+  work.
+- The `livekit==1.1.7` upgrade is kept regardless (real, current,
+  independently-justified fix per its own changelog — re-verified with
+  the full `ai-agent` test suite, 22/22, and the real agent-lifecycle
+  integration test), but it does **not** resolve the interop gap.
+- `sdk/web/src/client.ts` was temporarily reconfigured to test the HKDF
+  path, then fully reverted — no production code changed as a result of
+  this pass.
+- Classification: given three full passes and no access to the native
+  frame-crypto core's C++ source, this is now assessed as an **upstream
+  LiveKit limitation**, not an AyurEze integration bug. See
+  `docs/e2ee/VALIDATION.md`'s "Third-pass note" for full detail.

@@ -6,8 +6,19 @@ pydantic==2.10.4
 pydantic-settings==2.7.1
 prometheus-client==0.21.1
 
-# LiveKit real-time client (joins the room as an encrypted participant)
-livekit==1.0.7
+# LiveKit real-time client (joins the room as an encrypted participant).
+# Pinned to 1.1.7, not the original 1.0.7: 1.1.7's changelog fixes "E2EE
+# connection failure caused by missing required protobuf fields
+# key_ring_size and key_derivation_function in KeyProviderOptions" — 1.0.7
+# predates KeyProviderOptions.key_derivation_function existing at all.
+# Investigated as a candidate fix for the Web<->native E2EE interop gap
+# (docs/e2ee/VALIDATION.md); it did not resolve that gap (tested explicitly
+# with both KeyDerivationFunction.PBKDF2 and .HKDF against the Web SDK,
+# both still fail identically), but it is still a real, current, more
+# correct SDK version worth being on regardless — re-verified against this
+# repo's full ai-agent test suite (22/22) and its live integration test
+# before pinning.
+livekit==1.1.7
 
 # Day 6 adds: faster-whisper (STT), silero-vad (VAD), a translation
 # provider, and a TTS provider — see requirements-pipeline.txt, kept
