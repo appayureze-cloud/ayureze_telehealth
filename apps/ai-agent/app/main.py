@@ -10,6 +10,7 @@ participant (Day 5).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import FastAPI, HTTPException, Response
@@ -28,6 +29,23 @@ settings = load_settings()
 logger = configure_logging("ayureze-ai-agent", settings.environment, settings.log_level)
 api_client = APIClient(settings.api_base_url, settings.ai_agent_service_secret)
 registry = AgentRegistry()
+
+_pipeline = None  # built lazily on first use — see _get_pipeline()
+
+
+def _get_pipeline():
+    """Loads the Day 6 ML pipeline on first use (several GB of model
+    weights, several seconds) rather than at import time, so `/health`
+    and lifecycle-only operation never pay this cost when
+    AI_AGENT_ENABLE_PIPELINE=false."""
+    global _pipeline
+    if _pipeline is None:
+        from .pipeline.factory import build_default_pipeline
+
+        log(logger, logging.INFO, "loading_translation_pipeline", event_type="loading_translation_pipeline")
+        _pipeline = build_default_pipeline(whisper_model_size=settings.ai_agent_whisper_model_size)
+        log(logger, logging.INFO, "translation_pipeline_loaded", event_type="translation_pipeline_loaded")
+    return _pipeline
 
 app = FastAPI(title="AyurEze AI Translation Agent")
 
@@ -54,12 +72,20 @@ async def metrics():
 
 @app.post("/v1/agent/sessions/{session_id}/start", status_code=202)
 async def start_agent(session_id: str, req: StartRequest):
+    pipeline = None
+    if settings.ai_agent_enable_pipeline:
+        # First call loads several GB of model weights (seconds) — never
+        # block the event loop (and every other in-flight request,
+        # including /health) on that.
+        loop = asyncio.get_event_loop()
+        pipeline = await loop.run_in_executor(None, _get_pipeline)
     agent = AIAgent(
         session_id=session_id,
         tenant_id=req.tenant_id,
         livekit_url=settings.livekit_url,
         api_client=api_client,
         logger=logger,
+        pipeline=pipeline,
     )
     try:
         await registry.start(agent)

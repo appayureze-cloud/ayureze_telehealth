@@ -23,6 +23,16 @@ class Settings(BaseSettings):
 
     livekit_url: str
 
+    # Day 6: when true, the agent loads the real VAD/STT/translation/TTS
+    # pipeline (several GB of model weights, seconds to load) and actually
+    # processes/publishes translated audio. When false (default — matches
+    # Day 5 behavior), the agent still authorizes/joins/subscribes for
+    # real, but only tracks lifecycle state off the encrypted media path
+    # without running the pipeline — useful for lifecycle-only tests and
+    # environments that haven't provisioned the pipeline's model weights.
+    ai_agent_enable_pipeline: bool = False
+    ai_agent_whisper_model_size: str = "tiny"
+
 
 def load_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]  # required fields come from env

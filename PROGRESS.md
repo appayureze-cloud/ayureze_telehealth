@@ -230,7 +230,53 @@ transport in the test process).
   in `apps/ai-agent/README.md`.
 
 ## Day 6 — Real-time translation pipeline
-`NOT IMPLEMENTED` — not started yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| VAD | IMPLEMENTED | Silero VAD via `onnxruntime` (no torch dependency); `TurnSegmenter` adds hangover + minimum-duration filtering for real turn boundaries |
+| STT | IMPLEMENTED | faster-whisper (`tiny`), provider interface allows swapping models/vendors |
+| Language detection | IMPLEMENTED | `langid` (text) cross-checked against Whisper's audio-based guess; English/Tamil/Malayalam per spec |
+| Terminology engine | IMPLEMENTED | Deterministic regex/glossary extraction of numbers, dosage, frequency, duration, Ayurveda/medicine terms |
+| Translation | PARTIALLY IMPLEMENTED | Real, working NLLB-200-distilled-600M — **not** the spec's initial pick IndicTrans2 (gated HF access + custom tokenizer toolkit unavailable in this build environment); documented substitution with a clean swap seam, see `docs/ai/README.md` |
+| Safety validator | IMPLEMENTED | Deterministic digit-preservation check; verified to actually **block** TTS/publication (not just log a warning) on a corrupted translation |
+| TTS | IMPLEMENTED | MMS-TTS (VITS) for English/Tamil/Malayalam |
+| Pipeline orchestration + per-stage latency | IMPLEMENTED | `orchestrator.py`; every result carries `timings_ms` for stt/language_id/terminology/translation/safety_validation/tts/total |
+| Wired into the live AI agent | IMPLEMENTED | `streaming.py`: subscribed remote audio → VAD segmentation → pipeline (off the event loop, via a thread executor) → republished translated audio track + data-channel captions |
+| Captions (original + translated) | IMPLEMENTED | Published as JSON on the `ayureze.captions` LiveKit data topic, including per-stage latency, for SDK clients (Day 7) to render |
+| Turn detection / interruption (barge-in) | IMPLEMENTED | New speech mid-publish cancels the in-flight translated-audio publish task rather than letting two utterances overlap |
+| Avoiding uncontrolled audio loops | IMPLEMENTED (architecturally) | The agent only ever subscribes to *remote* tracks; LiveKit never delivers a participant's own published track back to it, so the agent cannot hear its own translated output |
+| Fallback on unsafe/failed translation | IMPLEMENTED | Safety-blocked results are captioned (`blocked: true`) but never synthesized/published as audio; a failed pipeline segment is logged and skipped without killing the stream |
+| Initial pair EN↔TA | IMPLEMENTED | Verified live in both the models-only test and the full live-stack test |
+
+**Validation command output** (this session):
+```
+$ pytest -v                                                    # 22/22 fast tests (VAD, terminology, safety, lifecycle)
+$ pytest -m models -v tests/pipeline/test_pipeline_models.py   # 3/3 — real STT/NLLB/TTS models, no LiveKit
+tests/pipeline/test_pipeline_models.py::test_dosage_instruction_round_trip_en_to_ta PASSED
+tests/pipeline/test_pipeline_models.py::test_numeric_dosage_is_preserved_end_to_end PASSED
+tests/pipeline/test_pipeline_models.py::test_safety_validator_blocks_a_corrupted_translation PASSED
+
+$ pytest -m integration -v tests/test_pipeline_live_integration.py   # real stack + pipeline enabled
+tests/test_pipeline_live_integration.py::test_live_translation_pipeline_produces_captions PASSED
+```
+The live test's own agent log shows the complete real lifecycle in one
+run: `AUTHORIZED → JOINING → CONNECTED → PROCESSING (audio_track_from=...)
+→ PUBLISHING → PROCESSING → DISCONNECTED`, with a caption data message
+received containing non-empty original/translated text and per-stage
+`timings_ms` — synthesized English speech streamed into a live encrypted
+LiveKit room, VAD-segmented, transcribed, translated to Tamil, safety
+-validated, synthesized, and republished, with the doctor-side test client
+receiving the caption over the data channel. No mocks anywhere in this
+chain.
+
+**Known limitations / carried forward:** see `docs/ai/README.md`'s "Known
+limitations" section — IndicTrans2 substitution (NLLB-200 used instead,
+documented, swappable), MMS-TTS's lack of digit normalization (spelled-out
+numbers required for TTS-sourced test audio; does not affect the
+translation-stage safety guarantee, which is tested directly against
+text), CPU-only inference latency (~0.6-1s translation, ~0.4s TTS —
+acceptable for this build, not production real-time), and untested
+sustained-conversation load/jitter.
 
 ## Day 7 — SDKs + hardening + observability completion
 `NOT IMPLEMENTED` — not started yet.

@@ -52,24 +52,67 @@ agent only ever attempts to connect when explicitly told to via
 `POST /v1/agent/sessions/{id}/start` — nothing in this service watches
 LiveKit for new rooms and auto-joins them.
 
-## Day 6 (not yet implemented): the translation pipeline
+## Day 6: the translation pipeline
 
 ```
 Audio -> VAD -> STT -> Language ID -> Terminology Engine -> Translation
       -> Safety Validator -> TTS -> LiveKit publication
 ```
 
-Planned provider interfaces (so no single vendor/model is hard-coded):
+All seven stages are implemented behind provider interfaces
+(`apps/ai-agent/app/pipeline/`) so no vendor/model is hard-coded, and
+wired live into the Day 5 agent (`app/pipeline/streaming.py`) — see
+`apps/ai-agent/README.md`'s test descriptions for what's actually been
+run end-to-end against the real stack.
 
-| Stage | Initial provider | Notes |
+| Stage | Provider used | Notes |
 |---|---|---|
-| VAD | Silero VAD | speech/silence/turn/interruption detection |
-| STT | faster-whisper | interface allows IndicWhisper, other Whisper variants, managed providers |
-| Language ID | TBD | English, Tamil, Malayalam at minimum |
-| Translation | IndicTrans2 | interface allows NLLB, commercial APIs, medical-specialized models |
-| Terminology | custom | protects Ayurveda/Sanskrit terms, medicine names, dosage/frequency/duration, numbers from translation drift |
-| Safety validator | custom, deterministic | blocks publication if numbers/dosage/frequency/duration/medicine names/negations changed — see build spec section 5 |
-| TTS | TBD | provider-swappable |
+| VAD | Silero VAD | ONNX inference directly via `onnxruntime` (not the `silero-vad` PyPI package, which pulls in a full PyTorch install just to run a 2MB model — see "Known limitations"). Turn segmentation with hangover + minimum-duration filtering in `vad.py`'s `TurnSegmenter` |
+| STT | faster-whisper (`tiny` by default) | Swappable to IndicWhisper/other Whisper variants/managed providers via `STTProvider` |
+| Language ID | `langid` (text-based) cross-checked against Whisper's audio-based guess | Restricted to English/Tamil/Malayalam per build spec section 5; `lid.resolve_language()` prefers the text-based signal when audio-based confidence is low (typical for short clinical utterances) |
+| Terminology | custom, deterministic | Regex/glossary-based extraction of numbers, dosage (`\d+\s*mg/tablets/...`), frequency ("twice daily", "every N hours"), duration ("N days/weeks"), and a curated Ayurveda/medicine glossary |
+| Translation | **facebook/nllb-200-distilled-600M**, not IndicTrans2 | Documented substitution — see below |
+| Safety validator | custom, deterministic | Compares digit sequences between source and translated text; blocks TTS/publication on any mismatch or on empty output for non-empty input. Verified to actually block (not just warn) in `tests/pipeline/test_pipeline_models.py` |
+| TTS | facebook/mms-tts-{eng,tam,mal} (VITS) | Swappable via `TTSProvider` |
 
-This document will be updated with real status (`IMPLEMENTED`/`PARTIALLY
-IMPLEMENTED`/`BLOCKED`) once Day 6 work begins — see `PROGRESS.md`.
+### Why NLLB-200 instead of IndicTrans2
+
+The build spec's initial pick is IndicTrans2. In this build environment,
+`ai4bharat/indictrans2-en-indic-dist-200M` returned `401 Unauthorized` from
+Hugging Face (gated access), and IndicTrans2's inference additionally
+requires a custom preprocessing toolkit (`IndicTransToolkit`: language-tag
++ script-specific tokenization) beyond a standard `transformers` load. NLLB-200
+is directly usable through standard `transformers` with official support
+for `eng_Latn`/`tam_Taml`/`mal_Mlym`, so it was used instead — a real,
+working translation model, not a stub. `TranslationProvider` is exactly
+the seam that makes swapping to IndicTrans2 later (once access/tooling are
+resolved) a contained change: a new class, not a pipeline redesign.
+
+### Known limitations
+
+- **MMS-TTS has no number-normalization front-end.** Feeding it bare
+  digits ("2 tablets") produces badly mispronounced audio that Whisper
+  then mis-transcribes — observed directly in this build's own testing
+  (`tests/pipeline/test_pipeline_models.py`'s comments). Spelled-out
+  numbers ("two tablets") round-trip correctly. This affects the
+  TTS→STT-input path specifically (relevant when testing with
+  synthesized audio); it does not affect the translation-stage digit
+  preservation the safety validator checks, which is verified directly
+  against text in `tests/pipeline/test_safety.py`. A production system
+  should add text normalization before TTS.
+- **The terminology/safety layer protects digit-form numbers**, not
+  spelled-out number words ("seven" vs "7") — growing this to a fuller
+  NLP-based numeric-entailment check is future work.
+- **CPU-only inference.** Translation (~0.6-1s/sentence) and TTS
+  (~0.4s/sentence) on CPU are acceptable for a demo/test pipeline but not
+  production-grade real-time latency; a production deployment should use
+  GPU inference or a managed API for the heavier stages.
+- **`onnxruntime`/`faster-whisper`/`transformers`+CPU-only `torch` are
+  deliberately kept separate from the default PyPI `torch` wheel** (which
+  pulls in the full CUDA/NVIDIA toolkit — observed to add ~15GB even on a
+  machine with no GPU during this build). See
+  `apps/ai-agent/requirements-pipeline.txt`.
+- The `PUBLISHING` → translated-audio-republish path has been verified
+  live end-to-end (`tests/test_pipeline_live_integration.py`), but latency
+  budgets, jitter under sustained conversation, and Malayalam TTS have not
+  been separately load-tested.

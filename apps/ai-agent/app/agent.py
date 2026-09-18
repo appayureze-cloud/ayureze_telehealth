@@ -28,6 +28,8 @@ from .metrics import (
     AI_AGENT_JOIN_TOTAL,
     AI_AGENT_STATE_TRANSITIONS_TOTAL,
 )
+from .pipeline.orchestrator import TranslationPipeline
+from .pipeline.streaming import LiveAudioProcessor
 
 PARTICIPANT_REMOVED = 4  # rtc.DisconnectReason.PARTICIPANT_REMOVED
 
@@ -40,14 +42,17 @@ class AIAgent:
         livekit_url: str,
         api_client: APIClient,
         logger: logging.Logger,
+        pipeline: TranslationPipeline | None = None,
     ):
         self.session_id = session_id
         self.tenant_id = tenant_id
         self._livekit_url = livekit_url
         self._api_client = api_client
         self._logger = logger
+        self._pipeline = pipeline
         self.lifecycle = LifecycleTracker(session_id=session_id)
         self._room: rtc.Room | None = None
+        self._audio_processor: LiveAudioProcessor | None = None
         self._disconnected_event = asyncio.Event()
         self._stop_requested = False
 
@@ -127,13 +132,26 @@ class AIAgent:
         self._transition(AgentState.CONNECTED, detail=f"identity={grant.identity}")
 
     def _on_track_subscribed(self, track, publication, participant) -> None:
-        if track.kind == rtc.TrackKind.KIND_AUDIO:
-            # Day 6 wires actual VAD/STT/translation/TTS processing off of
-            # this event. Day 5 only proves the encrypted media path
-            # itself works: the state transition below is reached only
-            # once real decrypted audio frames are flowing from an
-            # authorized remote participant.
-            self._transition(AgentState.PROCESSING, detail=f"audio_track_from={participant.identity}")
+        if track.kind != rtc.TrackKind.KIND_AUDIO:
+            return
+        # Reached once real decrypted audio frames are flowing from an
+        # authorized remote participant — proves the encrypted media path
+        # itself works even with no pipeline configured (Day 5).
+        self._transition(AgentState.PROCESSING, detail=f"audio_track_from={participant.identity}")
+
+        if self._pipeline is None or self._room is None:
+            return  # no ML pipeline wired in — state machine only (Day 5 mode)
+
+        if self._audio_processor is None:
+            self._audio_processor = LiveAudioProcessor(
+                room=self._room,
+                pipeline=self._pipeline,
+                logger=self._logger,
+                session_id=self.session_id,
+                on_publish_start=lambda: self._transition(AgentState.PUBLISHING),
+                on_publish_end=lambda: self._transition(AgentState.PROCESSING),
+            )
+        asyncio.create_task(self._audio_processor.handle_track(track, participant))
 
     def _on_disconnected(self, reason) -> None:
         if reason == PARTICIPANT_REMOVED:
@@ -144,6 +162,8 @@ class AIAgent:
 
     async def stop(self) -> None:
         self._stop_requested = True
+        if self._audio_processor is not None:
+            await self._audio_processor.stop()
         if self._room is not None and self._room.isconnected:
             await self._room.disconnect()
         # disconnect() triggers the "disconnected" event above (reason
