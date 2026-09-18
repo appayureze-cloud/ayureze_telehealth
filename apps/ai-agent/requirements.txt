@@ -1,0 +1,18 @@
+# Core service
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+pydantic==2.10.4
+pydantic-settings==2.7.1
+prometheus-client==0.21.1
+
+# LiveKit real-time client (joins the room as an encrypted participant)
+livekit==1.0.7
+
+# Day 6 adds: faster-whisper (STT), silero-vad (VAD), a translation
+# provider, and a TTS provider — see requirements-pipeline.txt, kept
+# separate so the Day 5 agent lifecycle has no dependency on large ML
+# packages/model downloads.
+
+pytest==8.3.4
+pytest-asyncio==0.25.2

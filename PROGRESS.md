@@ -188,7 +188,46 @@ backstop, not the primary control).
   Web/Flutter SDKs using the distributed key) is Day 7 scope.
 
 ## Day 5 — AI encrypted participant
-`NOT IMPLEMENTED` — not started yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| AI agent lifecycle state machine | IMPLEMENTED | `apps/ai-agent/app/lifecycle.py` — explicit transition table (`REQUESTED→AUTHORIZED→JOINING→CONNECTED→PROCESSING→PUBLISHING`, `REVOKED`/`DISCONNECTED`/`FAILED` terminal); invalid/skipped transitions raise; 8 unit tests |
+| Authenticate (service credential) | IMPLEMENTED | `AI_AGENT_SERVICE_SECRET` header to the Go API — no human login, no tenant identity of its own |
+| Verify authorization/session/consent | IMPLEMENTED | Entirely enforced Go-side (Day 4's `AuthorizeAIAgent`); the agent has no other path to a LiveKit token |
+| Join encrypted room | IMPLEMENTED | Real SFrame E2EE via `rtc.E2EEOptions`/`KeyProviderOptions(shared_key=...)` using the actual session key from the Go API — not simulated |
+| Subscribe to authorized media | IMPLEMENTED | `auto_subscribe=True`, room-scoped by the LiveKit token's own grant |
+| Process audio (pipeline) | PARTIALLY IMPLEMENTED | Transitions to `PROCESSING` on a real subscribed audio track (proves the encrypted media path end-to-end); the actual VAD/STT/translation/TTS processing is Day 6 |
+| Publish translated audio | NOT IMPLEMENTED | `PUBLISHING` state exists in the machine and is unit-tested, but nothing reaches it yet — no pipeline to publish output from until Day 6 |
+| Leave/revoke correctly | IMPLEMENTED | Distinguishes `DisconnectReason.PARTICIPANT_REMOVED` (→ `REVOKED`, driven by Day 4's consent-revocation force-removal) from any other disconnect (→ `DISCONNECTED`) |
+| "Never join merely because a room exists" | IMPLEMENTED | Agent only connects when explicitly told via `POST /v1/agent/sessions/{id}/start`; nothing watches LiveKit and auto-joins |
+| Metrics | IMPLEMENTED | `ai_agent_authorize_total`, `ai_agent_join_total`, `ai_agent_state_transitions_total`, `ai_agent_active_sessions` — Prometheus, scraped by the existing Day 1 `ayureze-ai-agent` job |
+| Structured JSON logging | IMPLEMENTED | Mirrors the Go API's conventions (service/environment/event_type fields, secret redaction) for uniform Loki queries |
+| Automated tests | IMPLEMENTED | 8 unit tests (state machine) + 1 full integration test against the real stack — no mocks: a second real LiveKit participant publishes a genuinely-encrypted audio track (same session key), and the real agent is driven through authorize→join→`CONNECTED`→`PROCESSING`→consent-revoked→`REVOKED` |
+
+**Validation command output** (this session):
+```
+$ pytest -v                                        # 8/8 unit tests passing
+$ pytest -m integration -v tests/test_agent_integration.py
+tests/test_agent_integration.py::test_ai_agent_full_lifecycle PASSED
+```
+Also smoke-tested the standalone `uvicorn app.main:app` process directly
+with curl against the live stack (not just the in-process test harness):
+triggered `/v1/agent/sessions/{id}/start` against a session with no
+consent and confirmed the real HTTP service reaches `FAILED` with
+`authorization_denied:403`, matching the integration test's assertion via
+a completely different code path (a running server process, not an ASGI
+transport in the test process).
+
+**Known limitations / carried forward:**
+- No actual audio processing yet — `PROCESSING` is reached and then the
+  agent simply waits; Day 6 adds VAD/STT/translation/TTS and the
+  `PUBLISHING` transition.
+- Single-process, in-memory agent registry — fine for this build; a
+  multi-replica deployment would shard by `session_id` (not implemented,
+  not currently needed).
+- No Dockerfile yet for `apps/ai-agent` (added alongside `apps/api`'s in
+  the Day 7 hardening pass) — run via a local virtualenv today, documented
+  in `apps/ai-agent/README.md`.
 
 ## Day 6 — Real-time translation pipeline
 `NOT IMPLEMENTED` — not started yet.
