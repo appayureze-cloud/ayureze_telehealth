@@ -8,11 +8,14 @@ inference. See docs/ai/README.md "Known limitations" for the rationale.
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
+
+from .. import metrics
 
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "silero_vad.onnx"
 FRAME_SAMPLES = 512  # Silero VAD's required chunk size at 16kHz
@@ -45,7 +48,9 @@ class SileroVAD(VADProvider):
         if frame.shape[-1] != FRAME_SAMPLES:
             raise ValueError(f"expected {FRAME_SAMPLES} samples, got {frame.shape[-1]}")
         chunk = frame.astype(np.float32).reshape(1, -1)
+        t0 = time.monotonic()
         out, self._state = self._session.run(None, {"input": chunk, "state": self._state, "sr": self._sr})
+        metrics.PIPELINE_STAGE_LATENCY_SECONDS.labels(stage="vad").observe(time.monotonic() - t0)
         return float(out[0][0])
 
     def is_speech(self, frame: np.ndarray) -> bool:

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ayureze/telehealth/api/internal/apperr"
 	"github.com/ayureze/telehealth/api/internal/domain"
+	"github.com/ayureze/telehealth/api/internal/metrics"
 	"github.com/ayureze/telehealth/api/internal/roomsvc"
 	"github.com/ayureze/telehealth/api/internal/store"
 )
@@ -64,6 +65,7 @@ func (s *Service) Grant(ctx context.Context, caller Caller, sessionID, ip string
 		TenantID: &caller.TenantID, ActorUserID: &uid, Action: "consent.grant", ResourceType: "session", ResourceID: sess.ID,
 		Outcome: domain.AuditSuccess, IPAddress: ip,
 	})
+	metrics.AIConsentTotal.WithLabelValues("grant").Inc()
 	return c, nil
 }
 
@@ -90,6 +92,7 @@ func (s *Service) Revoke(ctx context.Context, caller Caller, sessionID, ip strin
 		TenantID: &caller.TenantID, ActorUserID: &uid, Action: "consent.revoke", ResourceType: "session", ResourceID: sess.ID,
 		Outcome: domain.AuditSuccess, IPAddress: ip,
 	})
+	metrics.AIConsentTotal.WithLabelValues("revoke").Inc()
 
 	s.enforceAIAgentRemoval(ctx, sess, ip)
 	return nil

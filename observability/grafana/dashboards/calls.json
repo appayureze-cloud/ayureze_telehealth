@@ -1,0 +1,84 @@
+{
+  "title": "AyurEze Telehealth — Calls",
+  "uid": "ayureze-calls",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "calls"],
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Sessions created (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "rate(ayureze_api_sessions_created_total[5m])", "legendFormat": "created/sec" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Sessions ended (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "rate(ayureze_api_sessions_ended_total[5m])", "legendFormat": "ended/sec" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Join attempts by role/outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        { "expr": "rate(ayureze_api_sessions_joined_total[5m])", "legendFormat": "{{role}} / {{outcome}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Sessions created (total, last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "increase(ayureze_api_sessions_created_total[24h])", "legendFormat": "created" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Sessions ended (total, last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        { "expr": "increase(ayureze_api_sessions_ended_total[24h])", "legendFormat": "ended" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Successful joins (total, last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(ayureze_api_sessions_joined_total{outcome=\"success\"}[24h]))", "legendFormat": "joined" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "AI-translation consent grant/revoke (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        { "expr": "rate(ayureze_api_ai_consent_total[5m])", "legendFormat": "{{action}}" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Session lifecycle events (logs)",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "{service=\"ayureze-api\"} |= \"session_\"" }
+      ]
+    }
+  ]
+}

@@ -279,4 +279,56 @@ acceptable for this build, not production real-time), and untested
 sustained-conversation load/jitter.
 
 ## Day 7 — SDKs + hardening + observability completion
-`NOT IMPLEMENTED` — not started yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| Flutter SDK | IMPLEMENTED | `sdk/flutter` — headless client (`initialize`, `authenticate`, `createSession`, `joinSession`, `leaveSession`, `endSession`, mic/camera toggles, `enableAITranslation`/`disableAITranslation`, `setLanguage`, caption stream). E2EE on by default, no way to join without it. `flutter analyze`: 0 issues. `flutter test`: 18/18 passing. Two real bugs found and fixed during development (a synchronous-throw bug and an E2EE key-encoding bug — see `sdk/flutter/README.md`) |
+| Web SDK | IMPLEMENTED | `sdk/web` — same API surface, TypeScript. `joinSession()` requires an `e2eeWorker: Worker` (bundler-specific, so the SDK never silently skips E2EE). `tsc --noEmit`: 0 errors. `vitest`: 18/18 passing. `npm run build` produces a clean ESM + `.d.ts` `dist/` |
+| SDK cross-platform E2EE interop | PARTIALLY IMPLEMENTED | Architecturally sound (both SDKs use LiveKit's standard shared-key SFrame derivation, same as the Python agent) but only directly verified Python-to-Python in this build; not exercised in a real browser/device against the live stack — see `docs/sdk/README.md`'s "What has not been validated" |
+| Go API Prometheus metrics | IMPLEMENTED | `internal/metrics`: HTTP request count/latency by route (chi route pattern, not raw path, to avoid cardinality blowup), `auth_login_total`/`auth_refresh_total` by outcome, `sessions_created_total`, `sessions_joined_total` by role/outcome, `sessions_ended_total`, `security_denied_total` by action/reason (covers every denial class the build spec calls out by name), `rate_limited_total`, `ai_consent_total` by grant/revoke. Verified live: driving a failed login against the running API incremented `ayureze_api_auth_login_total{outcome="denied"}` and was visible in Prometheus within one scrape interval |
+| AI agent Prometheus metrics | IMPLEMENTED | Added `ayureze_ai_pipeline_stage_latency_seconds` histogram (labeled `vad`, `stt`, `language_id`, `terminology`, `translation`, `safety_validation`, `tts`, `total` — every stage the build spec's AI latency list calls out by name) plus `ayureze_ai_pipeline_segments_processed_total`/`_blocked_total`. Recorded directly in `pipeline/vad.py` (per-frame VAD inference) and `pipeline/orchestrator.py` (every other stage), alongside the pre-existing `ai_agent_*` lifecycle/authorize/join counters. Verified against real model inference (`pytest -m models`, 3/3 passing with the new instrumentation active) and by inspecting rendered Prometheus output directly |
+| Grafana dashboards | IMPLEMENTED | Six dashboards under `observability/grafana/dashboards/`, matching the build spec's six categories: **Calls** (session create/join/end rates, consent grant/revoke, lifecycle log stream), **WebRTC** (LiveKit room/participant counts, RTT/jitter/packet-loss/quality-score histograms, PLI rate, join latency, room duration — all against real `livekit_*` metric names read from the live server), **APIs** (request rate/error rate/latency by route, login/refresh outcomes, rate-limiting), **AI** (all 8 pipeline-stage latencies p50/p95, segments processed vs. blocked, lifecycle transitions), **Infrastructure** (up targets, otel-collector throughput, Go/Python runtime resource metrics, log volume), **Security** (denial rate by action/reason, failed-login/rate-limited/AI-denial counts, top denial reasons table, audit log stream). All six load cleanly via the Grafana provisioning API and were spot-checked against real Prometheus queries |
+| `apps/api` Dockerfile | IMPLEMENTED | Multi-stage: `golang:1.26-bookworm` build → `gcr.io/distroless/static-debian12:nonroot` runtime (no shell, non-root uid 65532, static `CGO_ENABLED=0` binary). Built and run against the live compose network in this session (see "Docker build verification" below for exactly what was and wasn't exercised) |
+| `apps/ai-agent` Dockerfile | IMPLEMENTED | `python:3.11-slim-bookworm`, dedicated non-root user (uid 10001), `PIPELINE` build arg (default `true`) gates whether the ~2GB Day 6 model dependencies are installed — a lifecycle-only image never pays for them. Model weights are never baked in; mounted as a volume. Built and run against the live compose network in this session |
+| Docker Compose service integration | IMPLEMENTED | `infrastructure/docker/docker-compose.yml` now defines `api` and `ai-agent` services on `ayureze-net`, closing a gap the compose file had anticipated since Day 1 (LiveKit's webhook config already pointed at `http://api:8080/...`). `docker compose up -d api ai-agent` was run in this session: both reached a healthy state, Prometheus's `up{job=~"ayureze-api|ayureze-ai-agent"}` reported `1` for both, and a real login request against the *containerized* API was observed incrementing its Prometheus counters live |
+| `.dockerignore` for both services | IMPLEMENTED | Excludes `.git`, tests, docs, and (for the AI agent) `.venv`/`models`/`__pycache__` from the build context |
+
+**Docker build verification — what was and wasn't exercised:**
+This sandbox's outbound network re-terminates TLS with a CA that `docker
+build`'s isolated build network doesn't trust, so a literal `docker build`
+calling `go mod download` / `pip install` against the public registries
+fails here with a certificate error — a sandbox limitation, not a defect
+in either Dockerfile (a normal CI runner or dev machine hits none of this).
+Full detail, including exactly which build layers were and weren't
+exercised as a result, is in `docs/deployment/README.md`. Bottom line:
+both images were built (via an offline substitution for the
+network-dependent dependency-fetch layer) and run for real against the
+live Postgres/Redis/LiveKit stack, including via `docker compose up`
+itself once a stale container object from an earlier crash-loop was
+cleared — both `/health` endpoints responded and both services' real
+Prometheus metrics were observed flowing into the live Prometheus
+instance. What was *not* directly exercised in this sandbox: the literal
+`go mod download` / `pip install` network-fetch steps inside `docker
+build` (expected to work normally with ordinary internet access; not
+silently assumed here, per this project's "never report an untested
+feature as working" rule).
+
+**Known limitations / carried forward:**
+- No Kubernetes manifests/Helm charts — the build spec's "Kubernetes-ready"
+  requirement is served by the two Dockerfiles existing at all; the actual
+  k8s resources are out of scope for this build.
+- No TLS termination in this repo's compose stack — production needs a
+  TLS-terminating ingress/LB in front of both app services plus LiveKit's
+  own `wss://` configuration.
+- No real secret-management integration — `.env`-file injection is a
+  local-dev convenience; production needs Vault/KMS/Sealed-Secrets/etc.
+- AI agent's `AgentRegistry` is in-process/single-replica only; untested
+  under multi-replica deployment.
+- SDK cross-platform E2EE interop (Flutter/Web ↔ Python agent, in a real
+  browser/device) is architecturally sound but not directly tested — see
+  the SDK row above.
+- OpenTelemetry distributed tracing: the otel-collector has run since Day
+  1 and receives/exports spans, but neither `apps/api` nor `apps/ai-agent`
+  currently emit their own application-level spans (only Prometheus
+  metrics + structured logs) — no OTel SDK instrumentation was added to
+  either service's code in this build.

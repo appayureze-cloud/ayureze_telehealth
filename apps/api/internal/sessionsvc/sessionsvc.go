@@ -16,6 +16,7 @@ import (
 	"github.com/ayureze/telehealth/api/internal/apperr"
 	"github.com/ayureze/telehealth/api/internal/domain"
 	"github.com/ayureze/telehealth/api/internal/e2ee"
+	"github.com/ayureze/telehealth/api/internal/metrics"
 	"github.com/ayureze/telehealth/api/internal/roomsvc"
 	"github.com/ayureze/telehealth/api/internal/store"
 	"github.com/ayureze/telehealth/api/internal/token"
@@ -95,6 +96,7 @@ func (s *Service) Create(ctx context.Context, caller Caller, patientEmail string
 
 	_ = s.events.Insert(ctx, sess.ID, "session_created", map[string]any{"room_name": roomName})
 	s.allow(ctx, caller, "session.create", "session", sess.ID, ip, nil)
+	metrics.SessionsCreatedTotal.Inc()
 
 	return sess, nil
 }
@@ -182,6 +184,7 @@ func (s *Service) Join(ctx context.Context, caller Caller, sessionID, ip string)
 
 	_ = s.events.Insert(ctx, sess.ID, "join_authorized", map[string]any{"identity": identity, "role": string(role)})
 	s.allow(ctx, caller, "session.join", "session", sess.ID, ip, map[string]any{"role": string(role)})
+	metrics.SessionsJoinedTotal.WithLabelValues(string(role), "success").Inc()
 
 	return &JoinResult{
 		Session:       sess,
@@ -219,6 +222,7 @@ func (s *Service) End(ctx context.Context, caller Caller, sessionID, ip string) 
 	}
 	_ = s.events.Insert(ctx, sess.ID, "session_ended", nil)
 	s.allow(ctx, caller, "session.end", "session", sess.ID, ip, nil)
+	metrics.SessionsEndedTotal.Inc()
 	return sess, nil
 }
 
@@ -314,6 +318,9 @@ func (s *Service) auditSystem(ctx context.Context, tenantID, action, resourceID,
 		TenantID: &tenantID, Action: action, ResourceType: "session", ResourceID: resourceID,
 		Outcome: outcome, IPAddress: ip, Metadata: metadata,
 	})
+	if outcome == domain.AuditDenied {
+		metrics.SecurityDeniedTotal.WithLabelValues(action, reason).Inc()
+	}
 }
 
 func (s *Service) deny(ctx context.Context, caller Caller, action, resourceType, resourceID, ip, reason string) {
@@ -322,6 +329,7 @@ func (s *Service) deny(ctx context.Context, caller Caller, action, resourceType,
 		TenantID: &caller.TenantID, ActorUserID: &uid, Action: action, ResourceType: resourceType, ResourceID: resourceID,
 		Outcome: domain.AuditDenied, IPAddress: ip, Metadata: map[string]any{"reason": reason},
 	})
+	metrics.SecurityDeniedTotal.WithLabelValues(action, reason).Inc()
 }
 
 func (s *Service) allow(ctx context.Context, caller Caller, action, resourceType, resourceID, ip string, metadata map[string]any) {

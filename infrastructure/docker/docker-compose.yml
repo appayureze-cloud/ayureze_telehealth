@@ -138,6 +138,72 @@ services:
     networks: [ayureze-net]
 
   # ---------------------------------------------------------------------
+  # Application services (Day 7: containerized via apps/api/Dockerfile and
+  # apps/ai-agent/Dockerfile — previously host-run only in local dev).
+  # ---------------------------------------------------------------------
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    image: ayureze-api:latest
+    restart: unless-stopped
+    environment:
+      API_HTTP_PORT: "8080"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      API_CORS_ALLOWED_ORIGINS: ${API_CORS_ALLOWED_ORIGINS:-}
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?LIVEKIT_API_KEY is required}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET is required}
+      DATABASE_URL: postgres://${POSTGRES_USER:-ayureze}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ayureze_telehealth}?sslmode=disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      API_JWT_SIGNING_SECRET: ${API_JWT_SIGNING_SECRET:?API_JWT_SIGNING_SECRET is required}
+      API_E2EE_MASTER_KEY_HEX: ${API_E2EE_MASTER_KEY_HEX:?API_E2EE_MASTER_KEY_HEX is required}
+      AI_AGENT_SERVICE_SECRET: ${AI_AGENT_SERVICE_SECRET:?AI_AGENT_SERVICE_SECRET is required}
+      API_ACCESS_TOKEN_TTL_SECONDS: ${API_ACCESS_TOKEN_TTL_SECONDS:-300}
+      API_REFRESH_TOKEN_TTL_SECONDS: ${API_REFRESH_TOKEN_TTL_SECONDS:-604800}
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
+    ports:
+      - "${API_HTTP_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+    networks: [ayureze-net]
+
+  ai-agent:
+    build:
+      context: ../../apps/ai-agent
+      dockerfile: Dockerfile
+      args:
+        PIPELINE: ${AI_AGENT_ENABLE_PIPELINE:-false}
+    image: ayureze-ai-agent:latest
+    restart: unless-stopped
+    environment:
+      AI_AGENT_HTTP_PORT: "8090"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${AI_AGENT_LOG_LEVEL:-INFO}
+      API_BASE_URL: http://api:8080
+      AI_AGENT_SERVICE_SECRET: ${AI_AGENT_SERVICE_SECRET:?AI_AGENT_SERVICE_SECRET is required}
+      LIVEKIT_URL: ws://livekit:7880
+      AI_AGENT_ENABLE_PIPELINE: ${AI_AGENT_ENABLE_PIPELINE:-false}
+    ports:
+      - "${AI_AGENT_HTTP_PORT:-8090}:8090"
+    # Model weights (~2.5GB, gitignored — see scripts/download_models.sh)
+    # are never baked into the image; mount them here when
+    # AI_AGENT_ENABLE_PIPELINE=true.
+    volumes:
+      - ../../apps/ai-agent/models:/app/models:ro
+    depends_on:
+      api:
+        condition: service_started
+    networks: [ayureze-net]
+
+  # ---------------------------------------------------------------------
   # Observability (built in from Day 1; never blocks core services)
   # ---------------------------------------------------------------------
   otel-collector:

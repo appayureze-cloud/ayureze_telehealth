@@ -2,11 +2,15 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
+	"github.com/ayureze/telehealth/api/internal/metrics"
 )
 
 type ctxKey string
@@ -32,21 +36,38 @@ func RequestIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-// AccessLog emits one structured JSON log line per request. It never logs
-// request/response bodies (which could contain tokens) — only metadata.
+// AccessLog emits one structured JSON log line per request and records
+// Prometheus request-count/latency metrics. It never logs request/response
+// bodies (which could contain tokens) — only metadata. Metrics are labeled
+// by the chi *route pattern* (e.g. "/v1/sessions/{id}/join"), never the raw
+// path — using raw paths (which contain session/resource IDs) as a label
+// would give Prometheus unbounded cardinality, a classic production
+// observability mistake this deliberately avoids.
 func AccessLog(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(sw, r)
+			elapsed := time.Since(start)
+
+			route := r.URL.Path
+			if rctx := chi.RouteContext(r.Context()); rctx != nil {
+				if pattern := rctx.RoutePattern(); pattern != "" {
+					route = pattern
+				}
+			}
+			statusClass := fmt.Sprintf("%dxx", sw.status/100)
+			metrics.HTTPRequestsTotal.WithLabelValues(r.Method, route, statusClass).Inc()
+			metrics.HTTPRequestDuration.WithLabelValues(r.Method, route).Observe(elapsed.Seconds())
+
 			logger.Info("http_request",
 				slog.String("event_type", "http_request"),
 				slog.String("request_id", RequestIDFromContext(r.Context())),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.Int("status", sw.status),
-				slog.Int64("latency_ms", time.Since(start).Milliseconds()),
+				slog.Int64("latency_ms", elapsed.Milliseconds()),
 			)
 		})
 	}

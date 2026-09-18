@@ -1,8 +1,8 @@
 {
-  "title": "AyurEze Telehealth — Platform Health",
+  "title": "AyurEze Telehealth — Infrastructure",
   "uid": "ayureze-platform-health",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "tags": ["ayureze", "infrastructure"],
   "time": { "from": "now-1h", "to": "now" },
@@ -18,17 +18,67 @@
       "id": 2,
       "title": "otel-collector accepted spans/sec",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
       "targets": [
         { "expr": "rate(otelcol_receiver_accepted_spans_total[5m])", "legendFormat": "accepted" }
       ]
     },
     {
       "id": 3,
+      "title": "otel-collector exported spans/sec (by exporter)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        { "expr": "rate(otelcol_exporter_sent_spans_total[5m])", "legendFormat": "{{exporter}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "ayureze-api goroutines",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 6 },
+      "targets": [{ "expr": "go_goroutines{job=\"ayureze-api\"}", "legendFormat": "goroutines" }]
+    },
+    {
+      "id": 5,
+      "title": "ayureze-api heap memory (bytes)",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 6 },
+      "targets": [{ "expr": "go_memstats_heap_inuse_bytes{job=\"ayureze-api\"}", "legendFormat": "heap_inuse" }]
+    },
+    {
+      "id": 6,
+      "title": "ayureze-api GC pause duration (p95, seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 6 },
+      "targets": [
+        { "expr": "go_gc_duration_seconds{job=\"ayureze-api\",quantile=\"0.95\"}", "legendFormat": "gc_p95" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "ayureze-ai-agent process resident memory (bytes)",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
+      "targets": [
+        { "expr": "process_resident_memory_bytes{job=\"ayureze-ai-agent\"}", "legendFormat": "rss" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "ayureze-ai-agent process CPU (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
+      "targets": [
+        { "expr": "rate(process_cpu_seconds_total{job=\"ayureze-ai-agent\"}[5m])", "legendFormat": "cpu_seconds/sec" }
+      ]
+    },
+    {
+      "id": 9,
       "title": "Service log volume (Loki)",
       "type": "logs",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
-      "datasource": { "type": "loki", "uid": "Loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [{ "expr": "{service=~\".+\"}" }]
     }
   ]

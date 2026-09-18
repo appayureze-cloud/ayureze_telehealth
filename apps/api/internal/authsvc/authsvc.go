@@ -9,6 +9,7 @@ import (
 	"github.com/ayureze/telehealth/api/internal/apperr"
 	"github.com/ayureze/telehealth/api/internal/authn"
 	"github.com/ayureze/telehealth/api/internal/domain"
+	"github.com/ayureze/telehealth/api/internal/metrics"
 	"github.com/ayureze/telehealth/api/internal/redisstate"
 	"github.com/ayureze/telehealth/api/internal/store"
 )
@@ -72,6 +73,7 @@ func (s *Service) Login(ctx context.Context, tenantName, email, password, ip str
 		TenantID: &tenant.ID, ActorUserID: &uid, Action: "auth.login", ResourceType: "user", ResourceID: user.ID,
 		Outcome: domain.AuditSuccess, IPAddress: ip,
 	})
+	metrics.AuthLoginTotal.WithLabelValues("success").Inc()
 
 	return &TokenPair{AccessToken: access, RefreshToken: refreshTok, ExpiresAt: exp, User: *user}, nil
 }
@@ -81,16 +83,19 @@ func (s *Service) auditLoginFailure(ctx context.Context, tenantID *string, email
 		TenantID: tenantID, Action: "auth.login", ResourceType: "user", ResourceID: email,
 		Outcome: domain.AuditDenied, IPAddress: ip, Metadata: map[string]any{"reason": reason},
 	})
+	metrics.AuthLoginTotal.WithLabelValues("denied").Inc()
 }
 
 func (s *Service) Refresh(ctx context.Context, refreshToken, ip string) (*TokenPair, error) {
 	data, err := s.refresh.Redeem(ctx, refreshToken)
 	if err != nil {
+		metrics.AuthRefreshTotal.WithLabelValues("denied").Inc()
 		return nil, apperr.Unauthorized("invalid or expired refresh token")
 	}
 
 	user, err := s.users.GetByID(ctx, data.TenantID, data.UserID)
 	if err != nil {
+		metrics.AuthRefreshTotal.WithLabelValues("denied").Inc()
 		return nil, apperr.Unauthorized("user no longer exists")
 	}
 
@@ -108,6 +113,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken, ip string) (*TokenP
 		TenantID: &user.TenantID, ActorUserID: &uid, Action: "auth.refresh", ResourceType: "user", ResourceID: user.ID,
 		Outcome: domain.AuditSuccess, IPAddress: ip,
 	})
+	metrics.AuthRefreshTotal.WithLabelValues("success").Inc()
 
 	return &TokenPair{AccessToken: access, RefreshToken: newRefresh, ExpiresAt: exp, User: *user}, nil
 }

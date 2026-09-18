@@ -1,0 +1,80 @@
+{
+  "title": "AyurEze Telehealth — APIs",
+  "uid": "ayureze-apis",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "api"],
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(ayureze_api_http_requests_total[5m])) by (route)", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Error rate (4xx/5xx) by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(ayureze_api_http_requests_total{status_class=~\"4xx|5xx\"}[5m])) by (route, status_class)",
+          "legendFormat": "{{route}} {{status_class}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "p50/p95/p99 latency by route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(ayureze_api_http_request_duration_seconds_bucket[5m])) by (le, route))",
+          "legendFormat": "p50 {{route}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ayureze_api_http_request_duration_seconds_bucket[5m])) by (le, route))",
+          "legendFormat": "p95 {{route}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ayureze_api_http_request_duration_seconds_bucket[5m])) by (le, route))",
+          "legendFormat": "p99 {{route}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Login attempts by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "targets": [{ "expr": "rate(ayureze_api_auth_login_total[5m])", "legendFormat": "{{outcome}}" }]
+    },
+    {
+      "id": 5,
+      "title": "Refresh-token exchanges by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "targets": [{ "expr": "rate(ayureze_api_auth_refresh_total[5m])", "legendFormat": "{{outcome}}" }]
+    },
+    {
+      "id": 6,
+      "title": "Rate-limited requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "targets": [{ "expr": "rate(ayureze_api_rate_limited_total[5m])", "legendFormat": "rate_limited/sec" }]
+    },
+    {
+      "id": 7,
+      "title": "ayureze-api / ayureze-ai-agent scrape health",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "targets": [{ "expr": "up{job=~\"ayureze-api|ayureze-ai-agent\"}", "legendFormat": "{{job}}" }]
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"golang.org/x/time/rate"
+
+	"github.com/ayureze/telehealth/api/internal/metrics"
 )
 
 // RateLimiter is implemented by both IPRateLimiter (in-memory, single
@@ -36,6 +38,7 @@ func RateLimitMiddleware(limiter RateLimiter) func(http.Handler) http.Handler {
 				return
 			}
 			if !allowed {
+				metrics.RateLimitedTotal.Inc()
 				writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 				return
 			}
