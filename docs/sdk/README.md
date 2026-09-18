@@ -68,7 +68,13 @@ visible from source inspection or from unit tests with a mocked `fetch`/
    media** despite the SDK's own "E2EE is on by default" claim. Only real
    LiveKit server-reported track metadata (`Participant.isEncrypted`)
    surfaced this; a mocked Room would never catch it. Fixed: the SDK now
-   explicitly enables E2EE on the room right after connecting.
+   explicitly enables E2EE on the room right after connecting, **and**
+   (found in a follow-up audit) waits for that to be actually confirmed —
+   `setE2EEEnabled()` resolving doesn't itself guarantee the worker
+   acknowledged it — failing closed (disconnect + throw "Secure
+   connection could not be established") on any timeout/failure rather
+   than ever returning success without confirmed encryption. Verified
+   with a real dead-Worker test (`apps/e2e-harness/tests/fail-closed.spec.ts`).
 
 ## Real cross-platform E2EE validation — see `docs/e2ee/VALIDATION.md`
 

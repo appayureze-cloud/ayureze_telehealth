@@ -374,3 +374,25 @@ an open upstream LiveKit ambiguity, not a bug in this codebase alone.
 where Web clients and Flutter/native clients (including the AI agent) are
 expected to decrypt each other's encrypted media, until Finding 3 in
 `docs/e2ee/VALIDATION.md` is resolved.
+
+### Follow-up pass — fail-closed hardening + further root-cause attempts
+
+A second validation pass specifically targeted resolving the Web↔native
+mismatch and added a new, previously-untested security property check:
+
+- **Fail-closed verified**: found and fixed a related gap —
+  `joinSession()` called `room.setE2EEEnabled(true)` but never confirmed
+  it actually took effect before returning success (the confirmation is
+  async, via a LiveKit event, not guaranteed by that call resolving). Now
+  waits for confirmation and fails closed (disconnect + clear error) on
+  any timeout/failure. Verified with a real dead-Worker test.
+- **Root cause still open**: two more forensic angles (external LiveKit
+  issue research confirming AES-128/256 selection by raw-key byte length;
+  a direct FFI-level key-export probe) and one more untested parameter
+  combination were tried against the Web↔native mismatch. None resolved
+  it. `docs/e2ee/VALIDATION.md` now documents 5 total candidate fixes
+  tried across both passes, all unsuccessful. Root cause remains
+  correctly reported as unresolved rather than papered over.
+- Full regression (Go unit+integration, Python unit, Web SDK unit, full
+  Playwright e2e-harness suite) re-run clean except the expected,
+  intentional `kdf-compat.spec.ts` forward-direction failure.

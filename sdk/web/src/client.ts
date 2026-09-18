@@ -161,7 +161,7 @@ export class AyurezeTelehealthClient {
     // defensible choice available), but cross-platform E2EE with the
     // native SDKs must be treated as NOT VERIFIED until LiveKit clarifies
     // or a working parameter combination is found — see VALIDATION.md.
-    const keyProvider = new ExternalE2EEKeyProvider();
+    const keyProvider = new ExternalE2EEKeyProvider({ keySize: 256 });
     await keyProvider.setKey(joinResult.e2eeKeyBase64);
 
     const room = new Room({
@@ -194,7 +194,32 @@ export class AyurezeTelehealthClient {
     // metadata, not client-side state) caught this: both sides reported
     // isEncrypted:false with zero EncryptionErrors, because nothing was
     // ever actually encrypted, so nothing ever failed to decrypt either.
-    await room.setE2EEEnabled(true);
+    //
+    // FAIL-CLOSED REQUIREMENT: a call must never silently downgrade to
+    // plaintext. `room.setE2EEEnabled(true)` throws synchronously if e2ee
+    // wasn't configured on the Room at all (e.g. an unsupported browser),
+    // which already fails closed — but its resolution does NOT itself
+    // guarantee encryption is confirmed active: `room.isE2EEEnabled` is
+    // only flipped by an async `ParticipantEncryptionStatusChanged` event
+    // fired once the E2EE worker acknowledges the enable message, which
+    // this call does not wait for. Without an explicit wait+verify step
+    // here, a slow/failed worker handshake could leave this method
+    // returning "success" while the room is not actually confirmed
+    // encrypted — exactly the same class of silent-plaintext bug as the
+    // missing setE2EEEnabled() call above, just at a different layer. So:
+    // enable, then wait for confirmation, then verify; disconnect and
+    // throw rather than return on any failure of that chain.
+    try {
+      await room.setE2EEEnabled(true);
+      const confirmed = await waitForE2EEConfirmed(room, 8000);
+      if (!confirmed) {
+        throw new Error("E2EE was not confirmed active within 8s");
+      }
+    } catch (e) {
+      await room.disconnect();
+      this.room = null;
+      throw new ConnectionError(`Secure connection could not be established. Please retry. (${String(e)})`);
+    }
 
     return joinResult.session;
   }
@@ -425,4 +450,33 @@ export class AyurezeTelehealthClient {
     }
     return this.room;
   }
+}
+
+/**
+ * Resolves true once `room.isE2EEEnabled` is confirmed (either already
+ * true, or flipped true by a `RoomEvent.ParticipantEncryptionStatusChanged`
+ * event for the local participant within `timeoutMs`), false on timeout.
+ * Exists because `Room.setE2EEEnabled()` resolving does not itself
+ * guarantee the E2EE worker has acknowledged the enable message — see the
+ * fail-closed comment in `joinSession()`.
+ */
+function waitForE2EEConfirmed(room: Room, timeoutMs: number): Promise<boolean> {
+  if (room.isE2EEEnabled) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const onChange = (enabled: boolean, participant?: Participant) => {
+      if (participant?.isLocal && enabled) {
+        cleanup();
+        resolve(true);
+      }
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, timeoutMs);
+    const cleanup = () => {
+      clearTimeout(timer);
+      room.off(RoomEvent.ParticipantEncryptionStatusChanged, onChange);
+    };
+    room.on(RoomEvent.ParticipantEncryptionStatusChanged, onChange);
+  });
 }

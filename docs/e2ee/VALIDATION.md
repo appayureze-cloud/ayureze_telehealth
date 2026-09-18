@@ -186,25 +186,65 @@ empirically tested against the real native participant, in order:
    UTF-8 bytes of the base64 text (not the decoded raw bytes) as its
    `shared_key` → still **InvalidKey**.
 
-None of the four combinations tried produced a working cross-platform
-key. This matches a **known, unresolved upstream LiveKit report**:
-[livekit/livekit#4247](https://github.com/livekit/livekit/issues/4247)
+A follow-up session added two more forensic angles and a fifth candidate:
+
+5. **New evidence**: [livekit/client-sdk-android#952](https://github.com/livekit/client-sdk-android/issues/952)
+   ("Support configurable AES-GCM key length for E2EE") confirms the
+   native stack's underlying WebRTC fork picks the cipher from the raw
+   key material's byte *length* — 16 bytes → `EVP_aead_aes_128_gcm()`,
+   32 bytes → `EVP_aead_aes_256_gcm()` — and states plainly that "this
+   option would also need equivalent support in other LiveKit client
+   SDKs to work cross-platform" and "all E2EE participants must use
+   matching key lengths." No maintainer response in that thread
+   confirms the exact derivation path, but it corroborates that key
+   length is a real, acknowledged cross-SDK variable, not a red herring.
+   Since candidate 3 above (`keySize: 256`) had been tested only
+   *together with* the UTF-8-unsafe binary-string input (candidate 2),
+   never together with the ASCII-safe base64-text input (candidate 4),
+   that untested combination — **`new ExternalE2EEKeyProvider({ keySize: 256 })`
+   + `setKey(base64Text)`** — was tried next → still **InvalidKey**,
+   identical failure signature (same error, same ~70KB received, same
+   participant marked `isEncrypted: true` with the actual AES-GCM tag
+   check failing).
+6. **Direct key-material probe**: Python's `rtc.KeyProvider` exposes
+   `export_shared_key(key_index)` and `ratchet_shared_key(key_index)` at
+   the FFI layer, which looked like a path to extract the native side's
+   actual derived key bytes for a byte-for-byte diff against a
+   from-scratch WebCrypto computation of the JS side's derivation. In
+   practice, both calls returned empty bytes immediately after
+   `set_shared_key()` on a freshly-connected room (not an error — just
+   `b""`), for reasons not established (index semantics, an async
+   round-trip the Python binding doesn't await, or these calls
+   genuinely only return something after a real ratchet event) —
+   inconclusive, and not pursued further given the FFI's internal derive
+   step almost certainly happens in the C++ layer these calls don't
+   reach anyway.
+
+None of the five parameter combinations tried produced a working
+cross-platform key. This matches a **known, unresolved upstream LiveKit
+report**: [livekit/livekit#4247](https://github.com/livekit/livekit/issues/4247)
 ("E2E Encryption nodejs and python sdk"), closed as "not planned," where
 LiveKit's own maintainers did not provide a definitive mapping between
 the JS SDK's key-derivation options and the native SDKs' internal
-handling.
+handling. Resolving this with certainty requires either LiveKit's own
+clarification or read access to the native frame-crypto core's actual
+C++ source (not available via the compiled binaries + public docs used
+in this investigation) — genuinely beyond what black-box empirical
+testing can determine.
 
 **Current state left in the codebase**: `sdk/web/src/client.ts` uses
-`setKey(base64Text)` (PBKDF2 path, LiveKit's own documented
-"recommended for maximum compatibility" choice, and the configuration
-that passed static analysis most cleanly) — the most defensible available
-option, extensively commented with this entire investigation and a
-pointer back to this document, but **explicitly not claimed to work
-cross-platform**. `apps/e2e-harness/tests/kdf-compat.spec.ts` is left in
-the suite as a permanent, real regression trip-wire: it currently fails
-(correctly — that's the accurate signal), and should go green automatically
-the moment a working configuration is found or LiveKit resolves the
-upstream ambiguity, without anyone needing to remember to re-check it.
+`new ExternalE2EEKeyProvider({ keySize: 256 })` + `setKey(base64Text)` —
+PBKDF2 path (LiveKit's own documented "recommended for maximum
+compatibility" choice), ASCII-safe input (avoids the UTF-8-mangling bug
+found in candidate 2), and a 256-bit output size matching this system's
+32-byte session keys and the AES-256 selection rule from finding 5 above
+— the most defensible combination available given everything tried, but
+**explicitly not claimed to work cross-platform**.
+`apps/e2e-harness/tests/kdf-compat.spec.ts` is left in the suite as a
+permanent, real regression trip-wire: it currently fails (correctly —
+that's the accurate signal), and should go green automatically the
+moment a working configuration is found or LiveKit resolves the upstream
+ambiguity, without anyone needing to remember to re-check it.
 
 **Practical implication for production**: **do not mix Web clients with
 Flutter/native clients (including the AI agent) in the same encrypted
@@ -226,6 +266,32 @@ decrypt into garbage audio with no event fired is the more likely
 explanation than genuine compatibility. This is stated explicitly in the
 test itself and must not be read as a PASS.
 
+### Fail-closed: E2EE initialization failure never becomes silent plaintext
+
+A gap was found and fixed while re-auditing `joinSession()` for exactly
+this property: `room.setE2EEEnabled(true)` resolving does **not** itself
+guarantee the E2EE worker has acknowledged the enable message —
+`room.isE2EEEnabled` is only flipped by an async
+`RoomEvent.ParticipantEncryptionStatusChanged` event that call doesn't
+wait for. A slow or failed worker handshake could previously have left
+`joinSession()` returning "success" without encryption actually
+confirmed active — the same *class* of bug as Bug 2 above, at a
+different layer.
+
+**Fix**: `joinSession()` now waits (`waitForE2EEConfirmed`, 8s timeout)
+for `room.isE2EEEnabled` to actually become true after calling
+`setE2EEEnabled(true)`, and on any failure in that chain — the call
+throwing, or the confirmation never arriving — disconnects, clears
+`this.room`, and throws `ConnectionError("Secure connection could not be
+established. Please retry. (...)")` rather than returning.
+
+**Verified for real** (`apps/e2e-harness/tests/fail-closed.spec.ts`): a
+deliberately dead `Worker` (loads, runs, never acknowledges any message —
+the realistic shape of a real-world E2EE worker failure) causes
+`joinSession()` to reject with exactly that error after the 8s timeout,
+and leaves the connection state `disconnected`, not `connected` — no
+silent plaintext fallback.
+
 ## Test Matrix
 
 | Test | Result | Evidence |
@@ -234,8 +300,9 @@ test itself and must not be read as a PASS.
 | Flutter ↔ Flutter E2EE | **BLOCKED** | No Flutter/Android toolchain in this environment — see "Flutter feasibility" |
 | Flutter ↔ Web E2EE | **BLOCKED** (and, by the Python proxy finding above, presumed broken for the same reason as Web↔native) | Not directly tested |
 | Web ↔ Flutter E2EE | **BLOCKED** (same) | Not directly tested |
-| Web ↔ native (Python SDK) E2EE | **CONFIRMED BROKEN** | `kdf-compat.spec.ts` test 1 — reproducible `InvalidKey` on every run |
+| Web ↔ native (Python SDK) E2EE | **CONFIRMED BROKEN** | `kdf-compat.spec.ts` test 1 — reproducible `InvalidKey` on every run, 5 parameter combinations tried |
 | native → Web E2EE (reverse) | **INCONCLUSIVE** | `kdf-compat.spec.ts` test 2 — see "Reverse direction" above; treat as probably also broken |
+| E2EE initialization failure (dead worker) | **FAIL CLOSED (correct)** | `fail-closed.spec.ts` — `joinSession()` rejects with a clear error, connection left `disconnected`, never silently unencrypted |
 | Private Mode (AI absent) | **PASS** | `private-mode.spec.ts` — real E2EE audio/video, exactly 2 participants, no `ai_agent` role ever seen, `aiTranslationAuthorized: false` from the real API |
 | AI authorized encrypted participant | **PASS** | `ai-mode.spec.ts` — real consent grant → real `/start` call → AI reaches the room as `role: ai_agent`, `isEncrypted: true`, confirmed via the AI agent's own real Prometheus metrics |
 | AI unauthorized access | **REJECTED** (correctly) | `ai-authorization-boundaries.spec.ts` — no-consent start reaches `FAILED` with `authorization_denied:403`, never joins |
@@ -253,7 +320,8 @@ test itself and must not be read as a PASS.
 |---|---|---|---|---|---|
 | E2EE-BUG-1 | High | `ApiClient`'s default `fetchImpl` called unbound (`this` ≠ `window`), which native `fetch` rejects | Web SDK, any real browser | `fetch.bind(globalThis)` | `sdk/web/test/apiClient.test.ts` |
 | E2EE-BUG-2 | Critical | `room.setE2EEEnabled(true)` was never called — local tracks published unencrypted despite the SDK's "always encrypted" claim | Web SDK, any real browser | `await room.setE2EEEnabled(true)` after `connect()` | `apps/e2e-harness/tests/web-web-e2ee.spec.ts` |
-| E2EE-FINDING-3 | Critical, **open** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; four candidate fixes tried, none resolved it; matches an unresolved upstream LiveKit issue | Web ↔ (Flutter \| AI agent \| any native SDK) | None found this pass | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
+| E2EE-FINDING-3 | Critical, **open** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; five candidate fixes tried across two sessions, none resolved it; matches an unresolved upstream LiveKit issue | Web ↔ (Flutter \| AI agent \| any native SDK) | None found across either pass | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
+| E2EE-BUG-4 | High | `joinSession()` didn't wait for/verify E2EE-enable confirmation — a slow or failed worker handshake could return "success" before encryption was actually active | Web SDK, any real browser | `waitForE2EEConfirmed()`: wait for `room.isE2EEEnabled`, fail closed (disconnect + throw) on timeout/failure | `apps/e2e-harness/tests/fail-closed.spec.ts` |
 
 ## E2EE Assessment
 
@@ -278,11 +346,28 @@ test itself and must not be read as a PASS.
   is resolved.
 - Flutter, in every combination: **BLOCKED** (no toolchain in this
   environment) — never claimed as verified.
+- Fail-closed behavior on E2EE initialization failure: **VERIFIED** — a
+  real dead-worker scenario correctly rejects `joinSession()` rather than
+  silently connecting unencrypted (see "Fail-closed" above).
 
 Do not read "PARTIALLY VERIFIED" as "mostly fine" — the broken
 combination (Web ↔ native) is exactly the one the real product's Mode B
 (AI translation, which is Web/Flutter clients talking to the Python AI
 agent) depends on, and it does not currently work.
+
+**Second-pass note**: a follow-up session specifically targeted resolving
+E2EE-FINDING-3, using external research (LiveKit's own GitHub issues,
+confirming the AES-128/256-by-key-length behavior) and a direct FFI-level
+key-export probe, and tried one further untested parameter combination
+(candidates 5 and 6 above). None of it resolved the mismatch. This is
+reported honestly rather than re-framed as progress: the finding remains
+open. Further black-box testing (trying more parameter permutations
+without source-level visibility into the native frame-crypto core) has
+diminishing odds of success — the next productive step is almost
+certainly external (LiveKit maintainer input, or a controlled experiment
+with a debug build of the native core), not more guessing from this
+codebase alone. CI/CD readiness should wait on this — see the final
+report this document was produced alongside.
 
 ## Remaining Risks
 
@@ -316,15 +401,26 @@ agent) depends on, and it does not currently work.
   acoustic/lighting edge cases are untested.
 - **High packet loss / high latency scenarios** (master prompt section
   14) were not tested — only a full network outage and its recovery.
+- **The fail-closed timeout (8s) is an untuned first guess** — long
+  enough not to false-positive-fail a normal connection (never observed
+  to in this pass's ~25+ successful joins), but not validated against
+  real-world slow-network conditions where E2EE setup might legitimately
+  take longer. Worth revisiting with real network telemetry before
+  treating 8s as a permanent constant.
+- **A transient WebRTC ICE connection flake** was observed once (of
+  ~4 full-suite runs across both passes) on a test unrelated to any code
+  changed this pass, in a combined run of 13 tests in one browser/worker
+  process; it did not reproduce in isolation or on a subsequent full
+  rerun. Consistent with resource contention under this sandbox's load
+  rather than a real bug, but worth watching if it recurs in CI.
 
-## Git
+## Git — first pass (`35fd53a`)
 
 - **Branch**: `claude/ayureze-telehealth-build-vaf7sr`
-- **Files changed this pass**: `sdk/web/src/client.ts`,
-  `sdk/web/src/types.ts`, `sdk/web/src/apiClient.ts`,
-  `sdk/web/test/apiClient.test.ts`, plus a new `apps/e2e-harness/`
-  (Playwright suite: `web-web-e2ee.spec.ts`, `kdf-compat.spec.ts`,
-  `private-mode.spec.ts`, `ai-mode.spec.ts`,
+- **Files changed**: `sdk/web/src/client.ts`, `sdk/web/src/types.ts`,
+  `sdk/web/src/apiClient.ts`, `sdk/web/test/apiClient.test.ts`, plus a new
+  `apps/e2e-harness/` (Playwright suite: `web-web-e2ee.spec.ts`,
+  `kdf-compat.spec.ts`, `private-mode.spec.ts`, `ai-mode.spec.ts`,
   `ai-authorization-boundaries.spec.ts`, `reconnect.spec.ts`,
   `bug-hunting.spec.ts`, plus `tests/helpers/` — `seed.ts`,
   `webClient.ts`, `nativeParticipant.ts`, `native_participant.py`), and
@@ -334,3 +430,21 @@ agent) depends on, and it does not currently work.
   (11/12 passing — the 1 failure is `kdf-compat.spec.ts`'s forward-
   direction test, intentionally left red as a real, accurate trip-wire
   for Finding 3, not a flaky or broken test).
+
+## Git — second pass (this commit)
+
+- **Branch**: `claude/ayureze-telehealth-build-vaf7sr`
+- **Files changed**: `sdk/web/src/client.ts` (fail-closed confirmation +
+  the `keySize: 256` candidate fix attempt), `apps/e2e-harness/tests/
+  fail-closed.spec.ts` (new), `apps/e2e-harness/tests/helpers/
+  native_participant.py` (unchanged behavior, re-verified), this document.
+- **Tests executed**: `sdk/web` unit suite (19/19), Go unit + integration
+  suite (`go test ./...` and `go test -tags integration
+  ./test/integration/...`, all passing, unaffected by this pass since no
+  Go code changed), Python AI agent suite (22/22 fast tests passing,
+  unaffected), full `apps/e2e-harness` Playwright suite twice
+  (12/13 passing both times — the 1 failure is `kdf-compat.spec.ts`'s
+  forward-direction test, still intentionally red; a transient WebRTC ICE
+  flake was observed once on an unrelated test during a combined run,
+  confirmed non-reproducing when re-run in isolation and on a full clean
+  rerun, not a real regression).
