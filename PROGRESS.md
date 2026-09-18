@@ -142,7 +142,50 @@ no regression from the shared middleware refactor (rate limiter, router).
   health (e.g. doesn't verify migrations are current).
 
 ## Day 4 — E2EE + consent
-`NOT IMPLEMENTED` — not started yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| E2EE key generation | IMPLEMENTED | Random 256-bit key generated once at session creation (`sessionsvc.Create`); plaintext held only transiently before envelope encryption |
+| Key encrypted at rest | IMPLEMENTED | AES-256-GCM under `API_E2EE_MASTER_KEY_HEX` (`internal/e2ee`); Postgres never holds plaintext key material. Master key is a static env var in this build — documented as a known limitation requiring a real KMS in production |
+| Key distribution on authorized join | IMPLEMENTED | Patient/doctor (`sessionsvc.Join`) and, once consented, the AI agent (`sessionsvc.AuthorizeAIAgent`) receive the decrypted key only in the join response — never in `GetSession`, never logged |
+| SFU cannot decrypt | IMPLEMENTED (architecturally) | LiveKit only ever forwards encrypted frames; server-side, LiveKit has no key material at all — see `docs/e2ee/README.md`. Client-side SFrame *usage* of the key is Day 7 (SDK) scope |
+| Private Mode: AI absent by default | IMPLEMENTED | A session has no `ai_agent` participant row and no consent unless explicitly granted; nothing auto-authorizes it |
+| AI Translation Mode: explicit authorization | IMPLEMENTED | `POST /internal/ai-agent/sessions/{id}/authorize` — service-secret authenticated, requires an *active* `ai_translation` consent row, mints a room-scoped token + hands over the E2EE key only then |
+| Consent grant/revoke | IMPLEMENTED | Day 3 provided the schema/CRUD; Day 4 wires revocation to immediately (same request) force-disconnect a currently-connected AI agent via `roomsvc.RemoveParticipant` and mark its participant row `revoked` — not on a delay or next poll |
+| Security event logging | IMPLEMENTED | `ai_agent.authorize` (success/denied+reason) and `ai_agent.access_revoked` audit actions; `ai_agent_authorized`/`ai_agent_access_revoked` session_events |
+| Security tests: unauthorized participant / wrong room / wrong tenant / ended session | IMPLEMENTED | Covered by Day 3's tests (unaffected, still passing) |
+| Security tests: AI without consent | IMPLEMENTED | `TestAIAgent_RequiresActiveConsent` — `403` |
+| Security tests: AI after consent revoked | IMPLEMENTED | Same test — authorize → (simulated) join via signed webhook → revoke → re-authorize denied `403` → participant row `revoked` |
+| Security tests: invalid participant role | IMPLEMENTED | `TestParticipant_InvalidRoleRejectedAtTokenMint` + existing `internal/token` unit tests — the HTTP surface never accepts an arbitrary role for authenticated session endpoints (role is derived server-side from `doctor_id`/`patient_id`) |
+| Security tests: expired authorization | IMPLEMENTED | `TestAuth_ExpiredAccessTokenRejected` (app-JWT layer) + Day 2's LiveKit-token-layer equivalent |
+
+**Validation command output** (this session):
+```
+$ go test ./internal/e2ee/... -v          # 5/5 unit tests passing
+$ go test -tags integration -count=1 ./test/integration/...
+ok  	github.com/ayureze/telehealth/api/test/integration	2.508s   (14/14 tests passing)
+```
+Confirmed via targeted log inspection that `e2ee_key` values never appear
+in any structured log line (the access-log middleware never logs response
+bodies in the first place; the logger's redaction list is a documented
+backstop, not the primary control).
+
+**Known limitations / carried forward:**
+- Key distribution is server-mediated (the API hands the same session key
+  to every authorized participant), not a peer-to-peer ratcheting
+  protocol. See `docs/e2ee/README.md` "Known limitations" for the
+  production-hardening path.
+- `API_E2EE_MASTER_KEY_HEX` is a static env var, not a real KMS —
+  `internal/e2ee.KeyManager`'s narrow `Encrypt`/`Decrypt` interface is
+  specifically meant to make swapping this out for AWS KMS/GCP KMS/Vault
+  a contained change.
+- The AI agent's participant status transitioning to `joined` in the Day 4
+  test is *simulated* via a directly-signed webhook request (the same
+  mechanism validated in Day 3), since the actual Python AI agent that
+  would trigger a real LiveKit `participant_joined` event doesn't exist
+  until Day 5.
+- Client-side SFrame enablement (actually turning on E2EE in the LiveKit
+  Web/Flutter SDKs using the distributed key) is Day 7 scope.
 
 ## Day 5 — AI encrypted participant
 `NOT IMPLEMENTED` — not started yet.

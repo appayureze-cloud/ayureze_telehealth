@@ -89,9 +89,15 @@ type Session struct {
 	DoctorID                string
 	PatientID               string
 	AITranslationAuthorized bool
-	CreatedAt               time.Time
-	StartedAt               *time.Time
-	EndedAt                 *time.Time
+	// E2EEKeyEncrypted is the envelope-encrypted (never plaintext)
+	// per-session media key. It must never be marshaled into an API
+	// response or log line — see internal/e2ee and internal/sessionsvc,
+	// which decrypt it only at the point of handing it to an authorized,
+	// just-joined participant.
+	E2EEKeyEncrypted []byte
+	CreatedAt        time.Time
+	StartedAt        *time.Time
+	EndedAt          *time.Time
 }
 
 type Participant struct {

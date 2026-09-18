@@ -63,8 +63,16 @@ single-instance limiter). The limiter fails open on Redis errors rather
 than taking the API down, which is a deliberate availability/security
 trade-off — see `httpapi/ratelimit.go`.
 
+## E2EE key management and AI agent authorization
+
+See `docs/e2ee/README.md` for the full key lifecycle (generate → encrypt
+at rest → distribute on authorized join → invalidate on revocation) and
+the `POST /internal/ai-agent/sessions/{id}/authorize` endpoint, which is
+the single enforcement point ensuring the AI agent never joins without
+currently-active, revocable consent.
+
 ## What's not yet covered here
 
-E2EE key handling and the AI agent's authorization/consent gate are Day 4
-and Day 5 respectively — see `docs/e2ee/` and `docs/ai/`, and `PROGRESS.md`
-for current status. A full threat model is written once those land.
+The AI agent's own connection lifecycle (Day 5) and the translation
+pipeline (Day 6) are not yet built — `docs/ai/` and `PROGRESS.md` track
+current status. A full threat model is written once those land.

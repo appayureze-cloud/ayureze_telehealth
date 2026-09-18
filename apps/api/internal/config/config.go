@@ -36,6 +36,17 @@ type Config struct {
 	AccessTokenTTL   time.Duration
 	RefreshTokenTTL  time.Duration
 
+	// E2EEMasterKeyHex envelope-encrypts per-session media keys at rest
+	// (internal/e2ee). In production this should come from a real KMS —
+	// a static env var is a documented local-dev simplification.
+	E2EEMasterKeyHex string
+
+	// AIAgentServiceSecret authenticates the AI agent (Day 5) to the
+	// internal authorization endpoint — a service credential, not a human
+	// login, since the AI agent is a trusted backend process rather than a
+	// user.
+	AIAgentServiceSecret string
+
 	CORSAllowedOrigins string
 	RateLimitPerMinute int
 
@@ -96,6 +107,15 @@ func Load() (*Config, error) {
 	cfg.RedisDB = redisDB
 
 	cfg.JWTSigningSecret, err = requireEnv("API_JWT_SIGNING_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.E2EEMasterKeyHex, err = requireEnv("API_E2EE_MASTER_KEY_HEX")
+	if err != nil {
+		return nil, err
+	}
+	cfg.AIAgentServiceSecret, err = requireEnv("AI_AGENT_SERVICE_SECRET")
 	if err != nil {
 		return nil, err
 	}

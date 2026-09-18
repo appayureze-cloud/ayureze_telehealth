@@ -49,3 +49,17 @@ func (s *Service) DeleteRoom(ctx context.Context, roomName string) error {
 	}
 	return nil
 }
+
+// RemoveParticipant forcibly disconnects a single participant without
+// affecting the rest of the room. Used to immediately enforce AI-agent
+// consent revocation (Day 4) — a patient or doctor revoking consent must
+// not leave the AI agent connected until it happens to notice.
+func (s *Service) RemoveParticipant(ctx context.Context, roomName, identity string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := s.client.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: roomName, Identity: identity})
+	if err != nil {
+		return fmt.Errorf("remove participant %q from room %q: %w", identity, roomName, err)
+	}
+	return nil
+}

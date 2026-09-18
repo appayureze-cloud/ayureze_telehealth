@@ -27,7 +27,7 @@ LiveKit room-access tokens returned by `/v1/sessions/{id}/join`.
 |---|---|---|---|
 | POST | `/v1/sessions` | doctor (or admin) | `{patient_email}` — creates a session scoped to the caller's tenant, authorizes exactly the doctor (caller) and named patient as participants, and creates the LiveKit room |
 | GET | `/v1/sessions/{id}` | session's doctor/patient, or admin | Returns session + participant list. `404` (not `403`) for anyone else, including same-tenant users not on this session, and cross-tenant callers |
-| POST | `/v1/sessions/{id}/join` | session's doctor/patient, or admin | Mints a room-scoped LiveKit token. `404` if not found/wrong tenant/not a participant, `409` if the session has ended |
+| POST | `/v1/sessions/{id}/join` | session's doctor/patient, or admin | Mints a room-scoped LiveKit token and returns the session's E2EE key (see `docs/e2ee/`). `404` if not found/wrong tenant/not a participant, `409` if the session has ended |
 | POST | `/v1/sessions/{id}/end` | session's doctor, or admin | Ends the session and deletes the LiveKit room |
 | POST | `/v1/sessions/{id}/consent/ai-translation/grant` | session's doctor or patient | Day 3: schema + CRUD only — Day 4 wires this into the AI agent's join authorization |
 | POST | `/v1/sessions/{id}/consent/ai-translation/revoke` | session's doctor or patient | ” |
@@ -37,6 +37,7 @@ LiveKit room-access tokens returned by `/v1/sessions/{id}/join`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/internal/webhooks/livekit` | LiveKit webhook signature (verified via `LIVEKIT_API_KEY`/`SECRET`) | Room/participant lifecycle events → participant status + Redis presence + `session_events`. Never carries media |
+| POST | `/internal/ai-agent/sessions/{id}/authorize` | `X-AI-Agent-Secret: <AI_AGENT_SERVICE_SECRET>` | Called by the AI agent service (Day 5) to request access. `403` unless AI-translation consent is currently granted for this session. Returns a room-scoped LiveKit token + the session's E2EE key. See `docs/e2ee/README.md` |
 
 ## Dev-only (Day 2, kept for `apps/playground`)
 

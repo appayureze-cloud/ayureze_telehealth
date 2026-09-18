@@ -18,7 +18,7 @@ func scanSession(row pgx.Row) (*domain.Session, error) {
 	var s domain.Session
 	if err := row.Scan(
 		&s.ID, &s.TenantID, &s.RoomName, &s.Status, &s.CreatedBy, &s.DoctorID, &s.PatientID,
-		&s.AITranslationAuthorized, &s.CreatedAt, &s.StartedAt, &s.EndedAt,
+		&s.AITranslationAuthorized, &s.E2EEKeyEncrypted, &s.CreatedAt, &s.StartedAt, &s.EndedAt,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
@@ -29,14 +29,14 @@ func scanSession(row pgx.Row) (*domain.Session, error) {
 }
 
 const sessionColumns = `id, tenant_id, room_name, status, created_by, doctor_id, patient_id,
-	ai_translation_authorized, created_at, started_at, ended_at`
+	ai_translation_authorized, e2ee_key_encrypted, created_at, started_at, ended_at`
 
-func (s *SessionStore) Create(ctx context.Context, tenantID, roomName, createdBy, doctorID, patientID string) (*domain.Session, error) {
+func (s *SessionStore) Create(ctx context.Context, tenantID, roomName, createdBy, doctorID, patientID string, e2eeKeyEncrypted []byte) (*domain.Session, error) {
 	row := s.pool.QueryRow(ctx, `
-		INSERT INTO sessions (tenant_id, room_name, status, created_by, doctor_id, patient_id)
-		VALUES ($1, $2, 'created', $3, $4, $5)
+		INSERT INTO sessions (tenant_id, room_name, status, created_by, doctor_id, patient_id, e2ee_key_encrypted)
+		VALUES ($1, $2, 'created', $3, $4, $5, $6)
 		RETURNING `+sessionColumns,
-		tenantID, roomName, createdBy, doctorID, patientID)
+		tenantID, roomName, createdBy, doctorID, patientID, e2eeKeyEncrypted)
 	return scanSession(row)
 }
 

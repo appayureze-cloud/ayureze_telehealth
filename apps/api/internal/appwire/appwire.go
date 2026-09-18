@@ -18,6 +18,7 @@ import (
 	"github.com/ayureze/telehealth/api/internal/config"
 	"github.com/ayureze/telehealth/api/internal/consentsvc"
 	"github.com/ayureze/telehealth/api/internal/db"
+	"github.com/ayureze/telehealth/api/internal/e2ee"
 	"github.com/ayureze/telehealth/api/internal/httpapi"
 	"github.com/ayureze/telehealth/api/internal/logging"
 	"github.com/ayureze/telehealth/api/internal/redisstate"
@@ -63,6 +64,13 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	logger := logging.New("ayureze-api", cfg.Environment)
 
+	keys, err := e2ee.NewKeyManager(cfg.E2EEMasterKeyHex)
+	if err != nil {
+		pool.Close()
+		_ = redisClient.Close()
+		return nil, err
+	}
+
 	minter := token.NewMinter(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	rooms := roomsvc.New(cfg.LiveKitURL, cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 
@@ -82,8 +90,8 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	issuer := authn.NewIssuer(cfg.JWTSigningSecret)
 	authService := authsvc.New(stores.Tenants, stores.Users, stores.Audit, issuer, refreshStore, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	sessionService := sessionsvc.New(stores.Sessions, stores.Participants, stores.Consents, stores.Users, stores.Audit, stores.Events, minter, rooms, cfg.JoinTokenTTL)
-	consentService := consentsvc.New(stores.Sessions, stores.Consents, stores.Audit, stores.Events)
+	sessionService := sessionsvc.New(stores.Sessions, stores.Participants, stores.Consents, stores.Users, stores.Audit, stores.Events, minter, rooms, keys, cfg.JoinTokenTTL)
+	consentService := consentsvc.New(stores.Sessions, stores.Consents, stores.Participants, stores.Audit, stores.Events, rooms, logger)
 
 	webhookKeyProvider := lkauth.NewSimpleKeyProvider(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	webhookService := webhooksvc.New(stores.Sessions, stores.Participants, stores.Events, presenceStore, logger)
@@ -91,6 +99,7 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 	srv := httpapi.NewServer(logger, minter, rooms, cfg.DevTokenTTL, cfg.Environment).
 		WithAuthenticatedServices(issuer, authService, sessionService, consentService).
 		WithWebhooks(webhookKeyProvider, webhookService).
+		WithAIAgentAuth(cfg.AIAgentServiceSecret, sessionService).
 		WithReadiness(
 			func(ctx context.Context) error { return pool.Ping(ctx) },
 			func(ctx context.Context) error { return redisClient.Ping(ctx).Err() },

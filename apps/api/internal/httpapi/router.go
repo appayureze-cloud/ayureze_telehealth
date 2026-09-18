@@ -37,6 +37,13 @@ func NewRouter(srv *Server, logger *slog.Logger, corsOrigins string, limiter Rat
 		r.Post("/internal/webhooks/livekit", srv.LiveKitWebhook)
 	}
 
+	if srv.aiAgentSessions != nil {
+		r.Group(func(r chi.Router) {
+			r.Use(RequireAIAgentServiceSecret(srv.aiAgentServiceSecret))
+			r.Post("/internal/ai-agent/sessions/{id}/authorize", srv.AIAgentAuthorize)
+		})
+	}
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/dev/session-tokens", srv.DevSessionToken)
 

@@ -59,7 +59,13 @@ func (s *Server) JoinSession(w http.ResponseWriter, r *http.Request) {
 		"access_token": result.AccessToken,
 		"room":         result.Room,
 		"expires_at":   result.ExpiresAt.Format(rfc3339),
-		"session":      sessionResponse(result.Session),
+		// e2ee_key is this session's media-encryption key (see
+		// internal/e2ee) delivered only here, only over this
+		// authenticated response, to a caller who just passed
+		// sessionsvc.Join's authorization checks. It is never included in
+		// GetSession/CreateSession responses or logged.
+		"e2ee_key": result.E2EEKeyBase64,
+		"session":  sessionResponse(result.Session),
 	})
 }
 

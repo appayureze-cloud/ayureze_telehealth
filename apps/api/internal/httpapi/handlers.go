@@ -34,6 +34,9 @@ type Server struct {
 	webhookKeyProvider *lkauth.SimpleKeyProvider
 	webhooks           *webhooksvc.Service
 
+	aiAgentServiceSecret string
+	aiAgentSessions      *sessionsvc.Service
+
 	dbPing    func(context.Context) error
 	redisPing func(context.Context) error
 }

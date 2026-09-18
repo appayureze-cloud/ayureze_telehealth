@@ -6,21 +6,26 @@ package consentsvc
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/ayureze/telehealth/api/internal/apperr"
 	"github.com/ayureze/telehealth/api/internal/domain"
+	"github.com/ayureze/telehealth/api/internal/roomsvc"
 	"github.com/ayureze/telehealth/api/internal/store"
 )
 
 type Service struct {
-	sessions *store.SessionStore
-	consents *store.ConsentStore
-	audit    *store.AuditStore
-	events   *store.EventStore
+	sessions     *store.SessionStore
+	consents     *store.ConsentStore
+	participants *store.ParticipantStore
+	audit        *store.AuditStore
+	events       *store.EventStore
+	rooms        *roomsvc.Service
+	logger       *slog.Logger
 }
 
-func New(sessions *store.SessionStore, consents *store.ConsentStore, audit *store.AuditStore, events *store.EventStore) *Service {
-	return &Service{sessions: sessions, consents: consents, audit: audit, events: events}
+func New(sessions *store.SessionStore, consents *store.ConsentStore, participants *store.ParticipantStore, audit *store.AuditStore, events *store.EventStore, rooms *roomsvc.Service, logger *slog.Logger) *Service {
+	return &Service{sessions: sessions, consents: consents, participants: participants, audit: audit, events: events, rooms: rooms, logger: logger}
 }
 
 type Caller struct {
@@ -62,6 +67,11 @@ func (s *Service) Grant(ctx context.Context, caller Caller, sessionID, ip string
 	return c, nil
 }
 
+// Revoke immediately enforces the revocation, not merely records it: if the
+// AI agent is currently a joined participant in this session's room, it is
+// forcibly disconnected via LiveKit before this call returns. Patient and
+// doctor continue their call unaffected — only the AI agent identity is
+// removed.
 func (s *Service) Revoke(ctx context.Context, caller Caller, sessionID, ip string) error {
 	sess, err := s.mustBeParticipant(ctx, caller, sessionID)
 	if err != nil {
@@ -80,5 +90,40 @@ func (s *Service) Revoke(ctx context.Context, caller Caller, sessionID, ip strin
 		TenantID: &caller.TenantID, ActorUserID: &uid, Action: "consent.revoke", ResourceType: "session", ResourceID: sess.ID,
 		Outcome: domain.AuditSuccess, IPAddress: ip,
 	})
+
+	s.enforceAIAgentRemoval(ctx, sess, ip)
 	return nil
+}
+
+func (s *Service) enforceAIAgentRemoval(ctx context.Context, sess *domain.Session, ip string) {
+	identity := "ai-agent-" + sess.ID
+	participant, err := s.participants.GetBySessionAndIdentity(ctx, sess.ID, identity)
+	if err != nil {
+		return // AI agent was never authorized in this session — nothing to remove.
+	}
+	if participant.Status != domain.ParticipantJoined && participant.Status != domain.ParticipantAuthorized {
+		return
+	}
+
+	removeErr := s.rooms.RemoveParticipant(ctx, sess.RoomName, identity)
+	if err := s.participants.Revoke(ctx, sess.ID, identity); err != nil {
+		s.logger.Error("ai_agent_participant_revoke_failed", slog.String("session_id", sess.ID), slog.String("error", err.Error()))
+	}
+
+	outcome := domain.AuditSuccess
+	metadata := map[string]any{}
+	if removeErr != nil {
+		// Not fatal to the revoke call: the agent may already have left
+		// (e.g. LiveKit's own disconnect raced this), or never actually
+		// connected despite being "authorized". The participants-table
+		// revocation above is what future join/authorize checks rely on
+		// regardless.
+		outcome = domain.AuditError
+		metadata["remove_participant_error"] = removeErr.Error()
+	}
+	_ = s.events.Insert(ctx, sess.ID, "ai_agent_access_revoked", nil)
+	_ = s.audit.Insert(ctx, store.AuditRecord{
+		TenantID: &sess.TenantID, Action: "ai_agent.access_revoked", ResourceType: "session", ResourceID: sess.ID,
+		Outcome: outcome, IPAddress: ip, Metadata: metadata,
+	})
 }
