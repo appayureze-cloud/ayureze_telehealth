@@ -15,7 +15,6 @@ session (internal/sessionsvc.AuthorizeAIAgent on the Go side).
 from __future__ import annotations
 
 import asyncio
-import base64
 import logging
 
 from livekit import rtc
@@ -114,7 +113,18 @@ class AIAgent:
     async def _join(self, grant) -> None:
         self._transition(AgentState.JOINING)
 
-        key_bytes = base64.b64decode(grant.e2ee_key)
+        # IMPORTANT: do NOT base64-decode grant.e2ee_key before handing it
+        # to KeyProviderOptions. The Web SDK's ExternalE2EEKeyProvider.setKey()
+        # is fed this same base64 *text* verbatim and UTF-8-encodes it before
+        # running PBKDF2 (salt "LKFrameEncryptionKey", 100000 iterations,
+        # SHA-256 — LiveKit's own documented cross-SDK-compatible path). The
+        # native KeyProvider's shared_key runs through the identical default
+        # PBKDF2/salt, so it must receive the identical input bytes: the
+        # UTF-8 encoding of the base64 text itself, not the decoded raw key.
+        # Decoding first derives a completely different, unrelated key and
+        # silently breaks cross-platform decryption (see
+        # docs/e2ee/VALIDATION.md's key-derivation-input finding).
+        key_bytes = grant.e2ee_key.encode("utf-8")
         e2ee_options = rtc.E2EEOptions(
             key_provider_options=rtc.KeyProviderOptions(shared_key=key_bytes),
         )

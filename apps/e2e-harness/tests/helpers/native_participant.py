@@ -78,14 +78,15 @@ async def run_participant(
     publish_audio: bool,
     ready_extra: dict,
 ) -> None:
-    import base64
-
     # Matches apps/ai-agent/app/agent.py's real production behavior
-    # exactly (base64.b64decode -> raw bytes) — this script exists to
-    # test against production code paths, not a hypothesis. See
-    # docs/e2ee/VALIDATION.md for the key-derivation investigation this
-    # was used for.
-    key_bytes = base64.b64decode(e2ee_key_b64)
+    # exactly: the base64 *text* is UTF-8-encoded and fed directly to
+    # KeyProviderOptions.shared_key, letting the native PBKDF2 default
+    # (salt "LKFrameEncryptionKey", 100000 iterations, SHA-256) run over
+    # the identical bytes the Web SDK's setKey(string) derives from — see
+    # docs/e2ee/VALIDATION.md for the key-derivation-input finding that
+    # this depends on (base64-decoding first derives a different,
+    # incompatible key).
+    key_bytes = e2ee_key_b64.encode("utf-8")
     encryption_errors: list[dict] = []
 
     room = rtc.Room()

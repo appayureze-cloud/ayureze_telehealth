@@ -136,32 +136,36 @@ export class AyurezeTelehealthClient {
     this.sessionState = joinResult.session;
 
     // IMPORTANT — see docs/e2ee/VALIDATION.md's key-derivation finding
-    // before changing this. ExternalE2EEKeyProvider.setKey() has two
-    // overloads: setKey(ArrayBuffer) runs HKDF on the raw bytes;
-    // setKey(string) UTF-8-encodes the string then runs PBKDF2 (salt
-    // "LKFrameEncryptionKey", 100000 iterations, SHA-256 — the same
-    // parameters LiveKit's Go server SDK documents for
-    // SetKeyFromPassphrase, the closest published cross-SDK reference).
-    // PBKDF2 is what this SDK uses (via the *string* overload, passing
-    // the base64 *text* — pure ASCII, so UTF-8-encoding it is lossless;
-    // passing raw decoded bytes here would corrupt any byte >= 128 when
-    // UTF-8-encoded and silently derive a different key).
+    // before changing this.
     //
-    // This was empirically tested end-to-end against a real native
-    // LiveKit participant (apps/e2e-harness/tests/kdf-compat.spec.ts,
-    // using the same compiled frame-crypto core Flutter's plugin and the
-    // Python AI agent both use) and the native side still failed to
-    // decrypt this SDK's media ("InvalidKey: Decryption failed:
-    // OperationError") even after matching PBKDF2/salt/ASCII-safe input.
-    // This is a confirmed, reproducible finding, not a guess — and it
-    // matches a known, unresolved upstream LiveKit report (JS/Python
-    // cross-SDK E2EE incompatibility, github.com/livekit/livekit#4247,
-    // closed "not planned"). This SDK is left on the configuration that
-    // matches LiveKit's own documented reference parameters (the most
-    // defensible choice available), but cross-platform E2EE with the
-    // native SDKs must be treated as NOT VERIFIED until LiveKit clarifies
-    // or a working parameter combination is found — see VALIDATION.md.
-    const keyProvider = new ExternalE2EEKeyProvider({ keySize: 256 });
+    // 1. Input bytes: ExternalE2EEKeyProvider.setKey(string) UTF-8-encodes
+    //    the string then runs PBKDF2 (salt "LKFrameEncryptionKey", 100000
+    //    iterations, SHA-256) over those bytes. We pass the base64 *text*
+    //    itself (pure ASCII, so UTF-8-encoding it is lossless) — the
+    //    native/Flutter side must do the same (feed the base64 text's raw
+    //    bytes into its shared_key, not the base64-decoded bytes) or the
+    //    two platforms derive unrelated keys from the same secret.
+    //
+    // 2. Key size: do NOT pass `keySize`. The native SDKs' key derivation
+    //    (ParticipantKeyHandler::SetKeyFromMaterial, in LiveKit's WebRTC
+    //    fork's api/crypto/frame_crypto_transformer.h) hardcodes a
+    //    128-bit derived key with no configuration knob to change it —
+    //    confirmed by reading that source directly. This SDK's own
+    //    ExternalE2EEKeyProvider defaults to `keySize: 128` for exactly
+    //    this reason ("recommended for maximum compatibility across
+    //    SDKs" per its setKey() doc comment). An earlier version of this
+    //    client explicitly overrode that default to 256, which silently
+    //    produced a native-incompatible AES-256-GCM key while native
+    //    always derives AES-128-GCM — a structural mismatch that alone
+    //    guarantees "InvalidKey: Decryption failed: OperationError"
+    //    regardless of whether the KDF input bytes match. Leave this at
+    //    the SDK default.
+    //
+    // See apps/e2e-harness/tests/kdf-compat.spec.ts for the real,
+    // end-to-end verification of both fixes above (actual encrypted audio
+    // crossing the Web<->native boundary, not just matching derived-key
+    // bytes in isolation).
+    const keyProvider = new ExternalE2EEKeyProvider();
     await keyProvider.setKey(joinResult.e2eeKeyBase64);
 
     const room = new Room({

@@ -90,11 +90,16 @@ infrastructure this environment lacks).
   backend capacity limits. No capacity number is claimed — see
   `docs/deployment/load-testing.md` for exactly why and what a real test
   needs.
-- [x] **E2EE** — FAIL (Web↔native), PASS (Web↔Web). See the Final
-  Release Gate report's E2EE matrix for the full per-pair breakdown.
-  Classification: **C — confirmed LiveKit upstream limitation**, not an
-  AyurEze bug (ruled out via a zero-AyurEze-code minimal reproduction —
-  `docs/e2ee/VALIDATION.md`).
+- [x] **E2EE** — PASS (Web↔Web), PASS (Web↔native/Python AI agent, fixed
+  this pass — real encrypted audio verified crossing the platform
+  boundary both directions), NOT DEVICE-VERIFIED (Flutter — fix applied
+  by source-level reasoning, no Android emulator/device available in any
+  sandbox pass to confirm it for real). Root cause was two concrete
+  AyurEze implementation bugs (a key-derivation input mismatch and a
+  key-size mismatch), not an upstream LiveKit limitation as previously
+  classified — found by reading LiveKit's actual native crypto source.
+  Classification: **D — application implementation bug, found and
+  fixed** (`docs/e2ee/VALIDATION.md`'s "Fifth pass").
 - [x] **Flutter validation** — BLOCKED (device/emulator tier). `flutter
   analyze`/`flutter test` re-verified for real this pass (0 issues,
   18/18) against a real Flutter SDK present in this session's

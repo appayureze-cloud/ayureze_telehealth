@@ -350,8 +350,8 @@ to close that gap.
 | AI Translation Mode (authorized encrypted participant) | VERIFIED | Real consent grant → real AI-agent `/start` call → AI joins as `role: ai_agent`, `isEncrypted: true`, confirmed via the AI agent's real Prometheus metrics |
 | AI authorization boundaries (no consent, cross-tenant, revocation, session end) | VERIFIED | All 4 correctly rejected/stopped, against the real Go API and real AI agent |
 | Network loss/reconnect | VERIFIED | Real network cut via Playwright/CDP, real LiveKit reconnect, E2EE remains functional after |
-| Web ↔ native (Flutter/AI-agent) E2EE | **NOT VERIFIED — CONFIRMED BROKEN** | Real, reproducible key-derivation mismatch between the Web SDK and the native LiveKit stack (shared by Flutter and the Python AI agent); 4 candidate fixes tried, none worked; matches an unresolved upstream LiveKit issue (livekit/livekit#4247) |
-| Flutter (any combination) | BLOCKED | No Flutter SDK or Android emulator/device available in this environment |
+| Web ↔ native (Python AI agent) E2EE | **FIXED + VERIFIED (fifth pass)** | Two concrete AyurEze bugs (KDF-input mismatch, key-size mismatch) found by reading LiveKit's real native crypto source and fixed — see `docs/e2ee/VALIDATION.md`'s "Fifth pass". Real native publisher → real Web subscriber decrypts successfully; reverse direction reports zero errors. Not an upstream LiveKit limitation as previously (incorrectly) classified. |
+| Flutter (any combination) | FIX APPLIED, NOT DEVICE-VERIFIED | Same root-cause fix applied to `sdk/flutter`'s key handling by source-level reasoning; no Flutter SDK or Android emulator/device available in any sandbox pass so far to confirm it for real |
 
 **Two real, previously-undetected bugs found and fixed** (neither visible
 from source inspection or mocked unit tests):
@@ -364,16 +364,20 @@ from source inspection or mocked unit tests):
    real LiveKit server-reported track metadata caught this.
 
 Both are fixed, with real (not mocked) regression tests. The cross-
-platform key-derivation mismatch (Web ↔ native) is **not fixed** — left
-as an intentionally-failing regression trip-wire
-(`apps/e2e-harness/tests/kdf-compat.spec.ts`) with the full investigation
-documented, since no working fix was found in this pass and it traces to
-an open upstream LiveKit ambiguity, not a bug in this codebase alone.
+platform key-derivation mismatch (Web ↔ native) was **fixed in a later
+pass** (see "Fifth pass — root cause found and fixed" in
+`docs/e2ee/VALIDATION.md`): two concrete AyurEze bugs, not an upstream
+LiveKit limitation. `apps/e2e-harness/tests/kdf-compat.spec.ts` — kept as
+the permanent regression trip-wire throughout — now passes both
+directions against the real stack.
 
-**Production implication, stated plainly**: do not deploy a configuration
-where Web clients and Flutter/native clients (including the AI agent) are
-expected to decrypt each other's encrypted media, until Finding 3 in
-`docs/e2ee/VALIDATION.md` is resolved.
+**Production implication, updated**: Web ↔ native (the Python AI agent)
+is fixed and verified — the restriction below no longer applies to that
+pairing. It still applies to Flutter until a real device/emulator test
+confirms the same fix there: do not deploy a configuration where Web
+clients and Flutter clients are expected to decrypt each other's
+encrypted media until that device-tier verification happens — see
+`docs/e2ee/VALIDATION.md`'s "Fifth pass" and "Flutter feasibility".
 
 ### Follow-up pass — fail-closed hardening + further root-cause attempts
 
@@ -461,6 +465,60 @@ would run in software-only mode, frequently non-functional in headless
 containers). **Device/emulator-level Flutter testing (any real
 connect/publish/subscribe/E2EE exercise on an actual Android/iOS target)
 remains BLOCKED** — not claimed, not assumed.
+
+### Sixth pass — root cause found and fixed (classification C overturned)
+
+**Classification C ("confirmed LiveKit upstream limitation") was wrong.**
+A dedicated pass re-investigated E2EE-FINDING-3 using a capability none
+of the first five passes had: `git clone`/`raw.githubusercontent.com`
+access to LiveKit's own source (`api.github.com` stayed blocked, as
+always, but plain `git`/raw-HTTP paths worked in this session). Instead
+of trying more KDF parameter combinations (explicitly ruled out), this
+pass read the actual native crypto implementation
+(`api/crypto/frame_crypto_transformer.h`/`.cc` in `webrtc-sdk/webrtc`,
+the real WebRTC fork LiveKit's native SDKs compile against) and found two
+concrete, fixable AyurEze bugs:
+
+1. **KDF input mismatch**: native/Flutter code base64-decoded the join
+   response's E2EE key before deriving from it; the Web SDK derives from
+   the base64 *text* itself. Same PBKDF2 salt/iterations/hash on both
+   sides, but different input bytes — proved with a byte-level synthetic
+   test vector (Node's real WebCrypto vs. Python's `hashlib.pbkdf2_hmac`).
+2. **Key-size mismatch — the one that actually broke decryption**:
+   LiveKit's native `SetKeyFromMaterial()` hardcodes a 128-bit derived
+   key with no way to configure it otherwise (confirmed directly from
+   source — the 256-bit derivation calls in the same file are ratchet-
+   only, never the initial key). The Web SDK's own default is `keySize:
+   128` for exactly this reason, but `sdk/web/src/client.ts` explicitly
+   overrode it to `keySize: 256` — an AyurEze customization that made the
+   Web client derive an AES-256-GCM key native can never produce.
+
+**Fixed**: `sdk/web/src/client.ts` (drop the `keySize` override),
+`apps/ai-agent/app/agent.py` + `apps/e2e-harness/tests/helpers/
+native_participant.py` (stop base64-decoding before deriving),
+`sdk/flutter/lib/src/ayureze_client.dart` (pass the base64 text straight
+through, same reasoning). Also fixed an unrelated pre-existing
+test-harness hang (`nativeParticipant.ts`'s `waitDone()` never resolving
+after `kill()`) found while verifying the real fix.
+
+**Verified for real, not by static analysis**:
+`apps/e2e-harness/tests/kdf-compat.spec.ts` now passes both directions
+against the live stack — a real native (Python) publisher's encrypted
+audio decrypts successfully on a real Web subscriber (down from 5
+`InvalidKey` errors before the fix, to zero), and the reverse direction
+reports zero errors using the same now-matching key material. Web ↔ Web
+re-verified unaffected. Full regression suite green: Python 101/101, Go
+gofmt/vet/unit/integration clean, Web typecheck+19/19 unit+build clean,
+Flutter 0 analyze issues + 18/18 tests, full Playwright suite 13/13.
+
+**New classification: D — application implementation bug, found and
+fixed** (not C). Flutter's fix is applied and reasoned identically to the
+verified Web/Python fix, but — consistent with every prior pass — could
+not be exercised on a real Android device/emulator in this sandbox;
+treat it as fixed by inspection, not device-verified. Full writeup:
+`docs/e2ee/VALIDATION.md`'s "Fifth pass — root cause found and fixed"
+section (VALIDATION.md's own pass numbering is independent of this
+document's; both describe the same work).
 
 ## Post-audit — AI safety validator hardening (critical fix)
 

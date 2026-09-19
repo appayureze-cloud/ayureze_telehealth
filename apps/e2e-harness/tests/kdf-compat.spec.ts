@@ -8,16 +8,35 @@ const LIVEKIT_URL = "ws://localhost:7880";
 
 /**
  * THE decisive test for this validation exercise (see
- * docs/e2ee/VALIDATION.md's audit). Static analysis of the installed
- * packages found the Web SDK's key derivation (HKDF, via
- * ExternalE2EEKeyProvider.setKey(ArrayBuffer)) differs from the native
- * LiveKit stack's key derivation (PBKDF2, confirmed via `strings` on both
- * flutter_webrtc's bundled libwebrtc.so and livekit-python's
- * liblivekit_ffi.so — the same compiled frame-crypto core Flutter's
- * plugin uses). This proves it empirically: a real native LiveKit
- * participant (Python's livekit SDK) publishes real encrypted audio into
- * a real room; the real Web SDK, in a real browser, subscribes and
- * reports LiveKit's own E2EE diagnostics — never a UI flag.
+ * docs/e2ee/VALIDATION.md's audit). A real native LiveKit participant
+ * (Python's livekit SDK) publishes real encrypted audio into a real room;
+ * the real Web SDK, in a real browser, subscribes and reports LiveKit's
+ * own E2EE diagnostics — never a UI flag.
+ *
+ * Two real, independent AyurEze implementation bugs previously made this
+ * fail (root-caused by reading the actual native crypto source, not by
+ * guessing more parameter combinations — see VALIDATION.md):
+ *
+ *  1. Key-derivation *input* mismatch: the Web SDK's
+ *     ExternalE2EEKeyProvider.setKey(string) UTF-8-encodes the base64
+ *     *text* and PBKDF2-derives from that; the native/Flutter code paths
+ *     were base64-*decoding* the same string first and deriving from the
+ *     raw bytes instead — two different PBKDF2 inputs, so two unrelated
+ *     keys, even with an identical salt/algorithm/iteration count.
+ *  2. Key-*size* mismatch: LiveKit's native KeyProvider
+ *     (ParticipantKeyHandler::SetKeyFromMaterial, in LiveKit's WebRTC
+ *     fork) hardcodes a 128-bit derived key with no way to configure it
+ *     otherwise. This SDK previously overrode ExternalE2EEKeyProvider's
+ *     own default (`keySize: 128`) with `keySize: 256`, producing an
+ *     AES-256-GCM key that native can never match (it only ever derives
+ *     AES-128-GCM).
+ *
+ * Fixed in sdk/web/src/client.ts (drop the keySize override),
+ * apps/ai-agent/app/agent.py, and
+ * apps/e2e-harness/tests/helpers/native_participant.py (don't
+ * base64-decode before deriving). See VALIDATION.md for the full
+ * root-cause writeup and the byte-level test vector that proved it before
+ * this test was re-verified end-to-end.
  */
 test.describe("Web SDK key-derivation compatibility with the native LiveKit stack", () => {
   test("Web subscriber receiving a native publisher's encrypted audio", async ({ page }) => {
@@ -75,18 +94,21 @@ test.describe("Web SDK key-derivation compatibility with the native LiveKit stac
   test("native subscriber receiving a Web SDK publisher's encrypted audio (reverse direction) — INCONCLUSIVE, see comment", async ({
     page,
   }) => {
-    // NOTE: this direction cannot currently produce a trustworthy PASS/FAIL
-    // verdict. Python's livekit rtc.Room only exposes
-    // "track_subscription_failed" (a subscription-level event) — there is
-    // no equivalent of the JS SDK's per-frame CryptorError/EncryptionError
-    // for AES-GCM tag-verification failures. Given the forward direction
-    // (this file's other test) proves a real, reproducible KDF mismatch
-    // using the SAME two endpoints, a clean "0 errors" result here is far
-    // more likely a false negative (frames silently fail to decrypt to
-    // garbage audio with no event fired) than genuine compatibility. Kept
-    // as a documented, always-inconclusive data point — never assert a
-    // pass/fail verdict on `encryption_errors` here until a native-side
-    // per-frame decrypt diagnostic is available.
+    // NOTE: this direction still cannot produce a trustworthy PASS/FAIL
+    // verdict *from this test alone*. Python's livekit rtc.Room only
+    // exposes "track_subscription_failed" (a subscription-level event) —
+    // there is no equivalent of the JS SDK's per-frame
+    // CryptorError/EncryptionError for AES-GCM tag-verification failures,
+    // so a clean "0 errors" result here cannot by itself rule out frames
+    // silently failing to decrypt to garbage audio. Unlike when this
+    // comment was first written, that is no longer the only evidence for
+    // this direction: the forward-direction test above now proves real,
+    // matching-key encrypted audio decrypts successfully using the exact
+    // same key material and the exact same two endpoints, which is strong
+    // (not conclusive) evidence this direction now also works. Kept as a
+    // documented data point rather than upgraded to a hard assertion —
+    // never assert a pass/fail verdict on `encryption_errors` here until a
+    // native-side per-frame decrypt diagnostic is available.
     const seeded = seedTenant("kdf-web-pub");
 
     await initSdk(page, API_BASE_URL, LIVEKIT_URL);
@@ -111,7 +133,7 @@ test.describe("Web SDK key-derivation compatibility with the native LiveKit stac
       description:
         "INCONCLUSIVE — native SDK lacks a per-frame decrypt-failure diagnostic; " +
         `subscription-level errors observed: ${JSON.stringify(done.encryption_errors)}. ` +
-        "Given the forward direction confirms a real KDF mismatch, treat this direction as PROBABLY ALSO BROKEN, not verified.",
+        "The forward direction now confirms matching keys decrypt real audio successfully, which is strong supporting evidence for this direction too, but this test alone still cannot prove per-frame decrypt success — not a substitute for a native-side diagnostic.",
     });
 
     // Only assert the mechanical parts (native connected + ran to

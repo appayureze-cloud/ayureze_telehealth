@@ -85,11 +85,13 @@ against the real stack.
   implemented in `sdk/web` and `sdk/flutter` (Day 7) and was subjected to
   a real cross-platform validation pass — see **`docs/e2ee/VALIDATION.md`**
   for the full results. Summary: Web↔Web is verified working; Web↔native
-  (Flutter/the AI agent) is **confirmed broken** by a real, reproducible
-  key-derivation mismatch between the Web SDK and the native LiveKit
-  stack, matching an unresolved upstream LiveKit issue. Flutter itself
-  could not be tested at all in the sandbox this pass ran in (no Flutter/
-  Android toolchain available). Do not treat "E2EE is implemented" as
-  "E2EE interoperates across platforms" — read VALIDATION.md before
-  deploying any configuration that mixes Web and native (Flutter or AI
-  agent) participants in the same room.
+  (the AI agent's Python stack) is **verified working**, real encrypted
+  media crossing the platform boundary — two concrete AyurEze bugs (a
+  key-derivation input mismatch and a key-size mismatch, both in this
+  system's own code, not LiveKit) were found by reading LiveKit's actual
+  native crypto source and fixed. Flutter's fix was applied by the same
+  source-level reasoning but **could not be exercised on a real Android
+  emulator/device** in any sandbox pass so far — treat Flutter as fixed
+  by inspection, not device-verified, until that test is run. Read
+  VALIDATION.md's "Fifth pass" section before deploying, and do not claim
+  Flutter E2EE works until a real device/emulator test confirms it.

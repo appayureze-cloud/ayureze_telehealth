@@ -116,19 +116,20 @@ class AyurezeTelehealthClient {
     _sessionState = joinResult.session;
 
     final keyProvider = await lk.BaseKeyProvider.create();
-    // IMPORTANT: livekit_client's setSharedKey(String) takes the string's
-    // *UTF-16 code units* as the raw key bytes directly (see its
-    // implementation: `Uint8List.fromList(key.codeUnits)`) — it does NOT
-    // base64-decode or otherwise interpret the string. The Go API and the
-    // Python AI agent both use the session's raw key bytes directly
-    // (`internal/e2ee`, `rtc.KeyProviderOptions(shared_key=...)`), so the
-    // base64 string from the join response must be decoded to bytes
-    // first, then round-tripped through String.fromCharCodes so
-    // .codeUnits reconstructs exactly those bytes — passing the base64
-    // *text* itself here would silently derive a completely different,
-    // wrong key and each side would fail to decrypt the other's media.
-    final rawKeyBytes = base64Decode(joinResult.e2eeKeyBase64);
-    await keyProvider.setSharedKey(String.fromCharCodes(rawKeyBytes));
+    // IMPORTANT: pass the base64 *text* straight through, do NOT
+    // base64-decode it first. livekit_client's setSharedKey(String) takes
+    // the string's UTF-16 code units as the raw key bytes
+    // (`Uint8List.fromList(key.codeUnits)`) and hands them to the native
+    // KeyProvider, which runs its default PBKDF2 (salt
+    // "LKFrameEncryptionKey", 100000 iterations, SHA-256) over them. The
+    // Web SDK's ExternalE2EEKeyProvider.setKey(String) UTF-8-encodes this
+    // same base64 text and runs the identical PBKDF2 over it — for pure
+    // ASCII text (which base64 always is), UTF-16 code units and UTF-8
+    // bytes are identical, so both platforms derive the same key only if
+    // both feed in the base64 *text*. Decoding to raw bytes first derives
+    // a different, incompatible key (see docs/e2ee/VALIDATION.md's
+    // key-derivation-input finding).
+    await keyProvider.setSharedKey(joinResult.e2eeKeyBase64);
 
     final room = lk.Room(
       roomOptions: lk.RoomOptions(

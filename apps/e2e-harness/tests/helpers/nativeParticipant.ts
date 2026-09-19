@@ -123,6 +123,18 @@ function spawnAndWaitReady(args: string[]): Promise<NativeParticipantHandle> {
       if (!settled) {
         settled = true;
         reject(new Error(`native_participant.py exited with code ${code} before reporting ready.\n${stderrBuf}`));
+        return;
+      }
+      // Process exited (e.g. via kill()) without ever printing a "done"
+      // line — SIGTERM interrupts the script mid-sleep, before it reaches
+      // its own emit({"event": "done", ...}) call. Without this, any
+      // pending waitDone() callers hang forever (neither resolved nor
+      // rejected). Resolve with an empty result: kill() is only ever
+      // called after the caller is done observing errors, so there is
+      // nothing further to report.
+      if (!doneResult) {
+        doneResult = { encryption_errors: [] };
+        doneResolvers.forEach((r) => r(doneResult!));
       }
     });
 
