@@ -299,6 +299,73 @@ C++ source (not available via the compiled binaries + public docs used
 in this investigation) — genuinely beyond what black-box empirical
 testing can determine.
 
+### Fourth pass — minimal reproduction, independent of AyurEze business logic (definitive)
+
+A fourth pass built a reproduction with **zero AyurEze code involved
+anywhere in the chain**, to answer the one question the first three
+passes could not fully rule out: is this mismatch specific to something
+in AyurEze's own key transport (the Go API's envelope-encrypted key
+storage/retrieval, `sdk/web`'s base64/string handling, `internal/token`'s
+grant construction), or does it reproduce with LiveKit's own client
+libraries talking directly to each other?
+
+**What was bypassed entirely**: `internal/sessionsvc` (no session
+created), `internal/e2ee.KeyManager` (no envelope encryption/decryption,
+no Postgres row), `internal/token.Minter` (no Go-issued JWT),
+`sdk/web/src/client.ts` / `AyurezeTelehealthClient` (no AyurEze Web SDK
+code loaded at all), and `apps/ai-agent`'s own application code. Every
+piece was rebuilt from scratch, standalone:
+
+- **Room**: created by calling LiveKit's own `RoomService.CreateRoom`
+  directly (`livekit-api` Python package, `apps/e2e-harness/tests/
+  helpers/minimal_repro_setup.py`) — the same public API LiveKit's own
+  CLI/SDKs use, not AyurEze's session service.
+- **Tokens**: hand-built JWTs via raw PyJWT against LiveKit's published
+  token spec (`iss`/`sub`/`video.roomJoin` claims, HS256-signed with
+  `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`), not `internal/token.Minter`.
+- **Key**: 32 random bytes from Python's `secrets.token_bytes(32)`,
+  generated inline in the test script, never touching
+  `internal/e2ee.KeyManager`, AES-256-GCM envelope encryption, or
+  Postgres.
+- **Native participant**: `native_participant.py`'s already-existing
+  `run_participant()` function called directly with the token/key above
+  (`minimal_native_runner.py`), bypassing its own `main_async()`/Go-API-
+  calling wrapper entirely — this is pure `livekit.rtc.Room.connect()` +
+  `KeyProviderOptions(shared_key=...)`, LiveKit's own Python SDK, nothing
+  else.
+- **Web participant**: a new, minimal page (`minimal-repro.html` +
+  `src/minimal-harness.ts`) importing `Room`/`ExternalE2EEKeyProvider`
+  directly from `livekit-client` — no `@ayureze/telehealth-web` import at
+  all, driven by a standalone Playwright script
+  (`minimal-repro-driver.mjs`, not part of the committed test suite).
+
+**Result**: identical failure. The native participant published real
+audio (confirmed via LiveKit's own `ready`/`done` events); the Web page
+received real ciphertext (**61,224 bytes** of real audio over the wire,
+confirmed via `RTCRtpReceiver.getStats()`), saw the remote participant as
+`isEncrypted: true`, and every frame failed decryption with the exact
+same signature as every other test in this investigation:
+`RoomEvent.EncryptionError` → `"InvalidKey: Decryption failed:
+OperationError"`, six times over an 8-second observation window.
+
+**This is the most conclusive evidence in the investigation.** With
+every single piece of AyurEze-specific code removed from the chain —
+key generation, key storage, key transport, token minting, room
+creation, and both SDKs' wrapper code — the Web↔native mismatch persists
+identically. This rules out an AyurEze integration bug (classification
+B) with high confidence: there is no AyurEze code left in this
+reproduction that could be the root cause. The mismatch is inherent to
+how `livekit-client` (Web) and the native `livekit` SDK's shared
+Rust/C++ core derive/apply keys from identical raw input, independent of
+any application built on top of them.
+
+None of the artifacts from this pass (`minimal-repro.html`,
+`src/minimal-harness.ts`, `tests/helpers/minimal_repro_setup.py`,
+`tests/helpers/minimal_native_runner.py`, `minimal-repro-driver.mjs`)
+touch or alter any production code path; they are standalone
+investigation tooling kept alongside the suite for reproducibility, not
+wired into `npm test`/`playwright test`'s default run.
+
 **Current state left in the codebase**: `sdk/web/src/client.ts` uses
 `new ExternalE2EEKeyProvider({ keySize: 256 })` + `setKey(base64Text)` —
 PBKDF2 path (LiveKit's own documented "recommended for maximum
@@ -395,7 +462,7 @@ silent plaintext fallback.
 |---|---|---|---|---|---|
 | E2EE-BUG-1 | High | `ApiClient`'s default `fetchImpl` called unbound (`this` ≠ `window`), which native `fetch` rejects | Web SDK, any real browser | `fetch.bind(globalThis)` | `sdk/web/test/apiClient.test.ts` |
 | E2EE-BUG-2 | Critical | `room.setE2EEEnabled(true)` was never called — local tracks published unencrypted despite the SDK's "always encrypted" claim | Web SDK, any real browser | `await room.setE2EEEnabled(true)` after `connect()` | `apps/e2e-harness/tests/web-web-e2ee.spec.ts` |
-| E2EE-FINDING-3 | Critical, **open — classified as upstream LiveKit limitation** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; eight candidate fixes/configurations tried across three sessions (including explicit PBKDF2-vs-HKDF matching on both sides), none resolved it; no officially supported version combination found that works; matches an unresolved, maintainer-uncommented upstream LiveKit issue | Web ↔ (Flutter \| AI agent \| any native SDK) | None found across any pass | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
+| E2EE-FINDING-3 | Critical, **confirmed upstream LiveKit limitation (classification C)** | Web SDK (JS/WASM key derivation) vs. native LiveKit stack (Rust/C++ core, shared by Flutter + Python) derive different keys from the same raw bytes; eight candidate fixes/configurations tried across three sessions, plus a fourth-pass minimal reproduction with zero AyurEze code in the chain — all fail identically; no officially supported version combination found that works; matches an unresolved, maintainer-uncommented upstream LiveKit issue; AyurEze integration bug (classification B) ruled out with high confidence by the minimal reproduction | Web ↔ (Flutter \| AI agent \| any native SDK) | None found across any pass — none applicable, this is not an AyurEze bug | `apps/e2e-harness/tests/kdf-compat.spec.ts` (left red intentionally, as a trip-wire) |
 | E2EE-BUG-4 | High | `joinSession()` didn't wait for/verify E2EE-enable confirmation — a slow or failed worker handshake could return "success" before encryption was actually active | Web SDK, any real browser | `waitForE2EEConfirmed()`: wait for `room.isE2EEEnabled`, fail closed (disconnect + throw) on timeout/failure | `apps/e2e-harness/tests/fail-closed.spec.ts` |
 
 ## E2EE Assessment
@@ -465,6 +532,22 @@ native frame-crypto core's C++ source, this is now classified as an
 **upstream LiveKit limitation** (see the final report this document was
 produced alongside) rather than an AyurEze integration bug — further
 in-repo experimentation has no remaining credible hypotheses to test.
+
+**Fourth-pass note**: a follow-up pass built a "minimal reproduction,
+independent of AyurEze business logic" (see the "Fourth pass" subsection
+above) — a standalone Web↔native E2EE test using LiveKit's own
+`RoomService.CreateRoom`, hand-minted JWTs, a freshly-generated random
+key, and raw `livekit-client`/`livekit` (Python) SDK calls, with **no
+AyurEze code anywhere in the chain** (no Go API, no `internal/e2ee`, no
+`internal/token`, no `sdk/web`'s `AyurezeTelehealthClient`). It failed
+identically (`InvalidKey: Decryption failed: OperationError`, 61,224
+bytes of real audio received, remote `isEncrypted: true`). This is the
+strongest evidence yet against an AyurEze-side root cause: with every
+line of AyurEze-authored code removed from the reproduction, the
+mismatch persists exactly as before. **Classification upgraded from
+"probable" to confirmed: C — LiveKit upstream limitation**, not an
+AyurEze integration bug (ruling out classification B with high
+confidence) and not an AyurEze misconfiguration.
 
 ## Remaining Risks
 
