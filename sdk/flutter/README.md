@@ -108,6 +108,219 @@ emulator, physical device, or `/dev/kvm` has been available in any
 sandbox pass to date — do not claim Flutter E2EE is production-verified
 until a real device/emulator test proves it.
 
+## External E2EE device test harness
+
+This repo's own sandbox has no Android SDK, `adb`, emulator, physical
+device, or `/dev/kvm` (true in every pass to date — see
+`docs/e2ee/VALIDATION.md`), so real Flutter Android E2EE interoperability
+cannot be tested here. `example/` is a small, real Flutter app — built
+with the actual `AyurezeTelehealthClient` from this package, no second
+E2EE implementation — for an external developer with a real Android
+device/emulator to run these tests and read the results directly off the
+`e2eeStateChanges`/`getE2EETrackStates()` diagnostics on screen.
+
+**Flutter E2EE is code-level verified but has not yet been verified on a
+real Android device/emulator in the current development environment.**
+It is not production-ready and not fully verified until someone runs the
+procedure below and it passes.
+
+### What's in `example/`
+
+A single-screen app (`example/lib/main.dart`) with:
+
+- Config fields (API base URL, LiveKit URL, tenant, email, password) and
+  a session-id field for joining an existing session.
+- **Authenticate**, **Create + Join + Publish**, **Join Existing**, mic
+  toggle, and **Leave** buttons — each calling the real
+  `AyurezeTelehealthClient` methods a production app would.
+- A live, scrolling **E2EE track states** list, backed by
+  `client.e2eeStateChanges` and `client.getE2EETrackStates()` — the
+  screen a tester actually reads to judge PASS/FAIL.
+- A structured **event log** (connection state changes, E2EE state
+  changes, errors) using the event names in "Logging" below.
+
+It never displays an E2EE key, access token, ciphertext, or patient
+data — only what `AyurezeE2EETrackState`/`AyurezeParticipant` already
+expose (identifiers + state) and the synthetic test credentials the
+tester types in. **Use only against a synthetic/dev tenant, never a real
+patient session.**
+
+Run it from a real Android device/emulator:
+
+```bash
+cd sdk/flutter/example
+flutter pub get
+flutter run   # pick your connected Android device/emulator
+```
+
+### Test procedure
+
+Two people (or two terminals/devices) are needed for A and B; C needs two
+Android runtimes (two emulators, or one emulator + one physical device).
+For all three, first bring up the real stack (`docker compose up` from
+the repo root, or point the harness's URL fields at a real deployment).
+
+#### Test A — Web → Flutter (Flutter subscribes)
+
+1. Open a Web client (e.g. `apps/e2e-harness`'s `webClient.ts` helper, or
+   any app built on `sdk/web`) and create+join a session as the doctor,
+   publishing audio.
+2. Note the session id the Web side created.
+3. On the Flutter harness: fill in **Session id to join**, tap
+   **Authenticate** (as the patient), then **2b. Join Existing**.
+4. Watch **E2EE track states** for the Web participant's audio track.
+
+#### Test B — Flutter → Web (Flutter publishes)
+
+1. On the Flutter harness: **Authenticate** (as the doctor), then
+   **2a. Create + Join + Publish**. Note the printed session id.
+2. Open a Web client and join that same session id as the patient
+   (subscribe-only is fine).
+3. On the Web side, check its own E2EE diagnostics
+   (`getEncryptionDiagnostics()`/`onEncryptionError()` — see
+   `sdk/web/README.md`) for the Flutter participant's track.
+
+#### Test C — Flutter ↔ Flutter
+
+1. Run the harness on device/emulator A: **Authenticate** (doctor),
+   **2a. Create + Join + Publish**. Note the session id.
+2. Run the harness on device/emulator B: **Authenticate** (patient),
+   fill in that session id, **2b. Join Existing**, then **Enable mic**
+   to publish from B too (tests both directions in one session).
+3. Watch **E2EE track states** on *both* devices for the other's track.
+
+#### Test D — Flutter video (only if required at this stage)
+
+The harness doesn't currently have a camera toggle button, but
+`AyurezeTelehealthClient.enableCamera()` exists and uses the same
+`e2eeOptions` as audio — the same `TrackE2EEStateEvent` path applies with
+`kind == AyurezeTrackKind.video`. Add a temporary button calling
+`client.enableCamera()` to exercise this, or drive it from `flutter
+attach`'s Dart VM console. Treat this as optional/not-yet-required unless
+the product needs encrypted video before audio-only Flutter E2EE is
+verified — report clearly whether it was tested, don't skip reporting it
+silently.
+
+### Pass/fail criteria
+
+A test is **PASS** only if **all** of the following hold — connecting
+alone, or `TrackSubscribed` alone, is **not** a pass:
+
+1. Both participants connect successfully (`getConnectionState() ==
+   connected` on each side).
+2. Encrypted media is actually transmitted (LiveKit reports non-zero
+   bytes received on the subscribing side — Web:
+   `RTCRtpReceiver.getStats()`/the existing Playwright helpers; Flutter:
+   audible audio, or inspect `flutter_webrtc`'s stats API).
+3. The subscriber receives the track (`TrackSubscribed`/participant
+   appears with the track).
+4. The **E2EE diagnostic state reaches `ok` or `keyRatcheted`**
+   (`s.state.isSecure == true`) for that track on the harness's own
+   screen.
+5. Media is actually rendered/consumed — for audio, audible sound (or a
+   non-silent waveform if using a synthetic tone, matching
+   `kdf-compat.spec.ts`'s approach on the Web/native side).
+6. **No** `missingKey`, `decryptionFailed`, `encryptionFailed`, or
+   `internalError` state occurs for that track.
+7. No plaintext fallback occurred (there is none to fall back to in this
+   codebase — this is a sanity re-check, not a real risk path).
+
+Record: exact states observed and their order, whether audio was
+actually heard, and the full event log from the harness's log panel.
+
+### Reconnect test
+
+1. Establish an encrypted call (any of Tests A–C).
+2. Confirm `ok` in **E2EE track states**.
+3. Disable the Android device/emulator's network (airplane mode, or kill
+   Wi-Fi) for 10–15s.
+4. Restore network.
+5. Confirm `connectionStateChanges` shows `reconnecting` then
+   `connected` again (visible in the harness's status card and log).
+6. Confirm E2EE track state returns to `ok`/`keyRatcheted` — not stuck
+   on a stale `ok` from before the interruption (check the event log's
+   timestamps: a fresh `ok` event should appear after reconnect, not just
+   the old one still displayed).
+7. Confirm encrypted media resumes (audio audible again / bytes flowing
+   again on the other side).
+
+Any silent downgrade (media resumes but the state stays `missingKey`/
+`decryptionFailed`/etc., or reconnects without ever re-confirming `ok`)
+is a **FAIL**.
+
+### Fail-closed test
+
+Demonstrate that a broken E2EE key produces `missingKey`/
+`decryptionFailed`, and that `isSecure == false` for it — **without**
+weakening any production code to make this observable:
+
+1. On the Flutter harness, join a session normally (any test above) so a
+   healthy `ok` state is showing.
+2. On the *other* participant's side, deliberately break the shared
+   secret they're publishing with — e.g. in a throwaway build of the Web
+   test client, patch its call site to pass a different (garbage) string
+   to `keyProvider.setKey(...)` before connecting, publish from that
+   broken build.
+3. On the Flutter harness, confirm the corresponding track's state
+   becomes `missingKey` or `decryptionFailed`, and that the on-screen
+   icon/text shows **not secure** (`isSecure == false`).
+4. Confirm the harness never displays that track as `ok`/secure while
+   this state persists, and that no audio is intelligible from that
+   track (frames aren't silently passed through unencrypted — there is
+   no plaintext-fallback code path to accidentally exercise here).
+
+Do this against a disposable throwaway build/branch — never commit a
+deliberately-broken key as a code change to `sdk/web` or `sdk/flutter`.
+
+### Version manifest
+
+Exact versions in this repo as of commit `e882e48` — do not substitute
+assumed versions:
+
+| Component | Version | Source |
+|---|---|---|
+| Flutter SDK | 3.27.1 (stable channel) | `flutter --version` in this dev environment |
+| Dart SDK | 3.6.0 | `flutter --version` |
+| `livekit_client` (Dart/pub.dev) | 2.4.3 (constraint `^2.4.1`) | `sdk/flutter/pubspec.lock` |
+| `flutter_webrtc` (transitive) | 0.13.1+hotfix.1 | `sdk/flutter/pubspec.lock` |
+| `livekit-client` (Web/npm) | 2.22.3 (constraint `^2.7.5`) | `apps/e2e-harness/node_modules/livekit-client/package.json` |
+| `livekit` (Python) | 1.1.7 | `apps/ai-agent/requirements.txt` |
+| LiveKit Server | `v1.13.7` (Docker image `livekit/livekit-server:v1.13.7`) | `infrastructure/docker/docker-compose.yml` |
+| Android `compileSdk`/`targetSdk` | 35 (Flutter 3.27.1's built-in default) | Flutter SDK's own `flutter.groovy`; `example/android` doesn't override it |
+| Android `minSdk` | 21 (Flutter 3.27.1's built-in default) | same |
+| Android device/emulator API level | **Not yet chosen — pick any device/emulator between API 21 and 35** and record the exact one used in your test report | n/a (no device tested yet) |
+
+If the external tester's Flutter/Dart/Android toolchain differs from the
+above, record the actual versions used in the test report — don't
+silently assume they match.
+
+### Network requirements
+
+The harness needs to reach, from the Android device/emulator:
+
+| Endpoint | Default port | Protocol | Purpose |
+|---|---|---|---|
+| API base URL | `8080` | HTTP(S) | Go API — auth, session create/join |
+| LiveKit URL | `7880` | WS(S) | LiveKit signaling |
+| LiveKit RTC (TCP fallback) | `7881` | TCP | Media, when UDP is blocked |
+| LiveKit RTC (UDP) | `50000`–`50100` | UDP | Media (preferred path) |
+| Coturn (TURN, if used) | `3478` | TCP+UDP | NAT traversal when direct/UDP fails |
+| Coturn relay range | `49160`–`49200` | UDP | Relayed media via TURN |
+
+- **Android emulator reaching a host machine's `localhost` stack**: use
+  `10.0.2.2` instead of `localhost`/`127.0.0.1` (the harness's default
+  config fields already use this) — that's the emulator's special alias
+  for the host loopback interface.
+- **A real physical device**: it can't reach `10.0.2.2` or the host's
+  `localhost` at all — use the host machine's real LAN IP (and make sure
+  the host's firewall allows the ports above from the device's subnet),
+  or point at a real non-local deployment.
+- **No secrets belong in this repo for this test.** Use the same
+  synthetic dev credentials/tenant `docs/e2ee/VALIDATION.md`'s existing
+  passes use, entered directly into the harness's config fields at
+  runtime — never hardcoded into `example/lib/main.dart` or committed
+  anywhere.
+
 ## Design notes
 
 - **E2EE is on by default for every join.** `joinSession()` fetches the
