@@ -53,12 +53,17 @@ infrastructure this environment lacks).
   NOT SAFE today** — `AgentRegistry` is in-process; documented, not
   fixed this pass (real architecture decision deferred to an actual
   target deployment — see `docs/deployment/multi-replica-readiness.md`).
-  **A real, previously-uncharacterized safety gap found this pass**: the
-  deterministic safety validator only checks numeric digit sequences —
-  unit swaps, negation, and medicine-name substitutions all pass as
-  "safe" today (`docs/ai/README.md`'s "Known limitations", `docs/
-  security/README.md`'s red-team section). This is the single most
-  important open AI-safety finding from this entire pass.
+  **Safety validator gap: FIXED + VERIFIED** (was the single most
+  important open AI-safety finding from the prior pass) — the
+  deterministic validator now compares a normalized safety-entity object
+  (numbers, dosage value+unit, frequency, duration value+unit, food
+  constraints, negation, protected terms) instead of digits alone; unit
+  swaps, negation flips, and medicine-name substitutions are all now
+  rejected, verified by a 75-case test corpus plus real NLLB-200
+  inference (`docs/ai/README.md`'s "Safety validator" section,
+  `apps/ai-agent/tests/pipeline/test_safety_validator_corpus.py`). Stays
+  fully deterministic — no model added to the validation path. Known
+  remaining scope limit: English/Tamil only, Malayalam not yet covered.
 - [x] **Monitoring** — PASS. Full metrics-coverage audit against the
   live Prometheus stack this pass (`docs/monitoring/README.md`) — every
   required category covered except GPU (N/A, no GPU in this build).

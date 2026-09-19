@@ -130,13 +130,20 @@ class LiveAudioProcessor:
         await self._publish_captions(result, participant)
 
         if result.blocked:
+            # Only the short, medical-content-free reason codes go in the
+            # log (e.g. "unit_mismatch", "negation_mismatch") — never
+            # result.safety.reasons, whose human-readable strings can
+            # quote extracted numbers/units/terms from the actual
+            # conversation. See docs/ai/README.md's safety-validator
+            # logging section and docs/monitoring/privacy.md.
             log(
                 self._logger,
                 logging.WARNING,
                 "translation_blocked_by_safety_validator",
                 event_type="translation_blocked_by_safety_validator",
                 session_id=self._session_id,
-                reasons=result.safety.reasons,
+                validation_status=result.safety.status,
+                reason_codes=result.safety.reason_codes,
             )
             return
 

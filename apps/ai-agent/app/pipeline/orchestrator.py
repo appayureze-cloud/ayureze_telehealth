@@ -146,7 +146,10 @@ class TranslationPipeline:
         with tracing.tracer().start_as_current_span("pipeline.safety_validation") as span:
             span.set_attribute("ayureze.session_id", session_id)
             t0 = time.monotonic()
-            safety_result = safety.validate(transcript.text, translated_text, term_analysis)
+            safety_result = safety.validate(
+                transcript.text, translated_text, term_analysis,
+                source_lang=transcript.language, target_lang=target_lang,
+            )
             elapsed = time.monotonic() - t0
             _record_stage(timings, "safety_validation", elapsed)
             span.set_attribute("ayureze.duration_ms", elapsed * 1000)

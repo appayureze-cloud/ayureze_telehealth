@@ -461,3 +461,60 @@ would run in software-only mode, frequently non-functional in headless
 containers). **Device/emulator-level Flutter testing (any real
 connect/publish/subscribe/E2EE exercise on an actual Android/iOS target)
 remains BLOCKED** — not claimed, not assumed.
+
+## Post-audit — AI safety validator hardening (critical fix)
+
+The production-readiness audit's highest-priority finding — the
+deterministic AI translation safety validator only compared numeric
+digit sequences, so a unit swap, a negation flip, or a medicine-name
+substitution all passed as `safe=True` — is now **FIXED and VERIFIED**.
+
+- Rebuilt `apps/ai-agent/app/pipeline/safety.py` around a normalized
+  `SafetyEntities` comparison (numbers as an order-independent multiset,
+  dosage value+unit pairs, frequency canonical codes, duration
+  value+unit pairs, food-timing constraints, language-aware negation,
+  protected medicine/Ayurveda term preservation distinguishing safe
+  transliteration from semantic substitution) — still fully
+  deterministic, no model added anywhere in the validation path.
+- New `apps/ai-agent/app/pipeline/negation.py`: language-aware negation
+  detection (English + Tamil), returns `None` (not `False`) for an
+  uncovered language so "unknown" is never silently treated as "safe."
+- Extended `terminology.py` with unit canonicalization, dosage/
+  frequency/duration extraction (English and Tamil, including Tamil-
+  specific agglutination/sandhi handling — found and fixed two real
+  linguistic edge cases via this pass's own testing: a duration-stem
+  collision between "month" (மாத) and "tablet" (மாத்திரை), and Tamil
+  case-inflection changing a protected term's final consonant), and a
+  `TRANSLITERATIONS` table for Ayurveda/medicine term preservation
+  across English/Tamil.
+- 75-case synthetic test corpus
+  (`tests/pipeline/test_safety_validator_corpus.py`): every example in
+  the hardening task's spec (unit/numeric/frequency/duration/negation/
+  medicine-substitution rejects, safe-reformatting/safe-transliteration
+  passes, Tamil↔English both directions, adversarial mutations, false-
+  positive avoidance) — all passing. Plus a 4-case orchestrator-level
+  test (`test_tts_gate.py`) proving the TTS gate can't be bypassed, using
+  fake providers so it stays fast.
+- Re-verified against **real NLLB-200 inference**
+  (`tests/pipeline/test_pipeline_models.py`), not just synthetic text —
+  this surfaced and fixed two additional real gaps the initial curated
+  Tamil pattern set missed (a spelled-out-number-word phrasing of
+  "twice", and "தினசரி" as an alternate word for "daily"), both fixed
+  generally rather than patched as one-off literal phrases.
+- Measured, not invented: validator latency ~0.13-0.16ms/call — negligible
+  next to STT/translation/TTS (hundreds of ms each) in the same pipeline
+  run.
+- Logging hardened alongside the fix: `streaming.py`'s block-event log
+  line now carries only `reason_codes` (e.g. `"unit_mismatch"`), never
+  the full human-readable `reasons` text, which can quote extracted
+  numbers/units/terms.
+- Full regression re-run clean after the change: Go (unit+integration),
+  Web (typecheck/unit/build), Flutter (analyze/test), AI agent (101
+  fast unit tests + real-model tests), and the full Playwright
+  `apps/e2e-harness` suite — `kdf-compat.spec.ts` untouched, still
+  intentionally red as the E2EE regression trip-wire.
+- See `docs/ai/README.md`'s "Safety validator" section for the full
+  design/normalization-rule reference and current known limitations
+  (English/Tamil only; Malayalam not yet covered; curated, not
+  exhaustive, vocabulary tables) and `docs/security/README.md` for the
+  updated red-team finding status.

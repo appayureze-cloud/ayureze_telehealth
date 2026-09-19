@@ -72,7 +72,7 @@ run end-to-end against the real stack.
 | Language ID | `langid` (text-based) cross-checked against Whisper's audio-based guess | Restricted to English/Tamil/Malayalam per build spec section 5; `lid.resolve_language()` prefers the text-based signal when audio-based confidence is low (typical for short clinical utterances) |
 | Terminology | custom, deterministic | Regex/glossary-based extraction of numbers, dosage (`\d+\s*mg/tablets/...`), frequency ("twice daily", "every N hours"), duration ("N days/weeks"), and a curated Ayurveda/medicine glossary |
 | Translation | **facebook/nllb-200-distilled-600M**, not IndicTrans2 | Documented substitution — see below |
-| Safety validator | custom, deterministic | Compares digit sequences between source and translated text; blocks TTS/publication on any mismatch or on empty output for non-empty input. Verified to actually block (not just warn) in `tests/pipeline/test_pipeline_models.py` |
+| Safety validator | custom, deterministic | Compares a normalized "safety entity" object (numbers, dosage value+unit, frequency, duration value+unit, food-timing constraints, negation, protected medicine/Ayurveda terms) between source and translated text; blocks TTS/publication on any critical-field mismatch or on empty output for non-empty input. See "Safety validator" below for the full design. Verified to actually block (not just warn) in `tests/pipeline/test_pipeline_models.py` and `tests/pipeline/test_tts_gate.py` |
 | TTS | facebook/mms-tts-{eng,tam,mal} (VITS) | Swappable via `TTSProvider` |
 
 ### Why NLLB-200 instead of IndicTrans2
@@ -103,29 +103,132 @@ resolved) a contained change: a new class, not a pipeline redesign.
 - **The terminology/safety layer protects digit-form numbers**, not
   spelled-out number words ("seven" vs "7") — growing this to a fuller
   NLP-based numeric-entailment check is future work.
-- **CRITICAL, verified this pass: the safety validator only compares
-  numeric digit sequences — it does not verify units, drug identity, or
-  negation.** Confirmed directly by calling `app.pipeline.safety.validate()`
-  with synthetic source/mistranslation pairs (not a hypothesis — real
-  function calls, real results): a unit swap ("Take 10 mg twice daily" →
-  "Take 10 ml twice daily") is marked **`safe=True`**; a dropped/flipped
-  negation ("Do not take on an empty stomach" → "Take on an empty
-  stomach") is marked **`safe=True`**; a medicine-name substitution with
-  the same dosage number ("Take 500 mg paracetamol" → "Take 500 mg
-  ibuprofen") is marked **`safe=True`**. Each of these is a real,
-  clinically dangerous mistranslation that preserves the digit sequence
-  the current validator checks, so none is caught, and the (wrong)
-  translated audio would be synthesized and published today. This is a
-  genuine gap in the deterministic safety layer, not a hypothetical one —
-  see the accompanying release report's security findings for severity
-  and recommended remediation (unit-token matching against the dosage
-  regex's captured unit group, a negation-marker check, and glossary-term
-  presence/absence comparison, all addable within the existing
-  deterministic-validator design without a model in the loop).
+- **FIXED (previously CRITICAL): the safety validator used to compare
+  only numeric digit sequences** — a unit swap, a dropped/flipped
+  negation, and a medicine-name substitution with matching dosage
+  numbers all previously passed as `safe=True`. This is fixed — see the
+  dedicated "Safety validator" section below for the full design,
+  `tests/pipeline/test_safety_validator_corpus.py` for the regression
+  corpus (75 cases) that proves each of those three specific failure
+  modes is now rejected, and the accompanying release report for the
+  before/after verification.
 - **CPU-only inference.** Translation (~0.6-1s/sentence) and TTS
   (~0.4s/sentence) on CPU are acceptable for a demo/test pipeline but not
   production-grade real-time latency; a production deployment should use
   GPU inference or a managed API for the heavier stages.
+
+## Safety validator
+
+Deterministic and auditable by design — never a model in the loop, per
+the build spec's explicit requirement. `app/pipeline/safety.py` builds a
+normalized, comparable representation of the source text and the
+translated text (`terminology.extract_safety_entities`, a
+`SafetyEntities` object — see `app/pipeline/types.py`) and rejects on any
+critical-field mismatch between the two.
+
+### Protected entities and normalization rules
+
+| Entity | Extraction | Normalization rule |
+|---|---|---|
+| Numbers | `terminology.extract_numeric_values` | Decimals (`5`/`5.0`/`5.00`), simple fractions (`1/2`), and Unicode vulgar fractions (`½`) all normalize to the same float value and compare as an order-independent multiset — legitimate reordering across languages is never a false rejection, but a dropped/added/altered value always is. |
+| Dosage (value + unit) | `terminology.extract_dosages` | Spelling/case/pluralization variants of the *same* unit canonicalize to one code (`mg`/`milligram`/`milligrams` → `mg`; `ml`/`mL` → `ml`). **Two different canonical units are never treated as equivalent** — there is no mg↔ml (or any cross-unit) equivalence table, only same-unit spelling variants. Temperature requires an explicit `°`/`degrees` marker. Range dosages (`5-10 mg`) produce two entities, both bounds checked. |
+| Frequency | `terminology.extract_frequencies` | `once`/`twice`/`thrice`/`N times` + `a day`/`per day`/`daily` all canonicalize by *count*, not by connector wording — `"twice a day"` and `"twice daily"` match; `"twice daily"` and `"once daily"` do not. `every N hours` keeps N exact. Tamil: both fixed phrases (`தினமும் இருமுறை`) and the general `<number-word> முறை` + a separate daily-context marker (`தினமும்`/`தினசரி`/`நாளுக்கு`) are matched independently, verified against this build's own real NLLB-200 output (see "Real-model verification" below), not assumed. |
+| Duration (value + unit) | `terminology.extract_durations` | day/week/month are **never** interchangeable regardless of numeric value — `"7 days"` → `"7 weeks"` is rejected even though the digit `7` is unchanged, which a pure numeric check cannot catch. Tamil day/week/month stems are the common prefix of the *inflected* forms actually seen in output, not the dictionary singular (Tamil pluralizes some of these irregularly). |
+| Food-timing constraints | `terminology.extract_food_constraints` | `empty_stomach`/`before_food`/`after_food`/`with_food`/`bedtime` — compared as a set; dropping "on an empty stomach" is a rejection even with everything else unchanged. |
+| Negation | `negation.has_negation(text, lang)` | Language-aware: checks the *target* language's own negation vocabulary against the translated text, never the source language's words against the target text. Covers English (`do not`/`don't`/`never`/`avoid`/`without`/bare `not`, etc.) and Tamil (`வேண்டாம்`/`கூடாது`/`இல்லை`/`அல்ல`/etc.). Returns `None` (not `False`) for an uncovered language (e.g. Malayalam) — the validator skips the negation comparison rather than silently treating unknown as "no negation". |
+| Protected medicine/Ayurveda terms | `terminology.detect_protected_terms` / `term_preserved` | `TRANSLITERATIONS` maps each `GLOSSARY` term to its accepted form per language. A term found in the source must have its target-language form verifiably present in the translation — this distinguishes **safe transliteration** ("Ashwagandha" → "அஸ்வகந்தா") from **semantic substitution** (a different drug's name appearing instead). Tamil matching strips the final virama-marked consonant before substring search (`_tamil_match_form`) because several terms' accusative case changes their final consonant via sandhi (தோஷம் → தோஷத்தை) rather than simple suffixation — found and fixed via this pass's own test corpus, not assumed correct. |
+
+### Rejection rules
+
+Any one of: number multiset mismatch, dosage value+unit mismatch,
+frequency code-set mismatch, duration value+unit mismatch, food-
+constraint set mismatch, negation mismatch (only when both languages are
+covered), or a protected term found in the source but not verifiably
+present in the translation. Each produces both a human-readable reason
+(`SafetyCheckResult.reasons`, may quote extracted numbers/units/terms —
+not for routine logging) and a short reason code (`reason_codes`, safe
+for logs/metrics — see "Logging" below).
+
+### Fail-closed behavior
+
+`SafetyCheckResult.to_structured_error()` returns
+`{"status": "rejected", "reason": "<code>", "reason_codes": [...]}`.
+When a check cannot be evaluated (e.g. a protected term has no
+transliteration table entry for the target language, or negation.py has
+no table for the language), that specific check is skipped — it never
+resolves an unknown to "safe"; only mismatches this module can actually
+detect cause rejection, and nothing here ever weakens that to "warn."
+`app/pipeline/orchestrator.py`'s TTS call
+(`self._tts.synthesize(...)`) is gated by
+`if safety_result.safe and translated_text.strip()`, confirmed the only
+production call site of `TTSProvider.synthesize` by a full-repo grep, and
+proven at the orchestrator level (not just unit-tested in isolation) by
+`tests/pipeline/test_tts_gate.py`, which records every TTS call and
+asserts zero calls for a rejected translation.
+
+### Known limitations
+
+- **English/Tamil only.** Malayalam is a supported pipeline language
+  (`lid.py`) but has no negation table and no transliteration entries —
+  `has_negation` returns `None` (skipped, not "safe") and
+  `detect_protected_terms`/dosage-unit/frequency/duration extraction for
+  Malayalam-specific vocabulary is not implemented. Extend the same way
+  Tamil was added, not by guessing.
+- **Curated, not exhaustive**, same status as `GLOSSARY` always had: the
+  unit table, frequency/duration patterns, negation markers, and
+  `TRANSLITERATIONS` table are a real, tested starting point verified
+  against this build's own NLLB-200 output — not a certified medical-
+  linguistics authority. Should be reviewed by a qualified Tamil medical
+  terminologist before relying on it beyond a controlled pilot.
+- **Real-model verification surfaced real gaps this pass, since fixed**:
+  running the actual pipeline (`tests/pipeline/test_pipeline_models.py`,
+  real NLLB-200 inference, not synthetic text) found real Tamil output
+  the initial curated pattern set missed — `"இரண்டு முறை"` ("two times",
+  spelled-out number word) for "twice", and `"தினசரி"` as a synonym for
+  "daily" alongside `"தினமும்"`. Both are now handled generally (a
+  number-word + `முறை` pattern, a daily-synonym list) rather than as
+  one-off literal-phrase patches — but this is real evidence that any
+  vocabulary table facing genuinely open-ended model output should be
+  expected to need incremental growth, not treated as complete.
+- **A known, pre-existing, unrelated flake**: MMS-TTS's poor bare-digit
+  pronunciation (see the bullet above) occasionally causes Whisper to
+  mis-transcribe a *spelled-out* number too in the real-model test
+  (`test_numeric_dosage_is_preserved_end_to_end`, ~1-in-3 runs observed
+  this pass) — always failing at the transcript-content assertion, never
+  at a safety-validator false-rejection of a correctly-transcribed
+  segment. This is STT/TTS audio quality noise, not a safety-validator
+  defect; re-running the test confirms it passes whenever transcription
+  is clean.
+
+### Logging
+
+`app/pipeline/streaming.py`'s `translation_blocked_by_safety_validator`
+log line carries `validation_status` and `reason_codes` only — never
+`SafetyCheckResult.reasons` (whose human-readable strings can quote
+extracted numbers/units/terms from the actual conversation). See
+`docs/security/README.md` and `docs/monitoring/privacy.md`.
+
+### Performance
+
+Measured directly (`safety.validate()`, 2000 iterations per case, warm
+cache, this build's environment): **~0.13-0.16ms per call** across
+representative English/Tamil, dosage, and Ayurveda-terminology cases —
+negligible next to STT (~500ms), translation (~600-1000ms), and TTS
+(~500ms) in the same pipeline run. The safety layer is not a bottleneck.
+
+### Test coverage
+
+`tests/pipeline/test_safety_validator_corpus.py` (75 cases): numeric/
+unit/frequency/duration/negation/terminology reject cases, safe-
+reformatting and safe-transliteration pass cases, Tamil↔English in both
+directions, adversarial mutation tests (every critical field mutated
+independently against one baseline sentence), and false-positive
+avoidance tests (legitimate reformatting must still pass).
+`tests/pipeline/test_tts_gate.py` (4 cases): orchestrator-level proof the
+TTS gate cannot be bypassed. `tests/pipeline/test_safety.py` and
+`tests/pipeline/test_terminology.py` (9 cases): the original baseline
+tests, unchanged and still passing. `tests/pipeline/test_pipeline_models.py`
+(3 cases): real NLLB-200/MMS-TTS/faster-whisper inference, not mocked.
 - **`onnxruntime`/`faster-whisper`/`transformers`+CPU-only `torch` are
   deliberately kept separate from the default PyPI `torch` wheel** (which
   pulls in the full CUDA/NVIDIA toolkit — observed to add ~15GB even on a

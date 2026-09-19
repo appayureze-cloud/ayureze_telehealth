@@ -152,16 +152,25 @@ authenticated-request injection sweep (e.g. fuzzing every JSON body
 field against the ORM/query layer with a valid token) — this remains
 recommended, non-blocking follow-up work, not a known gap.
 
-**One real, unrelated-to-auth finding from this pass — medical
-translation safety, not an auth issue:** the AI pipeline's deterministic
-safety validator (`apps/ai-agent/app/pipeline/safety.py`) was found to
-only compare numeric digit sequences between source and translated text.
-Confirmed live (direct calls to the real `validate()` function, not a
-hypothesis): a dosage unit swap (mg→ml), a dropped/flipped negation
-("do not take" → "take"), and a medicine-name substitution with the same
-dosage number all pass as `safe=True` today — none is a spoofing/auth
-bypass, but each is a real, clinically dangerous mistranslation that the
-safety layer as currently scoped would let through to TTS/publication.
-See `docs/ai/README.md`'s "Known limitations" for full detail and
-recommended remediation, and the accompanying release report's SECURITY
-section for severity/priority.
+**FIXED — medical translation safety finding from a prior pass, not an
+auth issue:** the AI pipeline's deterministic safety validator
+(`apps/ai-agent/app/pipeline/safety.py`) was previously found to only
+compare numeric digit sequences between source and translated text — a
+dosage unit swap (mg→ml), a dropped/flipped negation ("do not take" →
+"take"), and a medicine-name substitution with the same dosage number
+all passed as `safe=True`. A dedicated pass rebuilt the validator around
+a normalized, comparable "safety entity" object (numbers, dosage
+value+unit, frequency, duration value+unit, food-timing constraints,
+negation, protected medicine/Ayurveda terms — see `docs/ai/README.md`'s
+"Safety validator" section for the full design) and verified all three
+specific failure modes above are now rejected, plus 72 further cases
+covering English/Tamil in both directions, adversarial mutations, and
+false-positive avoidance (`apps/ai-agent/tests/pipeline/
+test_safety_validator_corpus.py`, 75/75 passing), and re-verified against
+real NLLB-200 inference (`tests/pipeline/test_pipeline_models.py`), which
+surfaced and fixed two additional real gaps in the initial Tamil pattern
+set. Stays deterministic throughout — no model was added to the
+validation path. See `docs/ai/README.md`'s "Safety validator" section for
+the full design, normalization rules, and current known limitations
+(English/Tamil only; Malayalam not yet covered), and the accompanying
+release report for full before/after verification evidence.
