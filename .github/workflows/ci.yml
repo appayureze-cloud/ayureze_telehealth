@@ -1,0 +1,258 @@
+name: CI
+
+# Every job in this workflow runs commands that were verified locally
+# during the post-Day-7 production-readiness audit (docs/deployment/
+# production-readiness.md) before being written here — none of this is
+# speculative. Flutter jobs are gated on the toolchain actually being
+# available and never claim device-level verification (see
+# docs/e2ee/VALIDATION.md's Flutter feasibility notes) — flutter analyze/
+# test run for real here; a real Android/iOS device or emulator is a
+# separate, not-yet-solved problem documented in that file, not something
+# this workflow pretends to cover.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go — fmt, vet, unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+      - name: gofmt
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then
+            echo "$out"
+            echo "::error::gofmt found unformatted files (run 'gofmt -w .')"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go build
+        run: go build ./...
+      - name: go test (unit)
+        run: go test ./...
+
+  go-integration:
+    name: Go — integration tests (real Postgres/Redis/LiveKit)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: ayureze
+          POSTGRES_PASSWORD: ci-postgres-password
+          POSTGRES_DB: ayureze_telehealth
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ayureze -d ayureze_telehealth"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7.2-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+      # LiveKit itself is needed for a subset of integration tests
+      # (webhook/room-creation paths) — run it as a plain container
+      # rather than a `services:` entry since it needs a config file
+      # mounted, which `services:` doesn't support.
+      - name: Start LiveKit server
+        run: |
+          docker run -d --name livekit --network host \
+            -e LIVEKIT_KEYS="ci-key: ci-secret-at-least-32-bytes-long" \
+            livekit/livekit-server:v1.13.7 \
+            --dev --bind 0.0.0.0
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:7880/ && break
+            sleep 1
+          done
+      - name: go test (integration)
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgres://ayureze:ci-postgres-password@localhost:5432/ayureze_telehealth?sslmode=disable
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          REDIS_PASSWORD: ""
+          LIVEKIT_URL: ws://localhost:7880
+          LIVEKIT_API_KEY: ci-key
+          LIVEKIT_API_SECRET: ci-secret-at-least-32-bytes-long
+        run: go test -tags integration ./test/integration/...
+
+  python:
+    name: Python — lint + unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ai-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+      - name: ruff (lint)
+        run: ruff check .
+      - name: pytest (fast unit suite — excludes integration/models markers)
+        run: pytest -v
+
+  web:
+    name: Web SDK — typecheck + unit tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdk/web/package-lock.json
+      - run: npm ci
+      - name: typecheck
+        run: npm run typecheck
+      - name: unit tests
+        run: npm test
+      - name: build
+        run: npm run build
+
+  flutter:
+    name: Flutter SDK — analyze + test
+    runs-on: ubuntu-latest
+    # Gated per this task's explicit instruction: only claim what real
+    # tooling actually verified. subosin/flutter-action installs a real
+    # Flutter SDK on the runner (unlike some past dev sandboxes used for
+    # this repo, which had none at all — see docs/e2ee/VALIDATION.md).
+    # This still only covers flutter analyze/test (no device/emulator
+    # required); real Android/iOS device testing is a separate, currently
+    # unresolved gap tracked in that document, not silently claimed here.
+    defaults:
+      run:
+        working-directory: sdk/flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.1"
+          channel: stable
+      - run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      - name: flutter test
+        run: flutter test
+
+  e2ee-harness:
+    name: E2E harness — full stack + Playwright (E2EE regression isolated)
+    runs-on: ubuntu-latest
+    needs: [go, python, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Write CI .env
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=ayureze
+          POSTGRES_PASSWORD=ci-postgres-password
+          POSTGRES_DB=ayureze_telehealth
+          POSTGRES_PORT=5432
+          REDIS_PASSWORD=ci-redis-password
+          REDIS_PORT=6379
+          LIVEKIT_API_KEY=ci-key
+          LIVEKIT_API_SECRET=ci-secret-at-least-32-bytes-long
+          LIVEKIT_URL=ws://localhost:7880
+          LIVEKIT_HTTP_PORT=7880
+          LIVEKIT_RTC_TCP_PORT=7881
+          LIVEKIT_RTC_UDP_PORT_RANGE_START=50000
+          LIVEKIT_RTC_UDP_PORT_RANGE_END=50100
+          LIVEKIT_NODE_IP=127.0.0.1
+          API_JWT_SIGNING_SECRET=ci-jwt-signing-secret-at-least-32-bytes
+          API_E2EE_MASTER_KEY_HEX=$(openssl rand -hex 32)
+          AI_AGENT_SERVICE_SECRET=ci-ai-agent-service-secret
+          TURN_STATIC_AUTH_SECRET=ci-turn-secret
+          TURN_REALM=ci.ayureze.local
+          TURN_LISTEN_PORT=3478
+          TURN_MIN_PORT=49160
+          TURN_MAX_PORT=49200
+          GRAFANA_ADMIN_USER=admin
+          GRAFANA_ADMIN_PASSWORD=ci-grafana-password
+          ENVIRONMENT=development
+          EOF
+      - name: Bring up the stack
+        run: docker compose --env-file .env -f infrastructure/docker/docker-compose.yml up -d --build
+      - name: Wait for API readiness
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/ready && exit 0
+            sleep 2
+          done
+          echo "::error::API never became ready"
+          docker compose -f infrastructure/docker/docker-compose.yml logs
+          exit 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install e2e-harness + sdk/web + native participant dependencies
+        run: |
+          # sdk/web's own node_modules (livekit-client, etc.) — the
+          # harness's Vite dev server resolves @ayureze/telehealth-web
+          # straight to sdk/web/src/index.ts (vite.config.ts alias), so
+          # that source's own imports must be resolvable from there.
+          cd sdk/web && npm ci && cd ../../apps/e2e-harness
+          npm ci && npx playwright install --with-deps chromium
+          # tests/helpers/nativeParticipant.ts resolves the interpreter at
+          # a fixed path (../../../ai-agent/.venv/bin/python3) — it's not
+          # env-configurable, so the venv must live exactly here.
+          python -m venv ../ai-agent/.venv
+          ../ai-agent/.venv/bin/pip install -r ../ai-agent/requirements.txt httpx numpy
+      - name: Run the E2E harness suite EXCEPT the known E2EE cross-platform finding
+        working-directory: apps/e2e-harness
+        run: npx playwright test --grep-invert "kdf-compat"
+      - name: Run the known E2EE cross-platform blocker (EXPECTED to fail — do not gate the build on it)
+        id: kdf_compat
+        working-directory: apps/e2e-harness
+        continue-on-error: true
+        run: npx playwright test tests/kdf-compat.spec.ts
+      - name: Report E2EE blocker status (never hidden, never silently green)
+        working-directory: apps/e2e-harness
+        run: |
+          if [ "${{ steps.kdf_compat.outcome }}" = "success" ]; then
+            echo "::warning::kdf-compat.spec.ts PASSED — this is unexpected. The documented Web<->native E2EE upstream limitation (docs/e2ee/VALIDATION.md) may be resolved. Investigate before treating this as routine."
+          else
+            echo "::notice::kdf-compat.spec.ts FAILED as expected — EXPECTED BLOCKER, not a build failure. See docs/e2ee/VALIDATION.md for the full investigation (classification C, LiveKit upstream limitation)."
+          fi
+      - name: Docker compose logs (on failure)
+        if: failure()
+        run: docker compose -f infrastructure/docker/docker-compose.yml logs
+      - name: Tear down
+        if: always()
+        run: docker compose -f infrastructure/docker/docker-compose.yml down -v

@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+exclude = ["models", ".venv"]
+
+[tool.ruff.lint]
+# Pyflakes + pycodestyle errors/warnings — real bugs and real style
+# violations, not opinionated extended rule sets (TRY/PLW/BLE/etc.) the
+# team hasn't reviewed and opted into. Widen deliberately, not by
+# accident of whatever ruff's latest default happens to be.
+select = ["E", "F", "W"]

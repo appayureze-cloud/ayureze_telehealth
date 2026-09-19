@@ -1,0 +1,117 @@
+name: Security
+
+# Dependency, secret, SAST, and container scanning. Split from ci.yml so a
+# transient vulnerability-DB fetch failure never blocks a correctness PR,
+# and so results land as their own check names in a PR's status list.
+#
+# Every scanner here was run for real during the post-Day-7 production-
+# readiness audit against this exact codebase (govulncheck, pip-audit,
+# npm audit) from a sandbox with restricted internet egress; two real
+# findings came back (starlette CVEs pulled in transitively by the pinned
+# fastapi==0.115.6, not yet upgraded — see apps/ai-agent/requirements.txt
+# and docs/deployment/production-readiness.md's security section for why
+# a mechanical bump wasn't done in that pass). GitHub-hosted runners have
+# full internet access, unlike that sandbox, so gitleaks/CodeQL/Trivy
+# (blocked there by organization egress policy — never worked around, per
+# that pass's own rules) can run for real here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Dependency vulnerability DBs change daily; catch a newly-disclosed
+    # CVE in an unchanged dependency, not just at push time.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — a secret committed and later removed is still a leak
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-scan-go:
+    name: Dependency scan — Go (govulncheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - working-directory: apps/api
+        run: govulncheck ./...
+
+  dependency-scan-python:
+    name: Dependency scan — Python (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - working-directory: apps/ai-agent
+        run: |
+          pip install -r requirements.txt pip-audit
+          pip-audit -r requirements.txt
+
+  dependency-scan-web:
+    name: Dependency scan — npm audit (sdk/web, e2e-harness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - working-directory: sdk/web
+        run: npm ci && npm audit --omit=dev
+      - working-directory: apps/e2e-harness
+        run: npm ci && npm audit --omit=dev
+
+  sast:
+    name: SAST (CodeQL — Go, Python, JS/TS)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      matrix:
+        language: [go, python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+
+  container-scan:
+    name: Container scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build api image
+        run: docker build -t ayureze-api:scan apps/api
+      - name: Build ai-agent image
+        run: docker build -t ayureze-ai-agent:scan apps/ai-agent
+      - name: Scan api image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ayureze-api:scan
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+      - name: Scan ai-agent image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ayureze-ai-agent:scan
+          severity: CRITICAL,HIGH
+          exit-code: "1"
