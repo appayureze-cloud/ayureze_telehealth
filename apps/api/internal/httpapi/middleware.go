@@ -9,8 +9,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/ayureze/telehealth/api/internal/metrics"
+	"github.com/ayureze/telehealth/api/internal/tracing"
 )
 
 type ctxKey string
@@ -34,6 +37,41 @@ func RequestIDFromContext(ctx context.Context) string {
 		return v
 	}
 	return ""
+}
+
+// TraceSpan starts one root span per HTTP request — the "API request"
+// entry point of the trace docs/monitoring/README.md's tracing section
+// describes (API request -> session service -> LiveKit interaction). Named
+// after the chi route pattern, never the raw path (same unbounded-
+// cardinality reasoning as AccessLog's Prometheus labels below), and
+// carries only the request_id correlation attribute plus method/status —
+// no request/response body, no header values, nothing session-content-
+// shaped. internal/sessionsvc/internal/roomsvc add their own child spans
+// from the context this middleware puts in place.
+func TraceSpan(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		route := r.URL.Path
+		if rctx := chi.RouteContext(r.Context()); rctx != nil {
+			if pattern := rctx.RoutePattern(); pattern != "" {
+				route = pattern
+			}
+		}
+		ctx, span := tracing.Tracer("ayureze.api").Start(r.Context(), fmt.Sprintf("%s %s", r.Method, route))
+		defer span.End()
+		span.SetAttributes(
+			tracing.RequestIDAttribute(RequestIDFromContext(ctx)),
+			attribute.String("http.method", r.Method),
+			attribute.String("http.route", route),
+		)
+
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r.WithContext(ctx))
+
+		span.SetAttributes(attribute.Int("http.status_code", sw.status))
+		if sw.status >= 500 {
+			span.SetStatus(codes.Error, fmt.Sprintf("http %d", sw.status))
+		}
+	})
 }
 
 // AccessLog emits one structured JSON log line per request and records

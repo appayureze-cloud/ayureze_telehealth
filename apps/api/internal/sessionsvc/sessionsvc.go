@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/ayureze/telehealth/api/internal/apperr"
 	"github.com/ayureze/telehealth/api/internal/domain"
@@ -20,6 +22,7 @@ import (
 	"github.com/ayureze/telehealth/api/internal/roomsvc"
 	"github.com/ayureze/telehealth/api/internal/store"
 	"github.com/ayureze/telehealth/api/internal/token"
+	"github.com/ayureze/telehealth/api/internal/tracing"
 )
 
 type Service struct {
@@ -49,6 +52,9 @@ type Caller struct {
 // this session's participants — nobody else, including other users in the
 // same tenant, can ever join it (see Join).
 func (s *Service) Create(ctx context.Context, caller Caller, patientEmail string, ip string) (*domain.Session, error) {
+	ctx, span := tracing.Tracer("ayureze.sessionsvc").Start(ctx, "sessionsvc.Create")
+	defer span.End()
+
 	if caller.Role != domain.RoleDoctor && caller.Role != domain.RoleAdmin {
 		s.deny(ctx, caller, "session.create", "session", "", ip, "role_not_permitted")
 		return nil, apperr.Forbidden("only a doctor or admin may create a session")
@@ -82,7 +88,19 @@ func (s *Service) Create(ctx context.Context, caller Caller, patientEmail string
 		return nil, apperr.Internal(err)
 	}
 
-	if err := s.rooms.EnsureRoom(ctx, roomName, 300); err != nil {
+	if err := func() error {
+		// Child span isolating the actual LiveKit RoomService call — the
+		// "session service -> LiveKit interaction" edge of the trace.
+		roomCtx, roomSpan := tracing.Tracer("ayureze.sessionsvc").Start(ctx, "roomsvc.EnsureRoom")
+		defer roomSpan.End()
+		roomSpan.SetAttributes(attribute.Int("livekit.empty_timeout_seconds", 300))
+		if err := s.rooms.EnsureRoom(roomCtx, roomName, 300); err != nil {
+			roomSpan.SetStatus(codes.Error, "livekit ensure room failed")
+			return err
+		}
+		return nil
+	}(); err != nil {
+		span.SetStatus(codes.Error, "session creation failed")
 		return nil, apperr.Internal(err)
 	}
 

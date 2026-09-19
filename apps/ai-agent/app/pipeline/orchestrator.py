@@ -14,7 +14,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from .. import metrics
+from .. import metrics, tracing
 from . import safety, terminology
 from .lid import LanguageIDProvider, resolve_language
 from .stt import STTProvider
@@ -52,7 +52,9 @@ class TranslationPipeline:
         self._translator = translator
         self._tts = tts
 
-    def transcribe(self, audio: np.ndarray) -> tuple[TranscriptSegment, dict[str, float]]:
+    def transcribe(
+        self, audio: np.ndarray, session_id: str = "unknown"
+    ) -> tuple[TranscriptSegment, dict[str, float]]:
         """STT + language ID only — the shared first phase of process()
         and process_auto(), split out so callers that need to resolve a
         target language *from* the detected source (streaming.py) don't
@@ -60,64 +62,105 @@ class TranslationPipeline:
         """
         timings: dict[str, float] = {}
 
-        t0 = time.monotonic()
-        transcript = self._stt.transcribe(audio, SAMPLE_RATE)
-        _record_stage(timings, "stt", time.monotonic() - t0)
+        with tracing.tracer().start_as_current_span("pipeline.stt") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            t0 = time.monotonic()
+            transcript = self._stt.transcribe(audio, SAMPLE_RATE)
+            elapsed = time.monotonic() - t0
+            _record_stage(timings, "stt", elapsed)
+            span.set_attribute("ayureze.duration_ms", elapsed * 1000)
 
-        t0 = time.monotonic()
-        text_lang, _text_lid_score = self._lid.identify(transcript.text)
-        resolved_lang = resolve_language(transcript.language, transcript.language_confidence, text_lang)
-        transcript = TranscriptSegment(
-            text=transcript.text, language=resolved_lang, language_confidence=transcript.language_confidence
-        )
-        _record_stage(timings, "language_id", time.monotonic() - t0)
+        with tracing.tracer().start_as_current_span("pipeline.language_id") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            t0 = time.monotonic()
+            text_lang, _text_lid_score = self._lid.identify(transcript.text)
+            resolved_lang = resolve_language(transcript.language, transcript.language_confidence, text_lang)
+            transcript = TranscriptSegment(
+                text=transcript.text, language=resolved_lang, language_confidence=transcript.language_confidence
+            )
+            elapsed = time.monotonic() - t0
+            _record_stage(timings, "language_id", elapsed)
+            span.set_attribute("ayureze.duration_ms", elapsed * 1000)
+            span.set_attribute("ayureze.resolved_language", resolved_lang)
 
         return transcript, timings
 
-    def process(self, audio: np.ndarray, target_lang: str) -> PipelineResult:
+    def process(self, audio: np.ndarray, target_lang: str, session_id: str = "unknown") -> PipelineResult:
         """audio: float32 mono PCM at SAMPLE_RATE, one VAD-delimited
         speech segment. target_lang: the language to translate *into*.
         Use process_auto() instead when the target should be derived from
         the detected source language rather than fixed in advance.
         """
-        transcript, timings = self.transcribe(audio)
-        return self._translate_and_synthesize(transcript, target_lang, timings)
+        with tracing.tracer().start_as_current_span("pipeline.process") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            span.set_attribute("ayureze.target_lang", target_lang)
+            transcript, timings = self.transcribe(audio, session_id)
+            return self._translate_and_synthesize(transcript, target_lang, timings, session_id)
 
-    def process_auto(self, audio: np.ndarray, target_resolver: Callable[[str], str]) -> PipelineResult:
+    def process_auto(
+        self, audio: np.ndarray, target_resolver: Callable[[str], str], session_id: str = "unknown"
+    ) -> PipelineResult:
         """Like process(), but target_lang is computed from the detected
         source language via target_resolver (e.g. streaming.py's
         target_language_for), after a single transcription pass.
         """
-        transcript, timings = self.transcribe(audio)
-        target_lang = target_resolver(transcript.language)
-        return self._translate_and_synthesize(transcript, target_lang, timings)
+        with tracing.tracer().start_as_current_span("pipeline.process_auto") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            transcript, timings = self.transcribe(audio, session_id)
+            target_lang = target_resolver(transcript.language)
+            span.set_attribute("ayureze.target_lang", target_lang)
+            return self._translate_and_synthesize(transcript, target_lang, timings, session_id)
 
     def _translate_and_synthesize(
-        self, transcript: TranscriptSegment, target_lang: str, timings: dict[str, float]
+        self,
+        transcript: TranscriptSegment,
+        target_lang: str,
+        timings: dict[str, float],
+        session_id: str = "unknown",
     ) -> PipelineResult:
-        t0 = time.monotonic()
-        term_analysis = terminology.analyze(transcript.text)
-        _record_stage(timings, "terminology", time.monotonic() - t0)
+        with tracing.tracer().start_as_current_span("pipeline.terminology") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            t0 = time.monotonic()
+            term_analysis = terminology.analyze(transcript.text)
+            elapsed = time.monotonic() - t0
+            _record_stage(timings, "terminology", elapsed)
+            span.set_attribute("ayureze.duration_ms", elapsed * 1000)
+            span.set_attribute("ayureze.protected_span_count", len(term_analysis.protected_spans))
 
-        t0 = time.monotonic()
-        translated_text = self._translator.translate(transcript.text, transcript.language, target_lang)
-        translation = TranslationResult(
-            source_text=transcript.text,
-            translated_text=translated_text,
-            source_lang=transcript.language,
-            target_lang=target_lang,
-        )
-        _record_stage(timings, "translation", time.monotonic() - t0)
+        with tracing.tracer().start_as_current_span("pipeline.translation") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            t0 = time.monotonic()
+            translated_text = self._translator.translate(transcript.text, transcript.language, target_lang)
+            translation = TranslationResult(
+                source_text=transcript.text,
+                translated_text=translated_text,
+                source_lang=transcript.language,
+                target_lang=target_lang,
+            )
+            elapsed = time.monotonic() - t0
+            _record_stage(timings, "translation", elapsed)
+            span.set_attribute("ayureze.duration_ms", elapsed * 1000)
+            span.set_attribute("ayureze.source_lang", transcript.language)
+            span.set_attribute("ayureze.target_lang", target_lang)
 
-        t0 = time.monotonic()
-        safety_result = safety.validate(transcript.text, translated_text, term_analysis)
-        _record_stage(timings, "safety_validation", time.monotonic() - t0)
+        with tracing.tracer().start_as_current_span("pipeline.safety_validation") as span:
+            span.set_attribute("ayureze.session_id", session_id)
+            t0 = time.monotonic()
+            safety_result = safety.validate(transcript.text, translated_text, term_analysis)
+            elapsed = time.monotonic() - t0
+            _record_stage(timings, "safety_validation", elapsed)
+            span.set_attribute("ayureze.duration_ms", elapsed * 1000)
+            span.set_attribute("ayureze.safe", safety_result.safe)
 
         audio_out: SynthesizedAudio | None = None
         if safety_result.safe and translated_text.strip():
-            t0 = time.monotonic()
-            audio_out = self._tts.synthesize(translated_text, target_lang)
-            _record_stage(timings, "tts", time.monotonic() - t0)
+            with tracing.tracer().start_as_current_span("pipeline.tts") as span:
+                span.set_attribute("ayureze.session_id", session_id)
+                t0 = time.monotonic()
+                audio_out = self._tts.synthesize(translated_text, target_lang)
+                elapsed = time.monotonic() - t0
+                _record_stage(timings, "tts", elapsed)
+                span.set_attribute("ayureze.duration_ms", elapsed * 1000)
 
         timings["total_ms"] = sum(timings.values())
         metrics.PIPELINE_STAGE_LATENCY_SECONDS.labels(stage="total").observe(timings["total_ms"] / 1000)

@@ -114,7 +114,7 @@ class LiveAudioProcessor:
 
         try:
             result = await loop.run_in_executor(
-                self._executor, self._pipeline.process_auto, segment, target_language_for
+                self._executor, self._pipeline.process_auto, segment, target_language_for, self._session_id
             )
         except Exception as e:  # noqa: BLE001 - one failed segment must not kill the stream
             log(

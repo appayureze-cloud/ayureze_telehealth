@@ -26,16 +26,18 @@ import (
 	"github.com/ayureze/telehealth/api/internal/sessionsvc"
 	"github.com/ayureze/telehealth/api/internal/store"
 	"github.com/ayureze/telehealth/api/internal/token"
+	"github.com/ayureze/telehealth/api/internal/tracing"
 	"github.com/ayureze/telehealth/api/internal/webhooksvc"
 )
 
 type App struct {
-	Server  *httpapi.Server
-	Handler http.Handler
-	Logger  *slog.Logger
-	Pool    *pgxpool.Pool
-	Redis   *redis.Client
-	Stores  Stores
+	Server        *httpapi.Server
+	Handler       http.Handler
+	Logger        *slog.Logger
+	Pool          *pgxpool.Pool
+	Redis         *redis.Client
+	Stores        Stores
+	tracerCleanup tracing.Shutdown
 }
 
 type Stores struct {
@@ -49,6 +51,11 @@ type Stores struct {
 }
 
 func Build(ctx context.Context, cfg *config.Config) (*App, error) {
+	tracerCleanup, err := tracing.Init(ctx, cfg.OTelServiceName, cfg.OTelExporterEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := db.Migrate(cfg.DatabaseURL); err != nil {
 		return nil, err
 	}
@@ -107,11 +114,15 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	handler := httpapi.NewRouter(srv, logger, cfg.CORSAllowedOrigins, rateLimiter)
 
-	return &App{Server: srv, Handler: handler, Logger: logger, Pool: pool, Redis: redisClient, Stores: stores}, nil
+	return &App{Server: srv, Handler: handler, Logger: logger, Pool: pool, Redis: redisClient, Stores: stores, tracerCleanup: tracerCleanup}, nil
 }
 
-// Close releases the database and Redis connections.
+// Close releases the database and Redis connections and flushes any
+// buffered trace spans.
 func (a *App) Close() {
 	a.Pool.Close()
 	_ = a.Redis.Close()
+	if a.tracerCleanup != nil {
+		_ = a.tracerCleanup(context.Background())
+	}
 }

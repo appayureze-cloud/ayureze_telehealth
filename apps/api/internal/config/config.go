@@ -51,13 +51,21 @@ type Config struct {
 	RateLimitPerMinute int
 
 	Environment string
+
+	// OTelExporterEndpoint is optional — an empty value means tracing spans
+	// are created but never exported (safe default for `go test`/any run
+	// without a live otel-collector). Set via OTEL_EXPORTER_OTLP_ENDPOINT.
+	OTelExporterEndpoint string
+	OTelServiceName      string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		HTTPPort:           getEnvDefault("API_HTTP_PORT", "8080"),
-		Environment:        getEnvDefault("ENVIRONMENT", "development"),
-		CORSAllowedOrigins: os.Getenv("API_CORS_ALLOWED_ORIGINS"),
+		HTTPPort:             getEnvDefault("API_HTTP_PORT", "8080"),
+		Environment:          getEnvDefault("ENVIRONMENT", "development"),
+		CORSAllowedOrigins:   os.Getenv("API_CORS_ALLOWED_ORIGINS"),
+		OTelExporterEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		OTelServiceName:      getEnvDefault("OTEL_SERVICE_NAME", "ayureze-api"),
 	}
 
 	var err error

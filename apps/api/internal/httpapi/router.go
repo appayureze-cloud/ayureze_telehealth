@@ -23,6 +23,7 @@ func NewRouter(srv *Server, logger *slog.Logger, corsOrigins string, limiter Rat
 	}
 
 	r.Use(RequestID)
+	r.Use(TraceSpan)
 	r.Use(Recover(logger))
 	r.Use(AccessLog(logger))
 	r.Use(SecurityHeaders)
