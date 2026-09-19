@@ -429,3 +429,35 @@ Web ↔ native E2EE work" — not to redesigning anything.
   frame-crypto core's C++ source, this is now assessed as an **upstream
   LiveKit limitation**, not an AyurEze integration bug. See
   `docs/e2ee/VALIDATION.md`'s "Third-pass note" for full detail.
+
+### Fourth pass — minimal reproduction confirms classification C
+
+A follow-up pass built a reproduction with **zero AyurEze code anywhere
+in the chain**: room created directly via LiveKit's own
+`RoomService.CreateRoom`, JWTs hand-minted with raw PyJWT against
+LiveKit's public token spec, a freshly random key generated inline, and
+raw `livekit-client`/`livekit` (Python) SDK calls only — no Go API, no
+`internal/e2ee`, no `internal/token`, no `sdk/web`'s
+`AyurezeTelehealthClient`. Result: identical failure (`InvalidKey:
+Decryption failed: OperationError`, 61KB of real audio received, remote
+`isEncrypted: true`). With every AyurEze-authored line removed, the
+mismatch persists exactly as before — this rules out an AyurEze
+integration bug with high confidence and **confirms classification C
+(LiveKit upstream limitation)**, not merely "probable." See
+`docs/e2ee/VALIDATION.md`'s "Fourth pass" and "Final classification"
+sections.
+
+### Fifth pass — Flutter SDK tooling available this session; still no device tier
+
+Unlike prior sessions, this execution environment ships a real Flutter
+SDK (`3.27.1`). Re-ran, for real: `flutter pub get` (clean), `flutter
+analyze` (**0 issues**), `flutter test` (**18/18 passing**) — independently
+re-confirming `docs/sdk/README.md`'s existing Flutter-SDK claims under
+real execution rather than trusting them at face value. `flutter doctor`
+confirms no Android SDK, no `adb`, no emulator, no physical device, and
+no `/dev/kvm` — installing a full Android SDK + emulator was assessed
+and not attempted (only ~5.7GB free disk, and no KVM means any emulator
+would run in software-only mode, frequently non-functional in headless
+containers). **Device/emulator-level Flutter testing (any real
+connect/publish/subscribe/E2EE exercise on an actual Android/iOS target)
+remains BLOCKED** — not claimed, not assumed.

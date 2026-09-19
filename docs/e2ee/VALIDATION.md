@@ -7,6 +7,25 @@ real native LiveKit participant via the Python SDK) — not source
 inspection, not unit tests, not mocked LiveKit. See `apps/e2e-harness/`
 for the test suite this document reports on.
 
+## Final classification (read this first)
+
+**C — LIVEKIT UPSTREAM LIMITATION, CONFIRMED.** Not RESOLVED (no working
+version/configuration combination was found — see the Version Matrix in
+the accompanying release report). Not an AYUREZE BUG (ruled out with high
+confidence by the "Fourth pass — minimal reproduction, independent of
+AyurEze business logic" below, which reproduces the identical failure
+with zero AyurEze code anywhere in the chain). Not UNKNOWN (five
+investigation passes, nine distinct parameter/version/independence
+combinations, and a definitive negative result ruling out KDF algorithm
+choice specifically, is enough evidence to classify, not defer).
+**Web ↔ native/Flutter E2EE does not work in this system today, and the
+evidence points at LiveKit itself, not at AyurEze's integration of it.**
+`apps/e2e-harness/tests/kdf-compat.spec.ts` remains the permanent,
+intentionally-red regression trip-wire. Do not deploy a configuration
+where Web clients and Flutter/native clients (including the AI agent)
+are expected to decrypt each other's media until LiveKit resolves
+upstream issue #4247 or an equivalent fix ships.
+
 ## Why this exists
 
 Prior to this pass, E2EE had only been validated by (a) reading the SDK
@@ -87,6 +106,38 @@ compiled frame-crypto engine, so a confirmed Web↔Python failure is strong
 Python↔Python success (already covered by `apps/ai-agent/tests/
 test_agent_integration.py`) says nothing new about Flutter specifically.
 Treat any Flutter-related row in the matrix below as BLOCKED, not PASS.
+
+**Fifth-pass update — Flutter SDK tooling now present, device tier still
+absent**: a later execution environment for this repo (different session,
+same investigation) *does* ship a real Flutter SDK (`3.27.1`, at
+`/opt/flutter-sdk`, confirmed via `flutter --version` — not assumed).
+`flutter doctor -v` was re-run for real and shows: Flutter itself ✓, but
+Android toolchain ✗ ("Unable to locate Android SDK"), Chrome ✗ (only
+Chromium is present, which `flutter run -d chrome` does not accept
+without `CHROME_EXECUTABLE`), Linux desktop toolchain ✗ (no `libgtk-3-dev`),
+no `/dev/kvm`, no `adb`, no emulator, no physical device. Given this,
+`sdk/flutter`'s dependency-resolvable, device-independent checks were
+re-run **for real, this session** (not re-stated from a prior claim):
+`flutter pub get` (clean), `flutter analyze` (**0 issues**, matching the
+existing documented claim), `flutter test` (**18/18 passing**, matching
+the existing documented claim) — this independently re-confirms
+`docs/sdk/README.md`'s Flutter-SDK claim under real re-execution rather
+than trusting it at face value. Installing a full Android SDK + emulator
+system image was assessed and not attempted: only ~5.7GB free disk
+remained (a system image alone is commonly 1–2GB, plus emulator binaries
+and build-tools), and with no `/dev/kvm` any emulator would have to run
+in pure software-rendering mode, which is frequently non-functional or
+impractically slow in headless containers even when disk allows it — an
+attempt would likely have consumed most of the remaining disk for an
+emulator that still might not boot, for no verifiable gain. **Device- or
+emulator-level Flutter testing (Tests 1–5 in the task's required
+topology: any real connect/publish/subscribe/E2EE exercise on an actual
+Android/iOS target) remains BLOCKED in every session of this
+investigation to date.** Static analysis and Dart unit tests are the
+only Flutter-specific claims in this document backed by real execution;
+nothing about Flutter's actual runtime E2EE behavior is claimed or
+implied by that — see the Python-proxy caveat above, which still stands
+unchanged.
 
 ## What was actually found (in the order discovered)
 
