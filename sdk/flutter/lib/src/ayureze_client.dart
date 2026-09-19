@@ -5,10 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import 'api/api_client.dart';
+import 'e2ee_diagnostics.dart';
 import 'exceptions.dart';
 import 'models/models.dart';
 
 export 'api/api_client.dart' show AuthResult, JoinResult;
+export 'e2ee_diagnostics.dart';
 export 'exceptions.dart';
 export 'models/models.dart';
 
@@ -47,6 +49,7 @@ class AyurezeTelehealthClient {
   final StreamController<AyurezeCaption> _captionsController = StreamController<AyurezeCaption>.broadcast();
   final StreamController<AyurezeConnectionState> _connectionStateController =
       StreamController<AyurezeConnectionState>.broadcast();
+  final AyurezeE2EEDiagnostics _e2eeDiagnostics = AyurezeE2EEDiagnostics();
 
   AyurezeTelehealthClient({
     required String apiBaseUrl,
@@ -63,6 +66,25 @@ class AyurezeTelehealthClient {
   /// Live stream of LiveKit connection state changes. Also queryable
   /// synchronously via [getConnectionState].
   Stream<AyurezeConnectionState> get connectionStateChanges => _connectionStateController.stream;
+
+  /// Live stream of per-track E2EE state changes — LiveKit's own
+  /// `MissingKey`/`DecryptionFailed`/`EncryptionFailed`/etc., translated
+  /// into [AyurezeE2EETrackState]. This is the only reliable signal that
+  /// a specific participant's encrypted track is actually usable; do not
+  /// infer that from connection success alone. See
+  /// [AyurezeE2EEState.isSecure] for the fail-closed check every listener
+  /// should apply — treat anything where `isSecure` is `false` as "this
+  /// track cannot currently be decrypted/encrypted," never as cosmetic.
+  Stream<AyurezeE2EETrackState> get e2eeStateChanges => _e2eeDiagnostics.stateChanges;
+
+  /// Synchronous snapshot of every currently-known track's latest E2EE
+  /// state — the Flutter SDK's equivalent of the Web SDK's
+  /// `getEncryptionDiagnostics()`, at per-track rather than
+  /// per-participant granularity (what LiveKit's native core actually
+  /// reports on this platform). Backed entirely by real
+  /// `TrackE2EEStateEvent`s LiveKit emitted, never by application state
+  /// alone.
+  List<AyurezeE2EETrackState> getE2EETrackStates() => _e2eeDiagnostics.all;
 
   // ---------------------------------------------------------------------
   // Lifecycle
@@ -131,6 +153,11 @@ class AyurezeTelehealthClient {
     // key-derivation-input finding).
     await keyProvider.setSharedKey(joinResult.e2eeKeyBase64);
 
+    // Stale diagnostics from a previous session must never leak into this
+    // one — a track state left over from an old room would misrepresent
+    // this room's actual E2EE status.
+    _e2eeDiagnostics.clear();
+
     final room = lk.Room(
       roomOptions: lk.RoomOptions(
         e2eeOptions: lk.E2EEOptions(keyProvider: keyProvider),
@@ -159,6 +186,12 @@ class AyurezeTelehealthClient {
     _roomListener = null;
     await _room?.disconnect();
     _room = null;
+    // The listener is disposed above, before disconnect(), specifically so
+    // it doesn't fire further state-change events during teardown — so
+    // RoomDisconnectedEvent's cleanup handler never runs here. Clear
+    // explicitly instead: leaving a session must never leave stale E2EE
+    // state visible to a caller who then queries getE2EETrackStates().
+    _e2eeDiagnostics.clear();
     _connectionStateController.add(AyurezeConnectionState.disconnected);
   }
 
@@ -274,7 +307,13 @@ class AyurezeTelehealthClient {
       ..on<lk.RoomConnectedEvent>((_) => _connectionStateController.add(AyurezeConnectionState.connected))
       ..on<lk.RoomReconnectingEvent>((_) => _connectionStateController.add(AyurezeConnectionState.reconnecting))
       ..on<lk.RoomReconnectedEvent>((_) => _connectionStateController.add(AyurezeConnectionState.connected))
-      ..on<lk.RoomDisconnectedEvent>((_) => _connectionStateController.add(AyurezeConnectionState.disconnected))
+      ..on<lk.RoomDisconnectedEvent>((_) {
+        _connectionStateController.add(AyurezeConnectionState.disconnected);
+        // A disconnected room has no tracks left to have an E2EE opinion
+        // about — clear rather than leave the last-known (now stale)
+        // states queryable.
+        _e2eeDiagnostics.clear();
+      })
       ..on<lk.DataReceivedEvent>((event) {
         if (event.topic != _captionsTopic) return;
         try {
@@ -284,7 +323,25 @@ class AyurezeTelehealthClient {
           // Malformed caption payload — drop it rather than crash the
           // caller's stream subscription.
         }
-      });
+      })
+      // E2EE diagnostics — see e2ee_diagnostics.dart. TrackE2EEStateEvent
+      // is emitted by livekit_client's E2EEManager for both local
+      // (publish) and remote (subscribe) tracks; it mixes in RoomEvent so
+      // it reaches this room-level listener regardless of which side
+      // published it.
+      ..on<lk.TrackE2EEStateEvent>((event) {
+        _e2eeDiagnostics.recordState(
+          participantIdentity: event.participant.identity,
+          isLocalParticipant: event.participant is lk.LocalParticipant,
+          trackSid: event.publication.sid,
+          kind: _mapTrackKind(event.publication.kind),
+          state: _mapE2EEState(event.state),
+        );
+      })
+      ..on<lk.TrackUnsubscribedEvent>((event) => _e2eeDiagnostics.removeTrack(event.publication.sid))
+      ..on<lk.TrackUnpublishedEvent>((event) => _e2eeDiagnostics.removeTrack(event.publication.sid))
+      ..on<lk.LocalTrackUnpublishedEvent>((event) => _e2eeDiagnostics.removeTrack(event.publication.sid))
+      ..on<lk.ParticipantDisconnectedEvent>((event) => _e2eeDiagnostics.removeParticipant(event.participant.identity));
   }
 
   AyurezeParticipant _toAyurezeParticipant(lk.Participant p, {required bool isLocal}) {
@@ -302,6 +359,25 @@ class AyurezeTelehealthClient {
         lk.ConnectionState.connecting => AyurezeConnectionState.connecting,
         lk.ConnectionState.reconnecting => AyurezeConnectionState.reconnecting,
         lk.ConnectionState.disconnected => AyurezeConnectionState.disconnected,
+      };
+
+  // Exhaustive over livekit_client 2.4.3's E2EEState — if a future SDK
+  // upgrade adds a new case, this switch stops compiling rather than
+  // silently classifying an unrecognized failure as secure.
+  AyurezeE2EEState _mapE2EEState(lk.E2EEState state) => switch (state) {
+        lk.E2EEState.kNew => AyurezeE2EEState.pending,
+        lk.E2EEState.kOk => AyurezeE2EEState.ok,
+        lk.E2EEState.kKeyRatcheted => AyurezeE2EEState.keyRatcheted,
+        lk.E2EEState.kMissingKey => AyurezeE2EEState.missingKey,
+        lk.E2EEState.kEncryptionFailed => AyurezeE2EEState.encryptionFailed,
+        lk.E2EEState.kDecryptionFailed => AyurezeE2EEState.decryptionFailed,
+        lk.E2EEState.kInternalError => AyurezeE2EEState.internalError,
+      };
+
+  AyurezeTrackKind _mapTrackKind(lk.TrackType kind) => switch (kind) {
+        lk.TrackType.AUDIO => AyurezeTrackKind.audio,
+        lk.TrackType.VIDEO => AyurezeTrackKind.video,
+        lk.TrackType.DATA => AyurezeTrackKind.data,
       };
 
   void _ensureInitialized() {
@@ -341,5 +417,6 @@ class AyurezeTelehealthClient {
     await leaveSession();
     await _captionsController.close();
     await _connectionStateController.close();
+    await _e2eeDiagnostics.dispose();
   }
 }

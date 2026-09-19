@@ -38,6 +38,12 @@ void main() {
       expect(client.getParticipants(), isEmpty);
     });
 
+    test('getE2EETrackStates() is empty before any join', () async {
+      final client = AyurezeTelehealthClient(apiBaseUrl: 'https://api.test', livekitUrl: 'wss://lk.test');
+      await client.initialize();
+      expect(client.getE2EETrackStates(), isEmpty);
+    });
+
     test('getSessionState() is null before createSession/joinSession', () async {
       final client = AyurezeTelehealthClient(apiBaseUrl: 'https://api.test', livekitUrl: 'wss://lk.test');
       await client.initialize();

@@ -118,3 +118,81 @@ class AyurezeCaption {
     );
   }
 }
+
+/// Per-track LiveKit E2EE state, mirrored 1:1 from `livekit_client`'s own
+/// `E2EEState` enum (`kNew` renamed to [pending] since `new` is a Dart
+/// keyword) plus an [unknown] fallback for any state this SDK doesn't
+/// recognize. Never invented or inferred — always set from a real
+/// `TrackE2EEStateEvent` LiveKit itself emitted.
+///
+/// [isSecure] is the fail-closed check every caller should use: it is
+/// `false` for every state except [ok] and [keyRatcheted], including
+/// [pending] (not yet confirmed) and [unknown] (unrecognized) — a track
+/// is never assumed secure absent an explicit, current, positive
+/// confirmation from LiveKit.
+enum AyurezeE2EEState {
+  /// Not yet confirmed either way (LiveKit's `E2EEState.kNew`).
+  pending,
+
+  /// Actively encrypting/decrypting successfully (LiveKit's `kOk`).
+  ok,
+
+  /// The key was rotated; still secure (LiveKit's `kKeyRatcheted`).
+  keyRatcheted,
+
+  /// No usable key is available for this track (LiveKit's `kMissingKey`).
+  missingKey,
+
+  /// The local encrypted publish path failed (LiveKit's
+  /// `kEncryptionFailed`).
+  encryptionFailed,
+
+  /// A received frame could not be decrypted (LiveKit's
+  /// `kDecryptionFailed`) — e.g. a wrong or incompatible key.
+  decryptionFailed,
+
+  /// An internal cryptor error (LiveKit's `kInternalError`).
+  internalError,
+
+  /// A state this SDK does not recognize. Always treated as NOT secure.
+  unknown;
+
+  /// Fail-closed: true only for the two states LiveKit itself reports as
+  /// actively secure. Every other state — including [pending], the state
+  /// before any confirmation — is NOT currently secure.
+  bool get isSecure => this == AyurezeE2EEState.ok || this == AyurezeE2EEState.keyRatcheted;
+}
+
+/// Mirrors `livekit_client`'s `TrackType` (audio/video/data), so callers
+/// never need to import LiveKit types directly.
+enum AyurezeTrackKind { audio, video, data, unknown }
+
+/// A safe, loggable snapshot of one track's E2EE state at a point in
+/// time. Deliberately carries only identifiers and a state
+/// classification — never encryption keys, ciphertext, plaintext, raw
+/// media, access tokens, or other session secrets.
+///
+/// Identified by [trackSid] (a stable LiveKit-assigned id), never by a
+/// display name, so state tracking survives renames and disambiguates
+/// participants with the same identity across reconnects.
+class AyurezeE2EETrackState {
+  final String participantIdentity;
+  final bool isLocalParticipant;
+  final String trackSid;
+  final AyurezeTrackKind kind;
+  final AyurezeE2EEState state;
+  final DateTime at;
+
+  const AyurezeE2EETrackState({
+    required this.participantIdentity,
+    required this.isLocalParticipant,
+    required this.trackSid,
+    required this.kind,
+    required this.state,
+    required this.at,
+  });
+
+  @override
+  String toString() => 'AyurezeE2EETrackState(participant: $participantIdentity, '
+      'track: $trackSid, kind: $kind, state: $state, secure: ${state.isSecure})';
+}

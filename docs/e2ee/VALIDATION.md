@@ -775,7 +775,16 @@ confidence) and not an AyurEze misconfiguration.
   step: run `sdk/flutter`'s equivalent join flow against a real Android
   emulator/device/CI runner with Flutter+Android tooling and confirm real
   encrypted media crosses Flutter↔Web and Flutter↔Flutter, the same way
-  `kdf-compat.spec.ts` now confirms it for Web↔native.
+  `kdf-compat.spec.ts` now confirms it for Web↔native. A follow-up pass
+  gave `sdk/flutter` a per-track E2EE diagnostic surface
+  (`e2eeStateChanges`/`getE2EETrackStates()`, mirroring LiveKit's
+  `MissingKey`/`DecryptionFailed`/etc. with fail-closed `isSecure`
+  semantics — see `sdk/flutter/README.md`), closing a real, separately
+  found gap (Flutter previously had no way to detect an E2EE failure at
+  all, unlike Web's `getEncryptionErrors()`). That diagnostic surface is
+  itself only code-level verified (22 unit tests against synthetic
+  state) — it makes a real device test *possible to observe*, it doesn't
+  substitute for running one.
 - **Flutter is entirely unverified in real conditions** — not just E2EE,
   but the whole SDK. This environment cannot run it at all; a real device/
   CI runner with Flutter+Android tooling is required before Flutter can be

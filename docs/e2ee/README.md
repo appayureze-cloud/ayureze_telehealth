@@ -95,3 +95,13 @@ against the real stack.
   by inspection, not device-verified, until that test is run. Read
   VALIDATION.md's "Fifth pass" section before deploying, and do not claim
   Flutter E2EE works until a real device/emulator test confirms it.
+- **`sdk/flutter` now exposes per-track E2EE diagnostics**
+  (`client.e2eeStateChanges` / `client.getE2EETrackStates()`, mirroring
+  LiveKit's own `MissingKey`/`DecryptionFailed`/`EncryptionFailed`/`Ok`/
+  `KeyRatcheted` states with fail-closed `isSecure` semantics) — see
+  `sdk/flutter/README.md`'s "E2EE diagnostics" section. This closes the
+  gap where Flutter previously had no way to detect a per-track E2EE
+  failure at all, unlike `sdk/web`'s `getEncryptionErrors()`/
+  `getEncryptionDiagnostics()`. Code-level verified only (`flutter
+  analyze` clean, 22 new unit tests passing against synthetic state) —
+  not exercised against a real LiveKit connection or Android device.
