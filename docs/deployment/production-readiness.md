@@ -36,11 +36,18 @@ infrastructure this environment lacks).
 - [x] **LiveKit** — PASS (functional, re-verified live this pass via
   restart test + real E2EE session immediately after). TLS/production
   networking (`use_external_ip`) NOT VERIFIED — local-dev config only.
-- [x] **TURN** — NOT VERIFIED. Coturn is running, healthy, correctly
-  hardened; a real forced-relay test was attempted this pass and was
-  inconclusive (not a false pass — see `docs/deployment/
-  turn-verification.md` for exactly why and what a conclusive test
-  needs).
+- [x] **TURN** — PARTIALLY VERIFIED. Coturn's own TURN protocol
+  (auth/allocation/relay) is confirmed working with real evidence
+  (`turnutils_uclient`); real, reproducible testing (raw TURN client,
+  real browser+LiveKit, and coturn's own server logs, three ways in
+  agreement) found that **in this deployment's current config**
+  (LiveKit `node_ip: 127.0.0.1`), TURN relay to LiveKit is conclusively
+  blocked by coturn's own `denied-peer-ip` security hardening — not a
+  broken TURN server, a real topology-specific block. No plaintext
+  fallback, credentials never logged. TLS/TCP TURN is not configured at
+  all (real gap for firewall-restricted networks). See
+  `docs/deployment/turn-verification.md` for the full evidence and what
+  a production topology needs to close this out.
 - [x] **API** — PASS. Stateless-by-design (re-confirmed this pass,
   `docs/deployment/multi-replica-readiness.md`), real HEALTHCHECK added
   and verified this pass (`docs/deployment/production-readiness.md`
