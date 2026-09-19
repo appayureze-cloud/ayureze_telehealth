@@ -103,6 +103,25 @@ resolved) a contained change: a new class, not a pipeline redesign.
 - **The terminology/safety layer protects digit-form numbers**, not
   spelled-out number words ("seven" vs "7") — growing this to a fuller
   NLP-based numeric-entailment check is future work.
+- **CRITICAL, verified this pass: the safety validator only compares
+  numeric digit sequences — it does not verify units, drug identity, or
+  negation.** Confirmed directly by calling `app.pipeline.safety.validate()`
+  with synthetic source/mistranslation pairs (not a hypothesis — real
+  function calls, real results): a unit swap ("Take 10 mg twice daily" →
+  "Take 10 ml twice daily") is marked **`safe=True`**; a dropped/flipped
+  negation ("Do not take on an empty stomach" → "Take on an empty
+  stomach") is marked **`safe=True`**; a medicine-name substitution with
+  the same dosage number ("Take 500 mg paracetamol" → "Take 500 mg
+  ibuprofen") is marked **`safe=True`**. Each of these is a real,
+  clinically dangerous mistranslation that preserves the digit sequence
+  the current validator checks, so none is caught, and the (wrong)
+  translated audio would be synthesized and published today. This is a
+  genuine gap in the deterministic safety layer, not a hypothetical one —
+  see the accompanying release report's security findings for severity
+  and recommended remediation (unit-token matching against the dosage
+  regex's captured unit group, a negation-marker check, and glossary-term
+  presence/absence comparison, all addable within the existing
+  deterministic-validator design without a model in the loop).
 - **CPU-only inference.** Translation (~0.6-1s/sentence) and TTS
   (~0.4s/sentence) on CPU are acceptable for a demo/test pipeline but not
   production-grade real-time latency; a production deployment should use

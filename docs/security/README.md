@@ -113,3 +113,55 @@ CI (no CI pipeline exists in this build at all — see "What production
 deployment still requires" in `docs/deployment/README.md`); the AI agent's
 own HTTP control surface has no per-call authentication beyond running on
 an assumed-internal network, as stated above.
+
+## Red team verification (live, against the real running stack)
+
+The threat-model table above is a design claim; this section is the
+result of actually attacking a live instance (two freshly-seeded tenants,
+real JWTs, real HTTP requests — not source review) as part of the
+post-Day-7 production-readiness audit. All results below are from real
+`curl`/Playwright runs against `docker compose`'s `api`/`livekit`
+services on this date, not assumptions.
+
+| Attack | Result | Evidence |
+|---|---|---|
+| Missing `Authorization` header on a protected endpoint | **Rejected**, `401 missing_token` | live `curl` |
+| Malformed JWT (`not.a.valid.jwt`) | **Rejected**, `401 invalid_token` | live `curl` |
+| Tampered JWT signature (byte flipped mid-signature) | **Rejected**, `401 invalid_token` | live `curl` (an earlier attempt that flipped only the token's last character returned a business-logic 404 instead of 401 — traced to a base64 encoding artifact, not a verification bypass: a JWT signature's trailing base64 character has unused low-order bits, so some last-character edits decode to byte-identical signatures; a genuine mid-signature tamper was correctly rejected) |
+| Tampered JWT payload (`role` changed to `ai_agent`, unsigned) | **Rejected**, `401 invalid_token` | live `curl` — signature no longer matches the modified payload |
+| Algorithm-confusion (`alg: none`, empty signature) | **Rejected**, `401 invalid_token` | live `curl` |
+| Refresh token replay (reusing an already-redeemed refresh token) | **Rejected**, `401 invalid or expired refresh token` | live `curl` — confirms single-use/rotation, not just short TTL |
+| Doctor from tenant A joins tenant B's session (valid token, wrong tenant) | **Rejected**, `404 session not found` (not `403` — tenant existence isn't confirmed either) | live `curl`, two real seeded tenants |
+| Doctor from tenant A creates a session referencing tenant B's patient email | **Rejected**, `404 patient not found in this tenant` | live `curl` |
+| Patient calls the doctor-only create-session endpoint | **Rejected**, `403 only a doctor or admin may create a session` | live `curl` |
+| Minted LiveKit token's grant scope | **Correctly scoped**: `roomJoin` limited to the single assigned room, role attribute matches caller | inspected the real decoded JWT payload from a live `/join` call |
+| Internal AI-agent authorize endpoint, no service secret | **Rejected**, `401 invalid_service_secret` | live `curl` |
+| Internal AI-agent authorize endpoint, wrong service secret | **Rejected**, `401 invalid_service_secret` | live `curl` |
+| LiveKit webhook endpoint, no/invalid signature | **Rejected**, `401 invalid_webhook_signature` | live `curl` |
+| AI join without consent / cross-tenant AI authorization / consent revocation force-removal / AI stopped on session end | **All correctly rejected/stopped** | `apps/e2e-harness/tests/ai-authorization-boundaries.spec.ts`, re-run live this pass, 4/4 passing |
+| E2EE fail-closed on worker init failure | **Correctly fails closed** (disconnect + throw, never silent plaintext) | `apps/e2e-harness/tests/fail-closed.spec.ts`, re-run live this pass |
+
+**No vulnerability was found in this pass.** Every attack attempted was
+correctly rejected. This is real evidence for the specific attacks
+listed, not a certification that no vulnerability exists anywhere in the
+system — SQL-injection-shaped and path-traversal-shaped session IDs were
+also tried and intercepted by the auth middleware before reaching any
+query layer (both rejected at `401` before their payload was ever
+evaluated), which is a good sign but wasn't followed by a deeper
+authenticated-request injection sweep (e.g. fuzzing every JSON body
+field against the ORM/query layer with a valid token) — this remains
+recommended, non-blocking follow-up work, not a known gap.
+
+**One real, unrelated-to-auth finding from this pass — medical
+translation safety, not an auth issue:** the AI pipeline's deterministic
+safety validator (`apps/ai-agent/app/pipeline/safety.py`) was found to
+only compare numeric digit sequences between source and translated text.
+Confirmed live (direct calls to the real `validate()` function, not a
+hypothesis): a dosage unit swap (mg→ml), a dropped/flipped negation
+("do not take" → "take"), and a medicine-name substitution with the same
+dosage number all pass as `safe=True` today — none is a spoofing/auth
+bypass, but each is a real, clinically dangerous mistranslation that the
+safety layer as currently scoped would let through to TTS/publication.
+See `docs/ai/README.md`'s "Known limitations" for full detail and
+recommended remediation, and the accompanying release report's SECURITY
+section for severity/priority.
