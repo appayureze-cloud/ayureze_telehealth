@@ -1,10 +1,198 @@
 # TURN relay verification
 
-**Classification: TURN RELAY PARTIALLY VERIFIED.** Read "Classification"
-at the bottom before anything else — this supersedes the prior
-"NOT VERIFIED" conclusion below, which is kept for its own real,
-still-useful investigation trail (the prior pass's iptables approach and
-why it was inconclusive remain accurate).
+**Classification: TURN PRODUCTION TOPOLOGY FIXED — EXTERNAL RELAY
+VERIFICATION PENDING.** Read "Production topology (this pass)" below and
+"External relay verification procedure" before anything else — this
+supersedes the prior "TURN RELAY PARTIALLY VERIFIED" conclusion, which is
+kept (further down) for its own real, still-useful investigation trail:
+the root-cause finding there (coturn's `denied-peer-ip` correctly
+rejecting LiveKit's local-dev loopback address) is exactly *why* this
+pass's fix targets making that address configurable to a real one,
+rather than disabling or weakening the protection that caught it.
+
+## Production topology (this pass)
+
+### Phase 1 — Audit: what deployment target actually exists
+
+Checked for: Terraform/Ansible/cloud-init, a `scripts/` deploy target, any
+VPS reference in `docs/`, this environment's own network identity.
+
+**Finding, stated plainly (per this task's own instruction not to
+invent one): no production VPS is provisioned or referenced anywhere in
+this repository.** `docs/deployment/disaster-recovery.md` discusses a
+"single-VPS deployment" only as the *architecture this system is designed
+for*, not a deployed instance with a known address — confirmed by
+grepping the whole repo for VPS/public-IP/cloud-provider references and
+finding only that one architectural mention, plus generic KMS-provider
+docs (AWS/GCP) that don't imply an actual account or host. This sandbox's
+own network identity (`hostname -I` → `192.0.2.2`, an RFC 5737
+documentation-reserved address; outbound HTTP requests exit via
+`160.79.106.129`, this session's outbound proxy's address, not an
+inbound-reachable address assigned to this container) is not a
+production host either — using either as a stand-in "public IP" would be
+exactly the kind of fabrication this task explicitly prohibits, so
+neither is used anywhere below.
+
+Answers to Phase 1's specific questions, from what the repo/environment
+actually shows:
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Expected VPS/public IP | **Not determinable — none exists in this repo/environment.** Must come from whoever provisions the real deployment. |
+| 2 | LiveKit in Docker? | Yes — `infrastructure/docker/docker-compose.yml`, `livekit/livekit-server:v1.13.7` |
+| 3 | Coturn in Docker? | Yes — same file, `coturn/coturn:4.6.2-alpine` |
+| 4 | Publicly exposed ports | See "Firewall / port audit" below |
+| 5 | Docker network | `ayureze-net`, bridge, `172.18.0.0/16` (confirmed via `docker network inspect`) |
+| 6 | IP LiveKit advertises | `127.0.0.1` (local-dev default) — now configurable, see Phase 2 |
+| 7 | IP coturn advertises for relay | Container's own Docker-assigned address by default (no `external-ip` was set) — now configurable, see Phase 3 |
+| 8 | NAT between VPS and Internet | Unknown — depends on the real VPS provider, not determinable here |
+| 9 | VPS behind another NAT/LB | Unknown — same |
+| 10 | Cloud firewall/security group | None exists — no cloud provider is configured in this repo |
+| 11 | UDP 49160–49200 publicly reachable | Not applicable here (no public deployment); locally, yes, via the docker-compose `ports:` mapping |
+| 12 | TCP 3478 publicly reachable | Same caveat — locally yes, via `ports:` |
+| 13 | TCP/TLS 5349 configured | **No** — confirmed absent from both the coturn `command:` and `ports:` (see Step 10 below, unchanged this pass) |
+| 14 | LiveKit real externally routable node IP | Not available — no VPS to have one |
+| 15 | Is `use_external_ip` required for this topology | **Yes, for any real deployment** — was hardcoded `false` before this pass (see Phase 2) |
+
+### Phase 2 — LiveKit external networking: made configurable, not guessed
+
+**Before this pass**: `infrastructure/docker/docker-compose.yml` hardcoded
+`use_external_ip: false` — there was no way to enable external-IP
+advertising at all without editing the compose file directly (`node_ip`
+was already parameterized via `LIVEKIT_NODE_IP`, but flipping
+`use_external_ip` required a code change).
+
+**This pass**: `use_external_ip: ${LIVEKIT_USE_EXTERNAL_IP:-false}` — a
+new env var, defaulting to `false` (byte-for-byte identical resolved
+config to before when unset, confirmed via `docker compose config`).
+Production sets `LIVEKIT_USE_EXTERNAL_IP=true` **and**
+`LIVEKIT_NODE_IP=<the VPS's real public IP>` together — LiveKit then
+advertises that address directly to clients instead of the local-dev
+loopback address. No IP is hardcoded or guessed anywhere in this change;
+the value is supplied entirely at deploy time via `.env`, which is
+already gitignored.
+
+### Phase 3 — Coturn external networking: made configurable, not guessed
+
+**Before this pass**: no way to tell coturn its relay addresses should be
+reported under a different (public) IP than its own Docker-assigned one
+— no `external-ip` directive anywhere, and coturn's own image default
+CMD (`--external-ip=$(detect-external-ip)`, confirmed by inspecting the
+`coturn/coturn:4.6.2-alpine` image directly) was silently discarded,
+because this project's `command:` fully replaces the image's default CMD
+rather than merging with it.
+
+**This pass**: added `${COTURN_EXTERNAL_IP:+--external-ip=${COTURN_EXTERNAL_IP}}`
+to the coturn `command:` block — a new env var. When unset (local dev,
+the default), this resolves to nothing and the command is identical to
+before (verified with `docker compose config`, and by recreating the
+containers and re-running the full TURN + Web↔Web test suite — no
+change in behavior). When set, it becomes a real
+`--external-ip=<value>` argument, telling coturn to report that address
+in `XOR-RELAYED-ADDRESS` responses instead of its own container IP.
+`denied-peer-ip` (the SSRF protection Step 4/5 below proves is actually
+enforced) is completely untouched by this change — it governs which
+*destination peer* addresses coturn will relay *to*, a different
+mechanism from which address it *reports itself as*.
+
+### Phase 4 — Firewall / port audit
+
+| Purpose | Port | Protocol | Local dev (docker-compose) | Production (must be opened at VPS firewall + cloud security group, in addition to Docker publishing the port) |
+|---|---|---|---|---|
+| Go API | `8080` | TCP | Published to host | Only if the API itself is directly public (commonly it sits behind a reverse proxy on 443 instead — out of this task's scope) |
+| LiveKit signaling/HTTP | `7880` | TCP (WS upgrade) | Published to host | Required |
+| LiveKit RTC (TCP fallback) | `7881` | TCP | Published to host | Required |
+| LiveKit RTC (UDP, preferred) | `50000`–`50100` | UDP | Published to host | Required — this is the range clients connect to directly when ICE succeeds without TURN |
+| Coturn STUN/TURN | `3478` | TCP + UDP | Published to host (both) | Required |
+| Coturn relay | `49160`–`49200` | UDP | Published to host | Required — this is the range TURN clients actually exchange relayed media on |
+| Coturn TURNS (TLS) | `5349` | TCP (TLS) | **Not configured, not published** | Only if TLS TURN is implemented (see Step 10 — not done this pass, by design) |
+
+Docker's own `ports:` publishing (confirmed present for every row above
+except the TLS one, by reading `infrastructure/docker/docker-compose.yml`
+directly) is necessary but not sufficient in production — the real VPS's
+host firewall (`ufw`/`iptables`/`nftables`) and, if the VPS is behind a
+cloud provider's security group/network ACL, that layer too, must both
+also allow the same ports. Neither of those layers exists to audit here,
+since no real VPS is provisioned — this is the exact "required production
+checks" list an operator provisioning one needs to work through, not a
+claim that they're already open somewhere.
+
+**Do not open broader ranges than this table.** In particular, the UDP
+relay range should stay at the minimum span the deployment's expected
+concurrent-call volume needs (each active relayed stream typically uses
+one port from this range) — widening it "to be safe" only enlarges the
+attack surface without benefit.
+
+## External relay verification procedure (for whoever has real infrastructure)
+
+This sandbox has no second network and no real VPS — genuinely proving
+`candidate type: relay` carrying real media between two externally
+separated clients cannot happen here, and this document does not claim
+otherwise. This is the exact, concrete procedure to run once real
+infrastructure exists — built directly on the tooling this investigation
+already produced (`apps/e2e-harness/src/turn-harness.ts`,
+`apps/e2e-harness/tests/turn-relay.spec.ts`), not a new implementation:
+
+1. **Deploy** the stack to a real VPS with a static public IP. Set
+   `LIVEKIT_USE_EXTERNAL_IP=true`, `LIVEKIT_NODE_IP=<that public IP>`,
+   `COTURN_EXTERNAL_IP=<that public IP>` in the deployment's `.env` (both
+   phases above). Open the ports in the Phase 4 table at the VPS's host
+   firewall and cloud security group.
+2. **Client A**: any machine on the open Internet or a mobile hotspot —
+   genuinely not on the VPS's own network.
+3. **Client B**: a second, independent network path — a different ISP/
+   location, or (more reliably reproducible) a network explicitly
+   configured to block outbound UDP so only the TURN path can succeed.
+4. Point `apps/e2e-harness`'s `API_BASE_URL`/`LIVEKIT_URL` constants (or
+   equivalent env-driven config, worth adding if running this
+   repeatedly) at the real deployment instead of `localhost`.
+5. Run `tests/turn-relay.spec.ts`'s **forced-relay** test
+   (`iceTransportPolicy: "relay"`, already implemented) from Client A
+   against a Client B on the separate network. **Expected, if the Phase
+   2/3 fix is correct**: the connection now *succeeds* (unlike in this
+   sandbox, where it fails by design — see Step 4/5 below), and
+   `getDiagnostics().selectedCandidatePair` reports `localType`/
+   `remoteType` as `"relay"` on at least one side of the pair — that is
+   the actual proof this task requires, not "allocation succeeded."
+6. Run the **control** test (`iceTransportPolicy` default) the same way,
+   to distinguish "TURN forced and worked" from "direct connectivity was
+   available anyway" — do not report the control result as a TURN result
+   (Phase 9's explicit instruction).
+7. Repeat Step 8 below's failure/recovery cycle against the real
+   deployment: stop coturn, confirm the forced-relay call **fails to
+   connect** (not falls back to plaintext or direct), restart coturn,
+   confirm a new forced-relay call succeeds again with a real `relay`
+   candidate pair.
+8. Repeat Phase 7's E2EE-over-TURN checklist (below) with the connection
+   actually reaching a stable, relay-carried media state this time —
+   record `isE2EEEnabled`, per-track `AyurezeE2EEState`/
+   `AyurezeEncryptionDiagnostics`, `audioBytesReceived`, and the selected
+   candidate pair together, in one run.
+
+### Phase 7 — E2EE + TURN combined checklist (what to verify once Step 5 above succeeds)
+
+Already wired into `turn-harness.ts`'s existing diagnostics (`isE2EEEnabled`,
+per-participant `isEncrypted`, `errors` from `RoomEvent.EncryptionError`,
+`audioBytesReceived`, `selectedCandidatePair`) — nothing new to build,
+only to run once a topology exists where the connection reaches a stable
+relay-carried state long enough to observe all of these together:
+
+1. ICE connection succeeds. 2. Selected candidate is `relay`. 3. Real
+audio flows (`audioBytesReceived > 0`). 4. `isE2EEEnabled: true`. 5. Both
+participants report `isEncrypted: true`. 6. `errors: []` (no
+`RoomEvent.EncryptionError`). 7. No plaintext fallback exists in this
+codebase to accidentally exercise (confirmed by code inspection — there
+is no fallback path in `sdk/web/src/client.ts` or `livekit-client`'s own
+E2EE machinery). 8. SFU cannot decrypt media — architectural, not
+newly re-verified this pass (SFrame encrypts before the RTP payload
+TURN/LiveKit ever touches; see `docs/e2ee/VALIDATION.md`).
+
+**The commit `4d14357` E2EE fix (key-derivation input + key-size) is
+unmodified this pass** — confirmed by `git diff` showing zero changes to
+`sdk/web/src/client.ts`, `apps/ai-agent/app/agent.py`, or
+`sdk/flutter/lib/src/ayureze_client.dart`, and by the full E2EE Playwright
+suite (`web-web-e2ee.spec.ts`, `kdf-compat.spec.ts`, `fail-closed.spec.ts`)
+still passing after this pass's networking changes (see Regression below).
 
 ## Step 1 — Current TURN configuration (audit, before any change)
 
@@ -23,6 +211,13 @@ why it was inconclusive remain accurate).
 | LiveKit `rtc.use_external_ip` | `false` | same |
 | LiveKit `rtc.enable_loopback_candidate` | `true` | same |
 | Docker network subnet | `172.18.0.0/16` | `docker network inspect ayureze-telehealth_ayureze-net` |
+
+*(Note: this table reflects the audit as originally performed, and still
+reflects local dev's unchanged defaults. `rtc.use_external_ip` and
+coturn's advertised relay address are now configurable in production via
+`LIVEKIT_USE_EXTERNAL_IP`/`COTURN_EXTERNAL_IP` — see "Production topology
+(this pass)" above — without changing anything in this table for local
+dev.)*
 
 **The load-bearing fact this whole investigation turns on**: LiveKit's
 own advertised media address in this deployment (`127.0.0.1`) falls
@@ -272,9 +467,12 @@ Re-run after all of the above (TURN start/stop/restart cycles included):
   `tests/turn-relay.spec.ts` are reusable for exactly that once such an
   environment exists; only the topology is missing.
 
-## Classification
+## Classification history (superseded — current classification is at the top of this document)
 
-**TURN RELAY PARTIALLY VERIFIED.**
+**Previously: TURN RELAY PARTIALLY VERIFIED.** This was the correct
+classification *before* the production-topology fix above existed — kept
+verbatim below because the evidence it rests on is still exactly what
+justifies this pass's fix, and remains true:
 
 Not simply "coturn is healthy" (explicitly not sufficient, per this
 task's own instruction, and not what this classification rests on).
@@ -298,15 +496,20 @@ What is real, verified, with reproducible evidence:
   because that specific topology does not exist in this sandbox
   (Limitations).
 
-This is "PARTIALLY VERIFIED," not "NOT VERIFIED," because — unlike the
-prior pass, which could only report an ambiguous non-result — this pass
-produced a definitive, reproducible, three-way-corroborated answer to
-*why* relay doesn't carry LiveKit media in this deployment, and
-independently proved coturn's relay mechanism itself is functionally
-correct. It is not "VERIFIED" because the one thing production actually
-needs — TURN successfully relaying real LiveKit media end-to-end in a
-topology where it's structurally reachable — still has not been observed
-here, and TLS/TCP TURN remains entirely unconfigured.
+**What changed this pass**: `node_ip`/`use_external_ip`
+(LiveKit) and the relay-advertised address (coturn) are now genuinely
+configurable to a real production value — see "Production topology (this
+pass)" at the top — closing the exact gap this classification's own
+"genuinely unresolved" bullet named. That configuration was verified
+correct at the config-resolution level (`docker compose config`, both
+set and unset) and confirmed not to regress local dev (containers
+recreated, full TURN + Web↔Web + E2EE Playwright suite re-run, all
+green). What it could **not** do, because no real VPS or second network
+exists in this sandbox, is prove a `relay` candidate pair actually
+carrying media between two genuinely external clients — hence the
+current top-of-document classification,
+**TURN PRODUCTION TOPOLOGY FIXED — EXTERNAL RELAY VERIFICATION PENDING**,
+rather than an upgrade to "VERIFIED."
 
 ---
 

@@ -36,18 +36,25 @@ infrastructure this environment lacks).
 - [x] **LiveKit** — PASS (functional, re-verified live this pass via
   restart test + real E2EE session immediately after). TLS/production
   networking (`use_external_ip`) NOT VERIFIED — local-dev config only.
-- [x] **TURN** — PARTIALLY VERIFIED. Coturn's own TURN protocol
-  (auth/allocation/relay) is confirmed working with real evidence
-  (`turnutils_uclient`); real, reproducible testing (raw TURN client,
-  real browser+LiveKit, and coturn's own server logs, three ways in
-  agreement) found that **in this deployment's current config**
-  (LiveKit `node_ip: 127.0.0.1`), TURN relay to LiveKit is conclusively
-  blocked by coturn's own `denied-peer-ip` security hardening — not a
-  broken TURN server, a real topology-specific block. No plaintext
-  fallback, credentials never logged. TLS/TCP TURN is not configured at
-  all (real gap for firewall-restricted networks). See
-  `docs/deployment/turn-verification.md` for the full evidence and what
-  a production topology needs to close this out.
+- [x] **TURN** — PRODUCTION TOPOLOGY FIXED, EXTERNAL RELAY VERIFICATION
+  PENDING. Coturn's own TURN protocol (auth/allocation/relay) is
+  confirmed working with real evidence (`turnutils_uclient`); real,
+  reproducible testing (raw TURN client, real browser+LiveKit, and
+  coturn's own server logs, three ways in agreement) found the local-dev
+  config's TURN relay to LiveKit conclusively blocked by coturn's own
+  `denied-peer-ip` security hardening reacting to LiveKit's local-dev
+  loopback address — not a broken TURN server. `LIVEKIT_USE_EXTERNAL_IP`/
+  `LIVEKIT_NODE_IP`/`COTURN_EXTERNAL_IP` are now real, deploy-time-only
+  config (no hardcoded/guessed IP anywhere; local-dev behavior confirmed
+  byte-for-byte unchanged) so a real VPS can be pointed at correctly —
+  but no real VPS or second network exists in this repo/environment to
+  actually run the external relay test against, so `relay`-candidate
+  media flow between two genuinely separate clients remains unobserved.
+  No plaintext fallback, credentials never logged, `denied-peer-ip`
+  unweakened. TLS/TCP TURN is not configured at all (real gap for
+  firewall-restricted networks). See `docs/deployment/
+  turn-verification.md` for the full evidence, the exact production
+  config values needed, and the external verification procedure.
 - [x] **API** — PASS. Stateless-by-design (re-confirmed this pass,
   `docs/deployment/multi-replica-readiness.md`), real HEALTHCHECK added
   and verified this pass (`docs/deployment/production-readiness.md`

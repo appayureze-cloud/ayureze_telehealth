@@ -75,13 +75,22 @@ services:
           tcp_port: 7881
           port_range_start: ${LIVEKIT_RTC_UDP_PORT_RANGE_START:-50000}
           port_range_end: ${LIVEKIT_RTC_UDP_PORT_RANGE_END:-50100}
-          use_external_ip: false
-          # Single-machine local dev only: forces ICE candidates to
-          # advertise the host loopback address (reachable via the
-          # docker-compose port mappings below) instead of LiveKit's
-          # internal container IP, which browser clients on the host
-          # cannot route to. Production deployments must instead set
-          # use_external_ip: true with a STUN server, or a real node IP.
+          # LIVEKIT_USE_EXTERNAL_IP/LIVEKIT_NODE_IP together select the
+          # deployment topology — see docs/deployment/turn-verification.md
+          # ("Production topology") for the exact production values this
+          # needs, which are NOT known/guessable from this repo alone.
+          #   - Local dev (default, unchanged): use_external_ip=false,
+          #     node_ip=127.0.0.1 — forces ICE candidates to advertise the
+          #     host loopback address (reachable via the docker-compose
+          #     port mappings below), since browser clients on the host
+          #     cannot route to LiveKit's internal container IP.
+          #   - Production (a VPS with a static public IP, the normal case
+          #     for a single-VPS deployment — see docs/deployment/
+          #     disaster-recovery.md): set LIVEKIT_USE_EXTERNAL_IP=true and
+          #     LIVEKIT_NODE_IP=<that public IP> so LiveKit advertises it
+          #     directly to clients — no STUN round-trip needed. This repo
+          #     cannot supply that IP for you; it is set at deploy time.
+          use_external_ip: ${LIVEKIT_USE_EXTERNAL_IP:-false}
           node_ip: ${LIVEKIT_NODE_IP:-127.0.0.1}
           enable_loopback_candidate: true
         turn:
@@ -121,6 +130,14 @@ services:
   coturn:
     image: coturn/coturn:4.6.2-alpine
     restart: unless-stopped
+    # COTURN_EXTERNAL_IP is unset/empty by default (local dev, unchanged
+    # behavior — the flag below then evaluates to nothing, confirmed via
+    # `docker compose config`). Production (coturn running in Docker on a
+    # VPS whose public IP is NOT the container's own address, the normal
+    # case) MUST set it to that VPS's real public IP, so coturn reports a
+    # reachable relay address to clients instead of its internal Docker
+    # network IP — see docs/deployment/turn-verification.md ("Production
+    # topology"). This repo cannot supply that IP for you.
     command: >
       -c /etc/coturn/turnserver.conf
       --realm=${TURN_REALM:-ayureze.local}
@@ -129,6 +146,7 @@ services:
       --min-port=${TURN_MIN_PORT:-49160}
       --max-port=${TURN_MAX_PORT:-49200}
       --listening-port=${TURN_LISTEN_PORT:-3478}
+      ${COTURN_EXTERNAL_IP:+--external-ip=${COTURN_EXTERNAL_IP}}
     ports:
       - "${TURN_LISTEN_PORT:-3478}:3478"
       - "${TURN_LISTEN_PORT:-3478}:3478/udp"
