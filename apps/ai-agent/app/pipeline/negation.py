@@ -65,6 +65,20 @@ _NEGATION_PATTERNS: dict[str, list[re.Pattern[str]]] = {
             r"இல்லை",  # "illai" — "no" / "is not"
             r"அல்ல",  # "alla" — "is not" (copular negation)
             r"தவிர்",  # "thavir" — "avoid"
+            # "-ாதீர்கள்" — the negative-imperative verb suffix (e.g.
+            # "எடுக்காதீர்கள்"/"கொள்ளாதீர்கள்" — "do not take"), a distinct
+            # standard Tamil grammatical negation construction from the
+            # standalone-word markers above, not a domain-specific term.
+            # Missing this caused a real false-negative in this pass's own
+            # real NLLB-200 output ("Do not take this medicine at
+            # bedtime." translated using this suffix form rather than a
+            # standalone negation word), which the validator then flagged
+            # as an unrelated mismatch instead of correctly confirming
+            # negation was preserved. Grammatically unambiguous as a
+            # negation marker; still subject to the same "review by a
+            # qualified Tamil medical linguist" caveat as the rest of this
+            # curated table.
+            r"ாதீர்கள்",
         ]
     ],
 }

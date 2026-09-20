@@ -201,7 +201,23 @@ class TestNegation:
     def test_negation_unknown_language_returns_none_not_false(self):
         # Malayalam has no negation table — must report "unknown", never
         # silently resolve to "no negation present".
-        assert negation.has_negation("ഇത് കഴിക്കരുത്.", "ml") is None
+        assert negation.has_negation("ഇത് കഴിക്കரുத்.", "ml") is None
+
+    def test_tamil_negative_imperative_suffix_recognized(self):
+        # Regression for a real false-negative found by this pass's own
+        # real-model (NLLB-200) end-to-end test: "Do not take this
+        # medicine at bedtime." was translated using the negative-
+        # imperative verb suffix "-ாதீர்கள்" ("எடுக்காதீர்கள்") rather than
+        # a standalone negation word — a standard Tamil grammatical
+        # negation form the marker list previously missed entirely.
+        assert negation.has_negation("இந்த மருந்தை எடுக்காதீர்கள்.", "ta") is True
+
+    def test_pass_tamil_negative_imperative_suffix_preserves_negation(self):
+        assert_passed(
+            "Do not take this medicine.",
+            "இந்த மருந்தை எடுக்காதீர்கள்.",
+            target_lang="ta",
+        )
 
 
 # ================= Steps 7-8: Medicine / Ayurveda terminology =================

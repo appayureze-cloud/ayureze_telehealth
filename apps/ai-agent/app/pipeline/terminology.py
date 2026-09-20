@@ -237,6 +237,14 @@ _DOSAGE_UNIT_RE = re.compile(
 _TAMIL_UNIT_STEMS: dict[str, str] = {
     "மில்லிகிராம்": "mg", "மி.கி": "mg",
     "மில்லிலிட்டர்": "ml", "மி.லி": "ml",
+    # "மிலி" (bare "milli-") — this pass's own real NLLB-200 output for
+    # "2.5 ml once daily for 5 days" used this shorter colloquial form
+    # instead of the full "மில்லிலிட்டர்" or the dotted abbreviation
+    # "மி.லி" already above, and was missed by both (a real false-positive
+    # unit_mismatch rejection of an otherwise-correct translation) until
+    # this entry was added. Ordered after the longer, more specific stems
+    # below via _TAMIL_UNIT_STEMS_ORDERED so it never shadows them.
+    "மிலி": "ml",
     "கிலோகிராம்": "kg",
     "மைக்ரோகிராம்": "mcg",
     "கிராம்": "g",

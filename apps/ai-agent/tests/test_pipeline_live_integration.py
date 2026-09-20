@@ -66,8 +66,22 @@ async def publish_speech(room: rtc.Room, text: str) -> rtc.AudioSource:
 
     # Trailing silence so the agent's VAD hangover actually fires and
     # closes out the turn (see app/pipeline/vad.py TurnSegmenter).
+    # TurnSegmenter's default hangover_frames=20 requires 20 * 512-sample
+    # VAD frames (32ms each) = 640ms of continuous silence before it closes
+    # a turn. This publishing loop's frames are a different, smaller size
+    # (frame_len=160 samples / 10ms, matching LiveKit's typical audio
+    # frame duration) that the agent's own buffering regroups into VAD's
+    # 512-sample frames — so the silence duration that matters is real
+    # audio time, not this loop's iteration count. A prior version of this
+    # test sent only 40 frames (400ms) here, comfortably less than the
+    # 640ms actually required — a genuine test-timing defect (not a
+    # pipeline/VAD defect) found via this pass's own real-model live
+    # integration run: the turn segmenter never closed, so no caption was
+    # ever published, unrelated to STT/translation/safety-validator
+    # correctness. 90 frames (900ms) gives real margin over the 640ms
+    # requirement to tolerate normal asyncio scheduling jitter.
     silence = np.zeros(frame_len, dtype=np.int16)
-    for _ in range(40):  # ~400ms
+    for _ in range(90):  # ~900ms — see note above
         frame = rtc.AudioFrame.create(sample_rate=16000, num_channels=1, samples_per_channel=frame_len)
         np.frombuffer(frame.data, dtype=np.int16)[:] = silence
         await source.capture_frame(frame)
