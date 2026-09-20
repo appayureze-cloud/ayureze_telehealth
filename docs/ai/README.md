@@ -116,6 +116,29 @@ resolved) a contained change: a new class, not a pipeline redesign.
   (~0.4s/sentence) on CPU are acceptable for a demo/test pipeline but not
   production-grade real-time latency; a production deployment should use
   GPU inference or a managed API for the heavier stages.
+- **Silero VAD does not reliably classify MMS-TTS-synthesized speech as
+  speech.** Root-caused end to end this pass (see
+  `tests/pipeline/test_vad_tts_compatibility.py` and
+  `tests/test_pipeline_live_integration.py`'s `xfail` marker): a real,
+  loud, well-formed `facebook/mms-tts-eng` utterance (confirmed non-zero
+  RMS at every stage — synthesis, LiveKit transport with and without
+  E2EE, and arrival at `LiveAudioProcessor._on_frame`) never pushes
+  Silero VAD's speech probability above ~0.15, well short of the 0.5
+  threshold, so `TurnSegmenter` never closes a turn and no audio ever
+  reaches STT. This is specific to this TTS engine's acoustic
+  characteristics vs. what Silero VAD was trained on — real recorded
+  human speech is expected to work correctly (this is exactly what a
+  production deployment receives), and this gap only affects testing
+  with synthesized "stand-in microphone" audio. It is not a defect in
+  VAD, `TurnSegmenter`, STT, translation, the safety validator, or
+  LiveKit transport/E2EE, all of which were independently ruled out with
+  direct evidence during this investigation and remain verified via
+  `tests/pipeline/test_pipeline_models.py` (which bypasses VAD by
+  calling `pipeline.process()` on pre-segmented audio directly). A real
+  device/microphone test, or a different real-speech test fixture, is
+  needed to close this specific gap — see
+  `test_live_translation_pipeline_produces_captions`'s `xfail` reason
+  for the exact next step.
 
 ## Safety validator
 

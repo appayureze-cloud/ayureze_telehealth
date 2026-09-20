@@ -40,6 +40,14 @@ class SileroVAD(VADProvider):
         self.threshold = threshold
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
         self._sr = np.array(SAMPLE_RATE, dtype=np.int64)
+        # Diagnostic-only: the probability this instance's most recent
+        # speech_probability() call returned. Never read by production
+        # code — a caller wanting to *log* what the VAD just decided
+        # (e.g. streaming.py's optional AYUREZE_AUDIO_DIAG instrumentation)
+        # reads this instead of calling speech_probability() a second
+        # time, which would incorrectly feed the same audio chunk through
+        # this stateful RNN twice and corrupt self._state.
+        self.last_probability: float | None = None
 
     def reset(self) -> None:
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
@@ -51,7 +59,9 @@ class SileroVAD(VADProvider):
         t0 = time.monotonic()
         out, self._state = self._session.run(None, {"input": chunk, "state": self._state, "sr": self._sr})
         metrics.PIPELINE_STAGE_LATENCY_SECONDS.labels(stage="vad").observe(time.monotonic() - t0)
-        return float(out[0][0])
+        probability = float(out[0][0])
+        self.last_probability = probability
+        return probability
 
     def is_speech(self, frame: np.ndarray) -> bool:
         return self.speech_probability(frame) >= self.threshold
@@ -79,6 +89,18 @@ class TurnSegmenter:
         self._in_speech = False
         self._silence_run = 0
         self._speech_frames: list[np.ndarray] = []
+
+    @property
+    def in_speech(self) -> bool:
+        """Diagnostic-only read of current turn state — never mutated by
+        a reader, safe to expose."""
+        return self._in_speech
+
+    @property
+    def silence_run(self) -> int:
+        """Diagnostic-only read of the current trailing-silence frame
+        count, for comparing against hangover_frames."""
+        return self._silence_run
 
     def push(self, frame: np.ndarray) -> np.ndarray | None:
         """Feed one FRAME_SAMPLES-length frame. Returns a concatenated
