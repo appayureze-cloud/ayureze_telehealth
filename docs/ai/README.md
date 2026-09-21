@@ -137,22 +137,27 @@ resolved) a contained change: a new class, not a pipeline redesign.
   a test that directly demonstrates the pre-fix calling convention fails
   on the same real speech sample the fix now correctly detects with a
   sustained, textbook speech/pause probability trace).
-- **`test_live_translation_pipeline_produces_captions` still fails, for
-  a different, deeper, not-yet-isolated reason.** With the VAD fix in
-  place and a real recorded speech fixture (`tests/fixtures/jfk.flac`)
-  in place of TTS, the agent still receives exactly zero-RMS audio —
-  but only within this test's full Go-API + FastAPI + AIAgent
-  orchestration; three independent minimal reproductions (two
-  `rtc.Room()` connections in one process, with and without E2EE, and
-  the real unmodified `LiveAudioProcessor` wired directly) all received
-  correct, real audio and do not reproduce this failure. Newly added
-  `e2ee_state_changed` logging in `app/agent.py` (a genuine, permanent
-  observability improvement — this event was previously never observed)
-  shows no E2EE state event at all for the doctor's track, suggesting
-  the doctor's encrypted RTP never reaches the SFrame layer in this
-  specific flow rather than a decryption failure. See
-  `test_live_translation_pipeline_produces_captions`'s `xfail` reason
-  for the full investigation trail and the concrete next step.
+- **FIXED: `test_live_translation_pipeline_produces_captions` now
+  passes (3/3 consecutive runs).** After the VAD fix above, the test
+  still received exactly zero-RMS audio, but only within its full
+  Go-API + FastAPI + AIAgent orchestration — three minimal
+  reproductions (two `rtc.Room()` connections in one process, with and
+  without E2EE, and the real unmodified `LiveAudioProcessor` wired
+  directly) all received correct audio and didn't reproduce it,
+  disproving VAD, transport, and (via a real token-swap experiment) the
+  LiveKit token-grants hypothesis in turn. The actual root cause: the
+  test itself (not `app/agent.py`, which was always correct) called
+  `base64.b64decode(join_resp["e2ee_key"])` before handing the result to
+  `KeyProviderOptions` — decoding a value this codebase has documented,
+  since commit `4d14357`, must be passed as the UTF-8 encoding of the
+  base64 *text* itself, never decoded first. The doctor and the agent
+  were silently encrypting/decrypting with two different, incompatible
+  keys: real encrypted RTP genuinely arrived (confirmed via
+  `AYUREZE_AUDIO_DIAG=1` raw-frame RMS during this investigation) but
+  decrypted to all-zero PCM — a symptom none of the VAD/transport/token
+  hypotheses could have explained, because none of them were the actual
+  cause. Fixed in `tests/test_pipeline_live_integration.py` (one-line
+  key derivation fix, test-only — no production code changed).
 
 ## Safety validator
 

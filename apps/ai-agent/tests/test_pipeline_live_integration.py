@@ -26,7 +26,6 @@ Run with:
 from __future__ import annotations
 
 import asyncio
-import base64
 import importlib
 import json
 import os
@@ -116,46 +115,6 @@ async def publish_speech(room: rtc.Room, fixture_path: Path = SPEECH_FIXTURE_PAT
     return source
 
 
-@pytest.mark.xfail(
-    reason=(
-        "A DIFFERENT, deeper issue than previously diagnosed — the "
-        "earlier conclusion in this file's history ('Silero VAD doesn't "
-        "detect MMS-TTS speech') was WRONG and has been corrected: the "
-        "real bug was app/pipeline/vad.py's SileroVAD missing Silero's "
-        "required 64-sample context buffer, confirmed and fixed this "
-        "pass (see tests/pipeline/test_vad_tts_compatibility.py, all "
-        "4/4 passing with a real recorded speech fixture showing a "
-        "textbook sustained speech/pause probability trace). With that "
-        "fix, this test was re-run using a real recorded speech fixture "
-        "(tests/fixtures/jfk.flac) instead of TTS, and still fails: the "
-        "agent receives exactly zero-RMS audio (confirmed via "
-        "AYUREZE_AUDIO_DIAG=1 raw-frame logging) specifically within "
-        "this test's full Go-API + FastAPI + AIAgent orchestration — "
-        "despite the doctor's publish loop confirmed sending genuinely "
-        "loud, real audio (RMS up to ~12800) right up to capture_frame(). "
-        "Ruled out during this investigation: VAD context bug (fixed), "
-        "idle-connection timing (doctor room connecting immediately "
-        "before publishing instead of at test start made no difference), "
-        "and TrackPublishOptions/source metadata. Newly added "
-        "e2ee_state_changed logging in app/agent.py (itself a genuine, "
-        "permanent observability improvement — this event was previously "
-        "never observed) shows no E2EE state event at all for the "
-        "doctor's track, suggesting the doctor's encrypted RTP never "
-        "reaches the SFrame layer in this specific flow, not a "
-        "decryption failure per se. THREE independent minimal "
-        "reproductions of two rtc.Room() connections in one process — "
-        "without E2EE, with E2EE, and using the real unmodified "
-        "LiveAudioProcessor class directly — all received real, correct "
-        "audio; none reproduce this test's specific failure. Root cause "
-        "not yet isolated within this pass's time budget. Next step: "
-        "instrument agent.py's own room/participant/track state "
-        "(RoomConnectedEvent, TrackPublishedEvent, TrackSubscribedEvent "
-        "ordering and timing) against the same run, and compare the "
-        "Go-API-issued token's grants against a self-minted one, since "
-        "that is the one variable no minimal reproduction has exercised."
-    ),
-    strict=True,
-)
 async def test_live_translation_pipeline_produces_captions():
     os.environ["AI_AGENT_ENABLE_PIPELINE"] = "true"
     import app.config as config_module
@@ -176,7 +135,20 @@ async def test_live_translation_pipeline_produces_captions():
     go_api.grant_consent(patient_token, session_id)
 
     join_resp = go_api.join(doctor_token, session_id)
-    key_bytes = base64.b64decode(join_resp["e2ee_key"])
+    # THE ROOT CAUSE of this test's long-standing zero-audio failure,
+    # found this pass: do NOT base64-decode e2ee_key. app/agent.py's real
+    # _join() feeds LiveKit's KeyProviderOptions the UTF-8 encoding of the
+    # base64 *text* itself (see its own comment and docs/e2ee/VALIDATION.md's
+    # key-derivation-input finding, commit 4d14357) — decoding first
+    # derives a completely different, incompatible key. This test was
+    # doing exactly the decode this codebase has documented as wrong
+    # since 4d14357, so the doctor and the agent were encrypting/
+    # decrypting with two different keys: real encrypted RTP genuinely
+    # arrived (confirmed via AYUREZE_AUDIO_DIAG raw-frame RMS during this
+    # investigation), but decrypted to all-zero PCM, which every prior
+    # hypothesis in this file's history (VAD, transport, token grants)
+    # failed to explain because none of them were the actual cause.
+    key_bytes = join_resp["e2ee_key"].encode("utf-8")
 
     captions_received: list[dict] = []
 
