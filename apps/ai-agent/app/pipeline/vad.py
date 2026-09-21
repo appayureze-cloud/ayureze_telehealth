@@ -20,6 +20,19 @@ from .. import metrics
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "silero_vad.onnx"
 FRAME_SAMPLES = 512  # Silero VAD's required chunk size at 16kHz
 SAMPLE_RATE = 16000
+# Required by Silero's own published calling convention (confirmed against
+# their official reference wrapper, snakers4/silero-vad's utils_vad.py
+# OnnxWrapper.__call__) but NOT part of this file's ONNX interface docs —
+# every streaming call must be fed context_size trailing samples from the
+# PREVIOUS chunk, concatenated before the new FRAME_SAMPLES chunk, or the
+# model's internal conv/LSTM layers receive an incomplete receptive field
+# and silently return near-zero probability regardless of real audio
+# content. 64 for 16kHz (32 for 8kHz, not used by this build). Verified by
+# reproducing a real, sustained, correctly-shaped speech/silence
+# probability trace against a real recorded speech sample only once this
+# context buffer was added — see tests/pipeline/test_vad.py's
+# "context-prepending" tests and docs/ai/README.md's "Known limitations".
+CONTEXT_SIZE = 64
 
 
 class VADProvider(ABC):
@@ -39,6 +52,7 @@ class SileroVAD(VADProvider):
         self._session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
         self.threshold = threshold
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros((1, CONTEXT_SIZE), dtype=np.float32)
         self._sr = np.array(SAMPLE_RATE, dtype=np.int64)
         # Diagnostic-only: the probability this instance's most recent
         # speech_probability() call returned. Never read by production
@@ -46,19 +60,24 @@ class SileroVAD(VADProvider):
         # (e.g. streaming.py's optional AYUREZE_AUDIO_DIAG instrumentation)
         # reads this instead of calling speech_probability() a second
         # time, which would incorrectly feed the same audio chunk through
-        # this stateful RNN twice and corrupt self._state.
+        # this stateful RNN twice and corrupt self._state/self._context.
         self.last_probability: float | None = None
 
     def reset(self) -> None:
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros((1, CONTEXT_SIZE), dtype=np.float32)
 
     def speech_probability(self, frame: np.ndarray) -> float:
         if frame.shape[-1] != FRAME_SAMPLES:
             raise ValueError(f"expected {FRAME_SAMPLES} samples, got {frame.shape[-1]}")
         chunk = frame.astype(np.float32).reshape(1, -1)
+        # Prepend the trailing CONTEXT_SIZE samples from the previous call
+        # (zeros on the very first call) — see CONTEXT_SIZE's docstring.
+        model_input = np.concatenate([self._context, chunk], axis=1)
         t0 = time.monotonic()
-        out, self._state = self._session.run(None, {"input": chunk, "state": self._state, "sr": self._sr})
+        out, self._state = self._session.run(None, {"input": model_input, "state": self._state, "sr": self._sr})
         metrics.PIPELINE_STAGE_LATENCY_SECONDS.labels(stage="vad").observe(time.monotonic() - t0)
+        self._context = model_input[:, -CONTEXT_SIZE:]
         probability = float(out[0][0])
         self.last_probability = probability
         return probability

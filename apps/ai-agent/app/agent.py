@@ -133,6 +133,7 @@ class AIAgent:
 
         room.on("track_subscribed", self._on_track_subscribed)
         room.on("disconnected", self._on_disconnected)
+        room.on("e2ee_state_changed", self._on_e2ee_state_changed)
 
         await room.connect(
             self._livekit_url,
@@ -140,6 +141,24 @@ class AIAgent:
             options=rtc.RoomOptions(auto_subscribe=True, e2ee=e2ee_options),
         )
         self._transition(AgentState.CONNECTED, detail=f"identity={grant.identity}")
+
+    def _on_e2ee_state_changed(self, participant, state) -> None:
+        # Safe to log as-is: LiveKit's E2EEState is a small enum (kNew/
+        # kOk/kKeyRatcheted/kMissingKey/kEncryptionFailed/
+        # kDecryptionFailed/kInternalError, matching sdk/flutter's
+        # AyurezeE2EEState mapping) — never a key, token, or media
+        # payload. This was previously unobserved: a failure here (e.g.
+        # a real per-participant decryption error) would otherwise be
+        # silently indistinguishable from "no audio published yet".
+        log(
+            self._logger,
+            logging.INFO,
+            "ai_agent_e2ee_state_changed",
+            event_type="ai_agent_e2ee_state_changed",
+            session_id=self.session_id,
+            participant=participant.identity,
+            state=str(state),
+        )
 
     def _on_track_subscribed(self, track, publication, participant) -> None:
         if track.kind != rtc.TrackKind.KIND_AUDIO:

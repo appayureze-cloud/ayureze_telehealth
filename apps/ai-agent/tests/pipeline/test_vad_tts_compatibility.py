@@ -1,46 +1,33 @@
 """REAL MODEL TEST (Silero VAD + facebook/mms-tts-eng, no mocks).
 
-Documents a real finding from this pass's live-audio-integration root
-cause investigation (see tests/test_pipeline_live_integration.py's
-xfail reason and docs/ai/README.md's "Known limitations"): Silero VAD
-does not reliably classify facebook/mms-tts-eng (VITS) synthesized
-speech as speech, even though the audio is genuinely loud, well-formed,
-and successfully transcribed by faster-whisper (see
-test_pipeline_models.py, which bypasses VAD entirely by calling
-pipeline.process() with pre-segmented audio).
+CORRECTED this pass. A prior version of this file concluded "Silero VAD
+does not reliably classify MMS-TTS synthesized speech as speech" and
+pinned that as an accepted gap. That conclusion was wrong: further
+investigation (root-causing why a real recorded human speech sample —
+tests/fixtures/jfk.flac — ALSO failed to cross the VAD threshold, which
+should never happen for genuine continuous speech) found the real bug:
+app/pipeline/vad.py's SileroVAD was missing the 64-sample "context"
+buffer Silero's own official calling convention requires (confirmed
+against snakers4/silero-vad's utils_vad.py OnnxWrapper.__call__, and
+against this exact bundled model file by SHA-256 match to their current
+release) — every streaming call must prepend the trailing 64 samples of
+the PREVIOUS chunk before calling the model, or its internal conv/LSTM
+layers receive an incomplete receptive field and return near-zero
+probability regardless of real audio content. This affected ALL audio,
+TTS and real speech alike, uniformly — it was never actually a TTS
+acoustic-compatibility issue.
 
-This was verified directly, ruling out every other candidate first:
-- Confirmed the raw synthesized PCM has real signal (RMS ~0.13, min/max
-  spanning most of the float range) — not silence, not clipped to zero.
-- Confirmed with two independent rtc.Room() connections in one process,
-  both with and without E2EE, that real audio transports correctly end
-  to end (RMS ~0.15-0.16 received) — ruling out LiveKit transport/E2EE.
-- Confirmed with the real, unmodified app.pipeline.streaming.LiveAudioProcessor
-  wired to a real LiveKit room that genuinely loud audio (RMS up to 0.34)
-  arrives at _on_frame, yet Silero VAD's speech_probability for those
-  exact frames never exceeds ~0.12 (threshold is 0.5).
-- Confirmed the same result feeding the raw, untransmitted TTS output
-  directly into SileroVAD.speech_probability() (this test) — ruling out
-  any network/transport/frame-conversion cause entirely. The gap is
-  intrinsic to this specific TTS engine's acoustic characteristics vs.
-  what Silero VAD was trained to recognize as speech.
-- Ruled out an input-scale mismatch (int16-range vs. normalized [-1,1])
-  by testing both directly against the same audio with materially
-  identical (low) results.
-- Confirmed the ONNX model's own declared input/output signature matches
-  Silero's documented public interface exactly (not a wrong/corrupted
-  model file).
-
-This is a real audio-source/model-compatibility gap, not a defect in
-VAD, TurnSegmenter, STT, translation, the safety validator, or LiveKit
-transport/E2EE — all of which are independently verified elsewhere
-(test_pipeline_models.py, test_failure_handling.py, kdf-compat.spec.ts).
-It does not weaken, bypass, or lower the threshold of the production VAD.
+With the context buffer now added, both a real recorded speech sample
+and MMS-TTS output are correctly detected: sustained ~0.95-1.0
+probability during actual speech, near-zero during real pauses, exactly
+the trace a healthy VAD/audio-source pairing should produce.
 
 Run with: pytest -m models -v tests/pipeline/test_vad_tts_compatibility.py
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -50,11 +37,27 @@ from app.pipeline.vad import FRAME_SAMPLES, SileroVAD
 
 pytestmark = pytest.mark.models
 
+_JFK_FIXTURE = Path(__file__).parents[1] / "fixtures" / "jfk.flac"
+
+
+def _load_fixture_16k_mono(path: Path) -> np.ndarray:
+    import av
+
+    container = av.open(str(path))
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=16000)
+    frames = []
+    for frame in container.decode(audio=0):
+        for rframe in resampler.resample(frame):
+            frames.append(rframe.to_ndarray())
+    container.close()
+    pcm16 = np.concatenate(frames, axis=1).flatten()
+    return pcm16.astype(np.float32) / 32768.0
+
 
 def test_mms_tts_output_has_real_nonzero_signal():
     """Sanity check: the TTS output itself is genuinely loud, real audio
     — this test exists so a future failure here (rather than in the VAD
-    test below) immediately points at TTS, not VAD."""
+    tests below) immediately points at TTS, not VAD."""
     tts = MmsTTSProvider()
     audio = tts.synthesize("Take two tablets twice daily for seven days.", "en")
 
@@ -64,32 +67,75 @@ def test_mms_tts_output_has_real_nonzero_signal():
     assert audio.samples.min() < -0.3
 
 
-def test_known_gap_silero_vad_does_not_reliably_detect_mms_tts_speech():
-    """Documents the real, verified finding: Silero VAD's speech
-    probability for facebook/mms-tts-eng output stays far below its
-    0.5 threshold throughout a genuine, loud, real utterance.
-
-    This assertion is intentionally the OPPOSITE of what a healthy
-    VAD/audio-source pairing would produce — it exists to make this
-    known gap visible in regular test runs (rather than silently
-    tolerated) and to immediately flag, via a failure here, if a future
-    change to either model changes this behavior (for better or worse).
-    If this test starts failing because probabilities now cross 0.5,
-    that is good news: revisit test_pipeline_live_integration.py's
-    xfail marker at that point.
-    """
+def test_silero_vad_correctly_detects_mms_tts_speech():
+    """Regression for the fixed context-buffer bug: MMS-TTS output must
+    now cross the speech threshold for the large majority of its
+    duration (a continuous ~4s medical instruction sentence)."""
     tts = MmsTTSProvider()
     audio = tts.synthesize("Take two tablets twice daily for seven days.", "en")
 
     vad = SileroVAD()
-    probabilities = []
-    for start in range(0, len(audio.samples) - FRAME_SAMPLES, FRAME_SAMPLES):
-        frame = audio.samples[start : start + FRAME_SAMPLES]
-        probabilities.append(vad.speech_probability(frame))
+    probabilities = [
+        vad.speech_probability(audio.samples[start : start + FRAME_SAMPLES])
+        for start in range(0, len(audio.samples) - FRAME_SAMPLES, FRAME_SAMPLES)
+    ]
 
     assert len(probabilities) > 20, "expected a real multi-second utterance"
-    assert max(probabilities) < 0.5, (
-        f"Silero VAD now crosses its speech threshold on MMS-TTS output "
-        f"(max={max(probabilities):.4f}) — this known gap may be resolved; "
-        f"revisit test_pipeline_live_integration.py's xfail marker."
+    above_threshold = sum(1 for p in probabilities if p >= vad.threshold)
+    assert above_threshold / len(probabilities) > 0.5, (
+        f"expected the majority of frames in a continuous spoken sentence to cross "
+        f"the speech threshold; got {above_threshold}/{len(probabilities)} "
+        f"(max={max(probabilities):.4f}) — the context-buffer fix may have regressed"
+    )
+
+
+def test_silero_vad_correctly_detects_real_recorded_speech():
+    """The decisive real-speech check: a genuine, non-synthetic
+    recording (see tests/fixtures/README.md) must show a sensible,
+    sustained speech/pause pattern, not just occasional spikes."""
+    audio = _load_fixture_16k_mono(_JFK_FIXTURE)
+
+    vad = SileroVAD()
+    probabilities = [
+        vad.speech_probability(audio[start : start + FRAME_SAMPLES])
+        for start in range(0, len(audio) - FRAME_SAMPLES, FRAME_SAMPLES)
+    ]
+
+    assert len(probabilities) > 100, "expected a real multi-second recording"
+    above_threshold = sum(1 for p in probabilities if p >= vad.threshold)
+    # This ~11s clip is mostly continuous speech with a few natural pauses
+    # — real measured value at fix time was 68%; guard against regression
+    # with a conservative floor.
+    assert above_threshold / len(probabilities) > 0.4, (
+        f"expected most of a continuous real-speech recording to cross the "
+        f"speech threshold; got {above_threshold}/{len(probabilities)} "
+        f"(max={max(probabilities):.4f})"
+    )
+
+
+def test_silero_vad_context_buffer_matters():
+    """Directly demonstrates why the context buffer is required: the
+    SAME real speech audio, fed through the model WITHOUT prepending
+    context (the pre-fix behavior), must NOT reliably cross the
+    threshold — proving the fix's mechanism, not just its symptom."""
+    import onnxruntime as ort
+
+    from app.pipeline.vad import DEFAULT_MODEL_PATH, SAMPLE_RATE
+
+    audio = _load_fixture_16k_mono(_JFK_FIXTURE)
+    session = ort.InferenceSession(str(DEFAULT_MODEL_PATH), providers=["CPUExecutionProvider"])
+    sr = np.array(SAMPLE_RATE, dtype=np.int64)
+
+    state = np.zeros((2, 1, 128), dtype=np.float32)
+    probabilities_without_context = []
+    for start in range(0, len(audio) - FRAME_SAMPLES, FRAME_SAMPLES):
+        chunk = audio[start : start + FRAME_SAMPLES].astype(np.float32).reshape(1, -1)
+        out, state = session.run(None, {"input": chunk, "state": state, "sr": sr})
+        probabilities_without_context.append(float(out[0][0]))
+
+    above_threshold = sum(1 for p in probabilities_without_context if p >= 0.5)
+    assert above_threshold / len(probabilities_without_context) < 0.1, (
+        "expected the pre-fix (no-context) calling convention to fail to detect "
+        "real continuous speech reliably — if this now passes, the ONNX model "
+        "itself may have changed behavior"
     )

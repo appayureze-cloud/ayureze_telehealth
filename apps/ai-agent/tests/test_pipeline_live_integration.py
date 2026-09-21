@@ -1,8 +1,19 @@
 """Live end-to-end test of the Day 6 pipeline wired into the Day 5 agent:
-real LiveKit room, real E2EE, real streamed speech audio (synthesized via
-TTS to stand in for a doctor's microphone), real VAD segmentation, real
-STT/translation/safety/TTS, and a real translated-caption data message
+real LiveKit room, real E2EE, real streamed speech audio (a real recorded
+human speech fixture, tests/fixtures/jfk.flac — see its README — standing
+in for a doctor's microphone), real VAD segmentation, real STT/
+translation/safety/TTS, and a real translated-caption data message
 received back — the full chain, no mocks.
+
+Uses a real recorded speech fixture rather than TTS-synthesized audio
+because this build's Silero VAD had a real bug (missing the context
+buffer Silero's own calling convention requires — see app/pipeline/vad.py
+and docs/ai/README.md's "Known limitations") that made it fail to detect
+essentially any audio, synthetic or real, until this pass fixed it. A
+real speech fixture is the more representative "stand-in microphone" for
+this test regardless — it is what a production deployment actually
+receives — and removes any remaining question of TTS-specific acoustic
+quirks from this specific test's result.
 
 Separate from tests/test_agent_integration.py (which validates the Day 5
 lifecycle in isolation, pipeline disabled, for speed) because this test
@@ -19,6 +30,7 @@ import base64
 import importlib
 import json
 import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -28,27 +40,34 @@ from tests.test_agent_integration import GoAPI, decode_jwt_claims, seed_tenant
 
 pytestmark = pytest.mark.integration
 
-
-def _resample(samples: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
-    if src_rate == dst_rate:
-        return samples
-    duration = len(samples) / src_rate
-    dst_len = int(duration * dst_rate)
-    x_old = np.linspace(0, 1, len(samples))
-    x_new = np.linspace(0, 1, dst_len)
-    return np.interp(x_new, x_old, samples).astype(np.float32)
+SPEECH_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "jfk.flac"
 
 
-async def publish_speech(room: rtc.Room, text: str) -> rtc.AudioSource:
-    """Synthesizes `text` via the English TTS model and streams it into
-    the room at real-time pace (10ms frames), standing in for a doctor
-    speaking into a microphone."""
-    from app.pipeline.tts import MmsTTSProvider
+def _load_speech_fixture_16k_mono(path: Path) -> np.ndarray:
+    """Decodes a real recorded speech file (any format ffmpeg/pyav
+    supports) to float32 mono PCM at 16kHz — pyav is already a
+    faster-whisper dependency, so this adds no new requirement."""
+    import av
 
-    tts = MmsTTSProvider()
-    audio = tts.synthesize(text, "en")
-    pcm = _resample(audio.samples, audio.sample_rate, 16000)
-    pcm16 = np.clip(pcm * 32767.0, -32768, 32767).astype(np.int16)
+    container = av.open(str(path))
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=16000)
+    frames = []
+    for frame in container.decode(audio=0):
+        for rframe in resampler.resample(frame):
+            frames.append(rframe.to_ndarray())
+    container.close()
+    pcm16 = np.concatenate(frames, axis=1).flatten()
+    return pcm16.astype(np.float32) / 32768.0
+
+
+async def publish_speech(room: rtc.Room, fixture_path: Path = SPEECH_FIXTURE_PATH) -> rtc.AudioSource:
+    """Streams a real recorded speech fixture into the room at real-time
+    pace (10ms frames), standing in for a doctor speaking into a
+    microphone."""
+    audio = _load_speech_fixture_16k_mono(fixture_path)
+    pcm16 = np.clip(audio * 32767.0, -32768, 32767).astype(np.int16)
+    if os.environ.get("AYUREZE_AUDIO_DIAG") == "1":
+        print(f"[diag] publish_speech: pcm16 rms={np.sqrt(np.mean(pcm16.astype(np.float64)**2)):.1f} len={len(pcm16)}", flush=True)
 
     source = rtc.AudioSource(sample_rate=16000, num_channels=1)
     track = rtc.LocalAudioTrack.create_audio_track("doctor-mic", source)
@@ -57,12 +76,17 @@ async def publish_speech(room: rtc.Room, text: str) -> rtc.AudioSource:
     )
 
     frame_len = 160  # 10ms @ 16kHz
-    for start in range(0, len(pcm16), frame_len):
+    diag = os.environ.get("AYUREZE_AUDIO_DIAG") == "1"
+    for i, start in enumerate(range(0, len(pcm16), frame_len)):
         chunk = pcm16[start : start + frame_len]
         if len(chunk) < frame_len:
             chunk = np.pad(chunk, (0, frame_len - len(chunk)))
         frame = rtc.AudioFrame.create(sample_rate=16000, num_channels=1, samples_per_channel=frame_len)
         np.frombuffer(frame.data, dtype=np.int16)[:] = chunk
+        if diag and i % 20 == 0:
+            written_back = np.frombuffer(frame.data, dtype=np.int16)
+            print(f"[diag] frame {i}: chunk_rms={np.sqrt(np.mean(chunk.astype(np.float64)**2)):.1f} "
+                  f"written_back_rms={np.sqrt(np.mean(written_back.astype(np.float64)**2)):.1f}", flush=True)
         await source.capture_frame(frame)
         await asyncio.sleep(0.01)
 
@@ -94,23 +118,41 @@ async def publish_speech(room: rtc.Room, text: str) -> rtc.AudioSource:
 
 @pytest.mark.xfail(
     reason=(
-        "Root-caused, not flaky: Silero VAD does not reliably classify "
-        "facebook/mms-tts-eng (VITS) synthesized speech as speech "
-        "(probability stays below ~0.15 throughout a genuine, loud "
-        "utterance; threshold is 0.5), so TurnSegmenter never closes a "
-        "turn and no segment ever reaches STT/translation/the safety "
-        "validator/TTS. Verified directly against the raw, untransmitted "
-        "TTS output with no LiveKit/E2EE involved at all — see "
-        "test_vad_tts_compatibility.py and docs/ai/README.md's Known "
-        "limitations. Real audio transport, E2EE, and LiveAudioProcessor "
-        "were all independently confirmed working during this "
-        "investigation (real, non-zero RMS observed at every stage up to "
-        "and including VAD's own input) — the gap is specifically this "
-        "TTS engine's acoustic compatibility with this VAD model, not a "
-        "pipeline/transport/E2EE defect. This assertion is intentionally "
-        "left in place (not weakened or removed): if this test starts "
-        "passing, VAD IS again receiving a signal it recognizes as "
-        "speech, and this xfail marker should be revisited."
+        "A DIFFERENT, deeper issue than previously diagnosed — the "
+        "earlier conclusion in this file's history ('Silero VAD doesn't "
+        "detect MMS-TTS speech') was WRONG and has been corrected: the "
+        "real bug was app/pipeline/vad.py's SileroVAD missing Silero's "
+        "required 64-sample context buffer, confirmed and fixed this "
+        "pass (see tests/pipeline/test_vad_tts_compatibility.py, all "
+        "4/4 passing with a real recorded speech fixture showing a "
+        "textbook sustained speech/pause probability trace). With that "
+        "fix, this test was re-run using a real recorded speech fixture "
+        "(tests/fixtures/jfk.flac) instead of TTS, and still fails: the "
+        "agent receives exactly zero-RMS audio (confirmed via "
+        "AYUREZE_AUDIO_DIAG=1 raw-frame logging) specifically within "
+        "this test's full Go-API + FastAPI + AIAgent orchestration — "
+        "despite the doctor's publish loop confirmed sending genuinely "
+        "loud, real audio (RMS up to ~12800) right up to capture_frame(). "
+        "Ruled out during this investigation: VAD context bug (fixed), "
+        "idle-connection timing (doctor room connecting immediately "
+        "before publishing instead of at test start made no difference), "
+        "and TrackPublishOptions/source metadata. Newly added "
+        "e2ee_state_changed logging in app/agent.py (itself a genuine, "
+        "permanent observability improvement — this event was previously "
+        "never observed) shows no E2EE state event at all for the "
+        "doctor's track, suggesting the doctor's encrypted RTP never "
+        "reaches the SFrame layer in this specific flow, not a "
+        "decryption failure per se. THREE independent minimal "
+        "reproductions of two rtc.Room() connections in one process — "
+        "without E2EE, with E2EE, and using the real unmodified "
+        "LiveAudioProcessor class directly — all received real, correct "
+        "audio; none reproduce this test's specific failure. Root cause "
+        "not yet isolated within this pass's time budget. Next step: "
+        "instrument agent.py's own room/participant/track state "
+        "(RoomConnectedEvent, TrackPublishedEvent, TrackSubscribedEvent "
+        "ordering and timing) against the same run, and compare the "
+        "Go-API-issued token's grants against a self-minted one, since "
+        "that is the one variable no minimal reproduction has exercised."
     ),
     strict=True,
 )
@@ -134,25 +176,13 @@ async def test_live_translation_pipeline_produces_captions():
     go_api.grant_consent(patient_token, session_id)
 
     join_resp = go_api.join(doctor_token, session_id)
-
-    doctor_room = rtc.Room()
     key_bytes = base64.b64decode(join_resp["e2ee_key"])
-    await doctor_room.connect(
-        os.environ["LIVEKIT_URL"],
-        join_resp["access_token"],
-        options=rtc.RoomOptions(
-            auto_subscribe=False,
-            e2ee=rtc.E2EEOptions(key_provider_options=rtc.KeyProviderOptions(shared_key=key_bytes)),
-        ),
-    )
 
     captions_received: list[dict] = []
 
     def on_data(data_packet):
         if data_packet.topic == "ayureze.captions":
             captions_received.append(json.loads(bytes(data_packet.data)))
-
-    doctor_room.on("data_received", on_data)
 
     import httpx
 
@@ -172,8 +202,30 @@ async def test_live_translation_pipeline_produces_captions():
         else:
             pytest.fail("AI agent never reached CONNECTED (pipeline load likely still in progress)")
 
+        # The doctor room connects here, right before speaking, rather
+        # than at the top of the test — connecting long before the agent
+        # is ready to receive (the agent's model loading alone takes
+        # 30-40+ seconds of heavy CPU-bound work on this same process's
+        # event loop) left the doctor's LiveKit connection idle for that
+        # entire window before ever publishing a frame, and was found
+        # during this pass's own investigation to correlate with the
+        # agent receiving genuinely zero-signal audio afterward (real,
+        # non-zero audio confirmed at the publish side every time; see
+        # docs/ai/README.md's "Known limitations"). Connecting immediately
+        # before publishing removes that long-idle window as a variable.
+        doctor_room = rtc.Room()
+        await doctor_room.connect(
+            os.environ["LIVEKIT_URL"],
+            join_resp["access_token"],
+            options=rtc.RoomOptions(
+                auto_subscribe=False,
+                e2ee=rtc.E2EEOptions(key_provider_options=rtc.KeyProviderOptions(shared_key=key_bytes)),
+            ),
+        )
+        doctor_room.on("data_received", on_data)
+
         try:
-            await publish_speech(doctor_room, "Take two tablets twice daily for seven days.")
+            await publish_speech(doctor_room)
 
             deadline = asyncio.get_event_loop().time() + 20
             while asyncio.get_event_loop().time() < deadline and not captions_received:

@@ -116,29 +116,43 @@ resolved) a contained change: a new class, not a pipeline redesign.
   (~0.4s/sentence) on CPU are acceptable for a demo/test pipeline but not
   production-grade real-time latency; a production deployment should use
   GPU inference or a managed API for the heavier stages.
-- **Silero VAD does not reliably classify MMS-TTS-synthesized speech as
-  speech.** Root-caused end to end this pass (see
-  `tests/pipeline/test_vad_tts_compatibility.py` and
-  `tests/test_pipeline_live_integration.py`'s `xfail` marker): a real,
-  loud, well-formed `facebook/mms-tts-eng` utterance (confirmed non-zero
-  RMS at every stage — synthesis, LiveKit transport with and without
-  E2EE, and arrival at `LiveAudioProcessor._on_frame`) never pushes
-  Silero VAD's speech probability above ~0.15, well short of the 0.5
-  threshold, so `TurnSegmenter` never closes a turn and no audio ever
-  reaches STT. This is specific to this TTS engine's acoustic
-  characteristics vs. what Silero VAD was trained on — real recorded
-  human speech is expected to work correctly (this is exactly what a
-  production deployment receives), and this gap only affects testing
-  with synthesized "stand-in microphone" audio. It is not a defect in
-  VAD, `TurnSegmenter`, STT, translation, the safety validator, or
-  LiveKit transport/E2EE, all of which were independently ruled out with
-  direct evidence during this investigation and remain verified via
-  `tests/pipeline/test_pipeline_models.py` (which bypasses VAD by
-  calling `pipeline.process()` on pre-segmented audio directly). A real
-  device/microphone test, or a different real-speech test fixture, is
-  needed to close this specific gap — see
+- **FIXED (previously misdiagnosed): `SileroVAD` was missing Silero's
+  required 64-sample context buffer.** A prior pass concluded "Silero
+  VAD does not reliably classify MMS-TTS-synthesized speech as speech"
+  and treated it as an accepted TTS-acoustic-compatibility gap. That
+  conclusion was wrong. Root-causing why a real recorded human speech
+  sample (`tests/fixtures/jfk.flac`) *also* failed to cross the VAD
+  threshold — which should never happen for genuine continuous speech —
+  found the actual bug: every streaming call to Silero's ONNX model must
+  prepend the trailing 64 samples of the *previous* chunk (confirmed
+  against `snakers4/silero-vad`'s own official `OnnxWrapper.__call__`
+  reference implementation, and against this exact bundled model file by
+  SHA-256 match to their current release), or the model's internal
+  conv/LSTM layers receive an incomplete receptive field and return
+  near-zero probability regardless of real audio content. This affected
+  ALL audio uniformly — TTS and real recorded speech alike — it was
+  never actually about MMS-TTS's acoustic characteristics. Fixed in
+  `app/pipeline/vad.py` (`SileroVAD._context`); see
+  `tests/pipeline/test_vad_tts_compatibility.py` (4/4 passing, including
+  a test that directly demonstrates the pre-fix calling convention fails
+  on the same real speech sample the fix now correctly detects with a
+  sustained, textbook speech/pause probability trace).
+- **`test_live_translation_pipeline_produces_captions` still fails, for
+  a different, deeper, not-yet-isolated reason.** With the VAD fix in
+  place and a real recorded speech fixture (`tests/fixtures/jfk.flac`)
+  in place of TTS, the agent still receives exactly zero-RMS audio —
+  but only within this test's full Go-API + FastAPI + AIAgent
+  orchestration; three independent minimal reproductions (two
+  `rtc.Room()` connections in one process, with and without E2EE, and
+  the real unmodified `LiveAudioProcessor` wired directly) all received
+  correct, real audio and do not reproduce this failure. Newly added
+  `e2ee_state_changed` logging in `app/agent.py` (a genuine, permanent
+  observability improvement — this event was previously never observed)
+  shows no E2EE state event at all for the doctor's track, suggesting
+  the doctor's encrypted RTP never reaches the SFrame layer in this
+  specific flow rather than a decryption failure. See
   `test_live_translation_pipeline_produces_captions`'s `xfail` reason
-  for the exact next step.
+  for the full investigation trail and the concrete next step.
 
 ## Safety validator
 
