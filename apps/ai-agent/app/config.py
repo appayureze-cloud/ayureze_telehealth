@@ -33,6 +33,43 @@ class Settings(BaseSettings):
     ai_agent_enable_pipeline: bool = False
     ai_agent_whisper_model_size: str = "tiny"
 
+    # Streaming pipeline (this pass's addition — see app/pipeline/
+    # streaming_pipeline.py). Opt-in and OFF by default: the existing,
+    # live-verified whole-utterance pipeline above remains the default
+    # path. Not yet wired into the live LiveKit audio path — see
+    # docs/ai/streaming.md's "What has not been verified."
+    ai_agent_streaming_pipeline_enabled: bool = False
+
+    ai_stt_primary: str = "qwen3-asr-1.7b"
+    ai_stt_fallback: str = "whisper-tiny"
+
+    ai_translation_primary: str = "madlad400-3b"
+    ai_translation_high_quality: str = "madlad400-7b"
+
+    ai_tts_primary: str = "qwen3-tts"
+    ai_tts_streaming: str = "cosyvoice3"
+
+    ai_asr_chunk_ms: float = 600.0
+    ai_asr_overlap_ms: float = 150.0
+
+    ai_tts_chunk_ms: float = 500.0
+
+    ai_max_translation_buffer_ms: float = 2000.0
+
+    # New model weights are never downloaded implicitly (build spec: work
+    # incrementally, don't make large speculative changes) — see
+    # ModelNotAvailableError in app/pipeline/model_lifecycle.py. Setting
+    # this true also requires the relevant optional package
+    # (qwen_asr/qwen_tts/cosyvoice/transformers' Marian/T5 classes) and,
+    # for the GPU-only models, an actual CUDA device.
+    ai_allow_model_download: bool = False
+
+    # Bounded queue sizes (build spec section 16's own example limits).
+    ai_translation_queue_size: int = 20
+    ai_safety_queue_size: int = 20
+    ai_tts_queue_size: int = 20
+    ai_audio_output_max_out_of_order_wait: int = 5
+
 
 def load_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]  # required fields come from env

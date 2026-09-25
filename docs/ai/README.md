@@ -1,5 +1,26 @@
 # AI Translation Agent
 
+## Streaming architecture (post-Day-7 addition)
+
+A new, OPT-IN streaming pipeline (default off:
+`AI_AGENT_STREAMING_PIPELINE_ENABLED=false`) sits alongside the
+whole-utterance pipeline documented below, adding real-time partial ASR,
+incremental commit/safety/TTS staging, and a language-registry-driven
+router for new translation/TTS/STT models. It has NOT replaced or been
+wired into the live LiveKit audio path documented in this file — that
+remains the default, live-verified pipeline. See:
+
+- `docs/ai/streaming.md` — architecture, data flow, why it's a separate
+  opt-in path, and what has/hasn't been verified
+- `docs/ai/models.md` — every new model provider class and its real status
+- `docs/ai/language-registry.md` — how a language pair is routed and
+  certified
+- `docs/ai/latency.md` — real measured latency of the new components
+- `docs/MODEL_LICENSE_MATRIX.md` — **includes a real finding that this
+  pipeline's EXISTING NLLB-200/MMS-TTS models are non-commercially
+  licensed (CC-BY-NC-4.0)** — read this before any commercial deployment
+  decision
+
 ## Day 5: the agent as a real encrypted LiveKit participant
 
 The Python AI agent (`apps/ai-agent`) is a genuine LiveKit participant, not

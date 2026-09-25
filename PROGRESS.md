@@ -623,3 +623,79 @@ real STT/translation/TTS chain, no mocks), across two passes:
   verification — VPS deployment, a real TURN relay test against that
   deployment, and a real Android/Flutter device E2EE test — none of
   which are reproducible inside this sandbox.
+
+## Post-audit — Full streaming architecture (opt-in, alongside the existing pipeline)
+
+Added the full streaming translation architecture requested (real-time
+partial ASR, incremental commit/safety/TTS staging, a language registry +
+routers for new STT/translation/TTS models) as a NEW, OFF-BY-DEFAULT path
+(`AI_AGENT_STREAMING_PIPELINE_ENABLED=false`) alongside the existing
+whole-utterance pipeline, which remains untouched and the default —
+explicit instruction: don't remove or risk existing working functionality.
+Full detail in `docs/ai/streaming.md`, `docs/ai/models.md`,
+`docs/ai/language-registry.md`, `docs/ai/latency.md`, and
+`docs/MODEL_LICENSE_MATRIX.md`.
+
+**Environment constraints, established before writing any code**: no GPU
+(`nvidia-smi` absent, no CUDA), and only 4.2GB free disk — insufficient
+for even one of the five new large models. Per explicit instruction, no
+new model weights were downloaded; every new provider class is written
+against its model's real, verified API but reports
+`ModelNotAvailableError` in this build.
+
+**New, real, fully-tested components** (57 new tests, all passing, no
+existing test modified): `TranscriptStabilityFilter` + `CommitPolicy`
+(the build spec's own "I have a stomach pain" anti-duplication example
+verified directly), `SafetyCommitPolicy` (wraps — never replaces — the
+existing deterministic `safety.validate()`; the "Take 5" incomplete-dosage
+example and a real Tamil 5mg→50mg mutation block both verified),
+`LanguageRegistry`/`TranslationRouter`/`TTSRouter` (fail-closed, real
+tests), `AudioOutputBuffer` (sequencing/dedup/stale/missing-chunk
+handling), `StreamingSessionPipeline` (bounded-queue async orchestration,
+barge-in, backpressure — tested against fake providers), and two REAL
+streaming wrappers around this build's OWN already-resident models:
+`StreamingFasterWhisperSTT` (real partial/final transcripts from the real
+JFK speech fixture) and `StreamingMmsTTSProvider` (real chunked/cancellable
+audio from real MMS-TTS synthesis).
+
+**New provider classes, written but not downloaded/certified**:
+`Qwen3ASRProvider`, `OPUSMTProvider`, `MADLADProvider`, `Qwen3TTSProvider`,
+`CosyVoice3Provider` — each against its real, `WebFetch`-verified
+quickstart API and license (verification date 2026-09-25), each failing
+closed with a clear `ModelNotAvailableError` rather than silently
+degrading.
+
+**Real finding, independent of the streaming work itself**: this license
+audit surfaced that `facebook/nllb-200-distilled-600M` and
+`facebook/mms-tts-{eng,tam,mal}` — the models this build has been
+**shipping since Day 6** for its primary en↔ta pair — are both
+`CC-BY-NC-4.0` (non-commercial); NLLB's own model card states it is "not
+released for production deployment." Not previously documented in this
+repo. `LanguageRegistry`'s default entry for en↔ta reflects this
+correctly: fully certified (real safety-corpus + live-integration
+evidence) but `license.verified = False`, so `is_production_ready()`
+correctly returns `False` despite complete certification. See
+`docs/MODEL_LICENSE_MATRIX.md` for options.
+
+**Real finding**: `StreamingMmsTTSProvider`'s first-audio-chunk latency
+equals its total synthesis latency (measured: 1286.5ms both) — VITS is
+non-autoregressive and cannot emit audio before the whole utterance is
+synthesized, so chunking its output gives ordering/barge-in benefits but
+no first-audio latency improvement. Reaching the build spec's ~1-1.5s
+first-audio target needs a genuinely incremental model (Qwen3-TTS/
+CosyVoice3), neither downloaded this pass.
+
+**What was NOT done, explicitly**: no model weights downloaded; no GPU
+benchmarking (none available); `StreamingSessionPipeline` not wired into
+the live LiveKit audio path and not run end-to-end with real
+STT+translation+TTS together (only against fakes) — see
+`docs/ai/streaming.md`'s "Open design questions." Two open design
+questions (a default reference voice per language for the voice-cloning
+TTS models; Qwen3-ASR's real streaming needs a separate vLLM backend) are
+documented, not resolved.
+
+**Full regression, re-run clean after every addition**: Go
+(build/vet/test), AI-agent Python unit (173, up from 116), real-model (15,
+up from 7 — includes real streaming STT/TTS tests), integration (2,
+unchanged and still passing — confirms the existing live path is
+untouched), Web SDK (19), Flutter (41), Playwright (15).

@@ -5,6 +5,7 @@ vendor's SDK types — only these.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -15,6 +16,39 @@ class TranscriptSegment:
     text: str
     language: str  # e.g. "en", "ta", "ml"
     language_confidence: float
+
+
+@dataclass
+class PartialTranscript:
+    """One incremental ASR update within a still-open utterance. `text`
+    is the FULL hypothesis so far (not a delta) — TranscriptStabilityFilter
+    is what turns a sequence of these into the newly-committed delta
+    actually sent downstream. `stable_prefix_len` is how many leading
+    characters of `text` the ASR provider itself considers unlikely to
+    change (0 if the provider can't estimate this, in which case the
+    stability filter falls back to its own cross-update comparison)."""
+
+    text: str
+    language: str
+    is_final: bool  # True only on finalize() (VAD end-of-utterance), never on an intermediate push_audio() update
+    stable_prefix_len: int = 0
+    confidence: float | None = None
+
+
+@dataclass
+class AudioChunk:
+    """One sequenced unit of output audio for the jitter/output buffer
+    (build spec section 14). Never ordered by raw wall-clock timestamp
+    alone — sequence_number within (session_id, utterance_id) is the
+    authoritative order."""
+
+    session_id: str
+    utterance_id: str
+    sequence_number: int
+    samples: np.ndarray
+    sample_rate: int
+    is_final: bool
+    timestamp: float = field(default_factory=time.time)
 
 
 @dataclass
