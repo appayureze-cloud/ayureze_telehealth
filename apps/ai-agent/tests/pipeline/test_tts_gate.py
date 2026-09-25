@@ -109,3 +109,41 @@ def test_process_auto_also_respects_the_gate():
     assert result.blocked
     assert result.audio is None
     assert tts.calls == []
+
+
+def test_captions_only_mode_when_tts_is_none():
+    """app/pipeline/factory.py's real default (no commercially-licensed,
+    CPU-feasible TTS exists — see docs/MODEL_LICENSE_MATRIX.md):
+    TranslationPipeline(tts=None) must still produce a full, correct
+    translation/safety result — audio is simply always None, and this is
+    NOT the same thing as `blocked` (a safe translation with no TTS
+    configured is not a safety rejection)."""
+    pipeline = TranslationPipeline(
+        stt=_FakeSTT("Take 10 mg twice daily.", "en"),
+        lid=_FakeLID("en"),
+        translator=_FakeTranslator("Take 10 mg twice daily."),
+        tts=None,
+    )
+    result = pipeline.process(np.zeros(160, dtype=np.float32), target_lang="en")
+
+    assert not result.blocked
+    assert result.safety.safe is True
+    assert result.translation.translated_text == "Take 10 mg twice daily."
+    assert result.audio is None
+    assert "tts_ms" not in result.timings_ms
+
+
+def test_captions_only_mode_still_blocks_unsafe_translations():
+    """The safety gate is independent of whether TTS is configured — an
+    unsafe translation is still `blocked` even with tts=None, not
+    silently treated as "safe, just no audio.\""""
+    pipeline = TranslationPipeline(
+        stt=_FakeSTT("Do not take this medicine.", "en"),
+        lid=_FakeLID("en"),
+        translator=_FakeTranslator("Take this medicine."),
+        tts=None,
+    )
+    result = pipeline.process(np.zeros(160, dtype=np.float32), target_lang="en")
+
+    assert result.blocked
+    assert result.audio is None

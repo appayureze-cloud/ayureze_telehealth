@@ -1,29 +1,50 @@
 # AI Translation Agent
 
-## IMPORTANT: the default translation/TTS models were switched — AI translation currently does not run in this sandbox
+## IMPORTANT: the default translation/TTS models were switched — read this before deploying
 
 `app/pipeline/factory.py`'s `build_default_pipeline()` — used by every
-real session via `app/agent.py` — was switched from NLLB-200/MMS-TTS to
-**MADLAD-400/Qwen3-TTS**, after this codebase's own license audit found
-NLLB-200 and MMS-TTS are both `CC-BY-NC-4.0` (non-commercial; NLLB's own
-model card states it is "not released for production deployment") — see
-`docs/MODEL_LICENSE_MATRIX.md`. There is deliberately **no fallback**
-configured back to the old models.
+real session via `app/agent.py` — no longer defaults to NLLB-200/MMS-TTS,
+after this codebase's own license audit found both are `CC-BY-NC-4.0`
+(non-commercial; NLLB's own model card states it is "not released for
+production deployment") — see `docs/MODEL_LICENSE_MATRIX.md`.
 
-**Real, direct consequence**: MADLAD-400 and Qwen3-TTS are not downloaded
-in this environment (no GPU). `build_default_pipeline()` now raises
-`ModelNotAvailableError`, and `POST /v1/agent/sessions/{id}/start` returns
-a clear `503` instead. Everything below describing the Day 6/7 whole-
-utterance pipeline's translation/TTS behavior is now **historical** — it
-describes what ran against NLLB-200/MMS-TTS before this switch, not the
-current default. STT (`FasterWhisperSTT`) and every non-translation/TTS
-part of the agent lifecycle are unaffected. `tests/test_pipeline_live_integration.py`
-and the `build_default_pipeline`-dependent cases in
-`tests/pipeline/test_pipeline_models.py` now `skip` with an explicit
-reason rather than passing — see `docs/MODEL_LICENSE_MATRIX.md`'s
-"Finding" section for the full reasoning, options, and current state
-(licensing resolved; certification and GPU availability are the two
-remaining gates).
+**Two commercially-licensed backends now exist, selected at deploy time**
+via `app/config.py`'s `AI_TRANSLATION_BACKEND`/`AI_TTS_BACKEND` — neither
+removes the other from the codebase:
+
+| | `AI_TRANSLATION_BACKEND` | Model | Requires | Status |
+|---|---|---|---|---|
+| **default** | `opus-mt` | `Helsinki-NLP/opus-mt-en-dra`/`opus-mt-dra-en` | Apache-2.0, CPU-feasible (small MarianMT models) | This is what actually runs on a real CPU-only VPS |
+| alternative | `madlad` | MADLAD-400 3B | Apache-2.0, **GPU required** | Select once real GPU infra exists |
+
+| | `AI_TTS_BACKEND` | Requires | Status |
+|---|---|---|---|
+| **default** | `none` | — | **Captions-only** — no TTS model currently has both a verified commercial license AND CPU feasibility (Qwen3-TTS/CosyVoice3 need GPU; k2-fsa/OmniVoice's pretrained weights are CC-BY-NC despite an Apache-2.0 codebase; Piper's Tamil voice license is unverified/mixed) |
+| alternative | `qwen3-tts` | GPU + a reference voice clip per language | Select once both exist — see `AI_TTS_REFERENCE_AUDIO_PATH`/`AI_TTS_REFERENCE_TEXT` |
+
+**Real, direct consequence with the default config**: neither the OPUS-MT
+checkpoints nor MADLAD-400/Qwen3-TTS are downloaded in this sandbox
+(`AI_ALLOW_MODEL_DOWNLOAD=false` by default — no model is fetched
+implicitly regardless of backend). `build_default_pipeline()` raises
+`ModelNotAvailableError` here, and `POST /v1/agent/sessions/{id}/start`
+returns a clear `503` instead. On a real deploy with
+`AI_ALLOW_MODEL_DOWNLOAD=true`, the default `opus-mt`/`none` backends need
+no GPU at all and will actually load and run — captions (translated text)
+work, synthesized voice audio does not, until a TTS gap above is closed.
+`TranslationPipeline(tts=None)` (`orchestrator.py`) runs this
+captions-only mode: transcription, translation, and safety validation all
+run for real; `PipelineResult.audio` is simply always `None`.
+
+Everything below describing the Day 6/7 whole-utterance pipeline's
+translation/TTS behavior describes what ran against NLLB-200/MMS-TTS
+before this switch — historical, not the current default.
+`tests/test_pipeline_live_integration.py` and the
+`build_default_pipeline`-dependent cases in
+`tests/pipeline/test_pipeline_models.py` `skip` with an explicit reason in
+this sandbox (no `AI_ALLOW_MODEL_DOWNLOAD`) rather than passing — see
+`docs/MODEL_LICENSE_MATRIX.md`'s "Finding" section for the full
+reasoning, options, and current state (licensing resolved for the default
+backend; certification is the remaining gate).
 
 ## Streaming architecture (post-Day-7 addition)
 

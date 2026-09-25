@@ -12,18 +12,21 @@ def test_unregistered_pair_returns_none():
     assert reg.get("fr", "zh") is None
 
 
-def test_en_ta_was_switched_from_nllb_mms_tts_to_madlad_qwen3_tts():
+def test_en_ta_was_switched_off_nllb_mms_tts_with_two_selectable_routes():
     """Real change this pass: en->ta's default translation/TTS providers
     were switched away from NLLB-200/MMS-TTS (found CC-BY-NC-4.0,
-    non-commercial) to MADLAD-400/Qwen3-TTS (Apache-2.0), with NO fallback
-    configured back to the old models — a deliberate full removal from
-    this pair's production routing, not just a reordering."""
+    non-commercial). Two routes now exist, matching app/config.py's
+    deploy-time-selectable ai_translation_backend/ai_tts_backend:
+    primary = OPUS-MT (Apache-2.0, CPU-feasible — what actually runs on
+    this build's real CPU-only VPS deployment today), fallback = MADLAD-400
+    /Qwen3-TTS (Apache-2.0, GPU-only — the path once GPU infra exists).
+    Neither old model (NLLB/MMS-TTS) appears in either slot."""
     reg = default_registry()
     cfg = reg.get("en", "ta")
-    assert cfg.translation_primary == "madlad400-3b"
-    assert cfg.translation_fallback is None
-    assert cfg.tts_primary == "qwen3-tts"
-    assert cfg.tts_fallback is None
+    assert cfg.translation_primary == "opus-mt-en-ta"
+    assert cfg.translation_fallback == "madlad400-3b"
+    assert cfg.tts_primary is None
+    assert cfg.tts_fallback == "qwen3-tts"
 
 
 def test_en_ta_license_is_now_verified_but_certification_was_reset():

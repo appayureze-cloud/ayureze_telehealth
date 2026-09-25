@@ -30,13 +30,13 @@ production-ready on licensing grounds alone).
 
 ## This build's default registry — real, evidenced state, not aspiration
 
-| Pair | Translation / TTS primary | Certification | License verified | `is_production_ready()` | Why |
-|---|---|---|---|---|---|
-| en → ta | `madlad400-3b` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ **True** | ❌ **False** | **Switched this pass** from NLLB-200/MMS-TTS (CC-BY-NC-4.0) to MADLAD-400/Qwen3-TTS (Apache-2.0), no fallback to the old models. Licensing is resolved; certification was correctly RESET (not carried over) since the prior safety-corpus/live-integration/latency evidence was measured against NLLB/MMS-TTS's actual output, not MADLAD/Qwen3-TTS's. Also currently unavailable in this sandbox (no GPU) — see `docs/MODEL_LICENSE_MATRIX.md`. |
-| ta → en | `madlad400-3b` / `qwen3-tts` | ⚠️ testing | ✅ True | ❌ False | Same as en → ta. |
-| en → ml | `madlad400-3b` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ True | ❌ False | Same model switch as en → ta. Was already `testing` before the switch (safety validator's negation/terminology tables are English/Tamil-only — a separate, still-open blocker for this pair specifically). |
-| de → en | `opus-mt-de-en` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of a "certified specialist" route (OPUS-MT). License verified for `opus-mt-de-en` specifically; certification blocked on regression testing against the safety corpus, not done this pass. |
-| ja → en | `madlad400-3b` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of "no certified specialist → MADLAD-400." Routes DIRECTLY to `madlad400-3b` as primary (no fallback configured) — MADLAD-400 itself is not yet certified either. |
+| Pair | Translation primary / fallback | TTS primary / fallback | Certification | License verified | `is_production_ready()` | Why |
+|---|---|---|---|---|---|---|
+| en → ta | `opus-mt-en-ta` / `madlad400-3b` | `None` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ **True** | ❌ **False** | Switched from NLLB-200/MMS-TTS (CC-BY-NC-4.0) to a CPU-feasible commercial primary (OPUS-MT) with the GPU-only commercial option (MADLAD-400/Qwen3-TTS) kept as fallback — both selectable via `app/config.py`, neither removed from the codebase. Licensing is resolved; certification was correctly RESET (not carried over) since the prior safety-corpus/live-integration/latency evidence was measured against NLLB's actual output, not OPUS-MT's. |
+| ta → en | `opus-mt-ta-en` / `madlad400-3b` | `None` / `qwen3-tts` | ⚠️ testing | ✅ True | ❌ False | Same as en → ta. |
+| en → ml | `opus-mt-en-ml` / `madlad400-3b` | `None` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ True | ❌ False | Same routing as en → ta (same `opus-mt-en-dra` checkpoint, different target tag). Was already `testing` before any model switch (safety validator's negation/terminology tables are English/Tamil-only — a separate, still-open blocker for this pair specifically). |
+| de → en | `opus-mt-de-en` / `madlad400-3b` | `None` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of a "certified specialist" route. License verified for `opus-mt-de-en` specifically; certification blocked on regression testing against the safety corpus, not done this pass. |
+| ja → en | `madlad400-3b` / — | `None` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of "no certified specialist → MADLAD-400." Routes DIRECTLY to `madlad400-3b` as primary (no fallback configured) — MADLAD-400 itself is not yet certified either. |
 
 Every row above reflects real evidence (or its real absence) — none is
 aspirational. Registering a new pair or promoting one to `certified` is a
@@ -44,8 +44,8 @@ aspirational. Registering a new pair or promoting one to `certified` is a
 exists; the registry itself enforces nothing more or less than what's been
 demonstrated. **No pair in this registry is currently `certified`** —
 en↔ta held that status against NLLB-200/MMS-TTS specifically, and it was
-correctly given up (not transferred) when those models were removed from
-production routing — see `docs/MODEL_LICENSE_MATRIX.md`.
+correctly given up (not transferred) when those models stopped being the
+default production route — see `docs/MODEL_LICENSE_MATRIX.md`.
 
 ## Router fail-closed behavior
 

@@ -162,15 +162,17 @@ async def test_live_translation_pipeline_produces_captions():
     async with httpx.AsyncClient(transport=transport, base_url="http://agent-under-test") as client:
         r = await client.post(f"/v1/agent/sessions/{session_id}/start", json={"tenant_id": tenant_id})
         if r.status_code == 503:
-            # build_default_pipeline() now requires MADLAD-400 + Qwen3-TTS
-            # (switched away from NLLB-200/MMS-TTS after they were found
-            # CC-BY-NC-4.0/non-commercial — see docs/MODEL_LICENSE_MATRIX.md),
-            # neither of which is downloaded in this sandbox (no GPU). This
-            # is the correct, fail-closed behavior (main.py's /start now
-            # returns a clear 503 rather than crashing — see its own
+            # build_default_pipeline() now defaults to OPUS-MT (translation)
+            # + captions-only (no TTS) — switched away from NLLB-200/MMS-TTS
+            # after they were found CC-BY-NC-4.0/non-commercial — see
+            # docs/MODEL_LICENSE_MATRIX.md. Not downloaded in this sandbox
+            # (AI_ALLOW_MODEL_DOWNLOAD=false by default). This is the
+            # correct, fail-closed behavior (main.py's /start now returns a
+            # clear 503 rather than crashing — see its own
             # ModelNotAvailableError handling), not a bug — skip rather
-            # than fail. This test will run for real again on a GPU host
-            # with AI_ALLOW_MODEL_DOWNLOAD=true. See docs/ai/models.md.
+            # than fail. This test will run for real again once
+            # AI_ALLOW_MODEL_DOWNLOAD=true and the checkpoint is actually
+            # available. See docs/ai/models.md.
             pytest.skip(f"AI translation pipeline unavailable in this environment: {r.json()['detail']}")
         assert r.status_code == 202
 

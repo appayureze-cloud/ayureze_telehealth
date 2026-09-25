@@ -43,8 +43,17 @@ def _get_pipeline():
     if _pipeline is None:
         from .pipeline.factory import build_default_pipeline
 
-        log(logger, logging.INFO, "loading_translation_pipeline", event_type="loading_translation_pipeline")
-        _pipeline = build_default_pipeline(whisper_model_size=settings.ai_agent_whisper_model_size)
+        log(
+            logger, logging.INFO, "loading_translation_pipeline", event_type="loading_translation_pipeline",
+            translation_backend=settings.ai_translation_backend, tts_backend=settings.ai_tts_backend,
+        )
+        _pipeline = build_default_pipeline(
+            whisper_model_size=settings.ai_agent_whisper_model_size,
+            translation_backend=settings.ai_translation_backend,
+            tts_backend=settings.ai_tts_backend,
+            tts_ref_audio=settings.ai_tts_reference_audio_path,
+            tts_ref_text=settings.ai_tts_reference_text,
+        )
         log(logger, logging.INFO, "translation_pipeline_loaded", event_type="translation_pipeline_loaded")
     return _pipeline
 

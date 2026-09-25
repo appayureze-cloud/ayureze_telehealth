@@ -11,17 +11,32 @@ not aspiration. **No pair is currently marked `certified`.** en<->ta was
 previously certified against NLLB-200/MMS-TTS's real output (the 75-case
 safety corpus, a live end-to-end integration test, a measured latency
 benchmark), but this build's own license audit found both models
-CC-BY-NC-4.0 (non-commercial) — see docs/MODEL_LICENSE_MATRIX.md — so
-en<->ta was switched to MADLAD-400/Qwen3-TTS (Apache-2.0) as primary, with
-no fallback to the old models. Certification was reset to `testing`
-rather than carried over: the prior evidence was against NLLB/MMS-TTS's
-actual translations specifically and does not transfer to a different
-model without re-running the same regression evidence against it — which
-requires a GPU host these new models aren't downloaded on in this
-sandbox (see `model_lifecycle.ModelNotAvailableError`). Every other entry
-(en<->ml, de->en, ja->en) exists to demonstrate the registry/router
-mechanism the build spec asks for and is likewise `testing`/`uncertified`
-until it earns that status with real evidence.
+CC-BY-NC-4.0 (non-commercial) — see docs/MODEL_LICENSE_MATRIX.md.
+
+en<->ta/ta<->en/en<->ml now offer TWO translation routes, matching
+app/config.py's deploy-time-selectable ai_translation_backend — neither
+removes the other from the codebase:
+  primary:  `Helsinki-NLP/opus-mt-en-dra`/`opus-mt-dra-en` — Apache-2.0
+            AND genuinely CPU-feasible (a real CPU-only VPS is this
+            build's actual current deployment target). This is what
+            actually runs today.
+  fallback: `madlad400-3b` — Apache-2.0 but GPU-only per its own docs;
+            the path once real GPU infrastructure exists.
+TTS is `None`/captions-only by default with `qwen3-tts` as the fallback
+for the same reason (GPU + a reference voice per language, neither
+available today) — no TTS candidate is currently both commercially
+licensed and CPU-feasible (k2-fsa/OmniVoice's pretrained weights are
+CC-BY-NC despite an Apache-2.0 codebase; Piper TTS's Tamil voice license
+is unverified/mixed per-voice) — see `docs/MODEL_LICENSE_MATRIX.md`.
+
+Certification was reset to `testing` rather than carried over when the
+primary route changed from NLLB-200 to OPUS-MT: the prior evidence was
+against a DIFFERENT model's actual translations and does not transfer
+without re-running the same regression evidence against the new one.
+Every other entry (de->en, ja->en) exists to demonstrate the
+registry/router mechanism the build spec asks for and is likewise
+`testing`/`uncertified` until it
+earns that status with real evidence.
 """
 
 from __future__ import annotations
@@ -79,65 +94,67 @@ class LanguageRegistry:
 
 
 def _default_pairs() -> dict[tuple[str, str], LanguagePairConfig]:
-    # en<->ta: this build's primary pair. SWITCHED this pass from
-    # NLLB-200/MMS-TTS to MADLAD-400/Qwen3-TTS as primary, with NO
-    # fallback to the old models (translation_fallback/tts_fallback=None)
-    # — a deliberate decision to fully remove the non-commercially-licensed
-    # models from this pair's production routing after this codebase's own
-    # license audit found NLLB-200 and MMS-TTS are both CC-BY-NC-4.0
-    # (verified directly against their live HuggingFace model cards,
-    # 2026-09-25; NLLB's own model card explicitly states it is "not
-    # released for production deployment") — see
-    # docs/MODEL_LICENSE_MATRIX.md for the full finding.
+    # en<->ta: this build's primary pair. TWO translation backends are
+    # available (app/config.py's ai_translation_backend, deploy-time
+    # selectable — neither removes the other from the codebase):
     #
-    # certification is reset to "testing"/all-False here, NOT carried over
-    # from NLLB/MMS-TTS's prior certified status: the real regression
-    # evidence behind that certification (tests/pipeline/
-    # test_safety_validator_corpus.py's 75 cases, the live-integration
-    # test, the measured latency benchmark) was run against NLLB/MMS-TTS's
-    # actual output specifically. It does not transfer to a different
-    # model's translations, which can differ in phrasing/latency in ways
-    # the safety validator or latency budget haven't been re-verified
-    # against. Claiming "certified" for an unverified model here would be
-    # exactly the kind of unevidenced claim this project's own conventions
-    # exist to prevent.
+    #   primary "opus-mt-en-ta": Helsinki-NLP/opus-mt-en-dra (needs a
+    #     `>>tam<<` target tag) — Apache-2.0, small MarianMT model
+    #     (hundreds of MB), genuinely CPU-feasible. This is what actually
+    #     runs on a CPU-only VPS deployment today.
+    #   fallback "madlad400-3b": Apache-2.0 but GPU-only per its own
+    #     docs — the path once real GPU infrastructure exists.
     #
-    # MADLAD-400/Qwen3-TTS are NOT downloaded in this build (see
-    # factory.py's build_default_pipeline() and
-    # model_lifecycle.ModelNotAvailableError) — is_production_ready()
-    # correctly returns False for this pair, now for TWO real reasons:
-    # uncertified AND (until a GPU host with AI_ALLOW_MODEL_DOWNLOAD=true
-    # exists) unavailable to even attempt certification against.
+    # See app/pipeline/factory.py's build_default_pipeline() for the
+    # actual selection logic (a _DirectionalOpusMT dispatcher for the
+    # opus-mt backend, since a single OPUSMTProvider only loads one
+    # direction).
+    #
+    # tts_primary is None (captions-only): no TTS model has both a
+    # verified commercial license AND CPU feasibility yet. Qwen3-TTS/
+    # CosyVoice3 need GPU; k2-fsa/OmniVoice's pretrained weights are
+    # CC-BY-NC (non-commercial, due to its training data) despite an
+    # Apache-2.0 codebase; Piper TTS's Tamil voice license is unverified/
+    # mixed per-voice — see docs/MODEL_LICENSE_MATRIX.md. tts_fallback
+    # points at qwen3-tts for the future GPU path (also needs a reference
+    # voice clip per language — see app/config.py).
+    #
+    # certification stays "testing"/all-False: the 75-case safety corpus
+    # has NOT been re-run against opus-mt-en-dra's actual translation
+    # output (it was run against NLLB-200's, before the licensing-driven
+    # switch) — real regression evidence for THIS specific model is still
+    # outstanding work, tracked here rather than assumed.
     en_ta = LanguagePairConfig(
         source="en", target="ta",
-        translation_primary="madlad400-3b",
-        translation_fallback=None,
-        tts_primary="qwen3-tts",
-        tts_fallback=None,
+        translation_primary="opus-mt-en-ta",
+        translation_fallback="madlad400-3b",
+        tts_primary=None,
+        tts_fallback="qwen3-tts",
         certification=Certification(status="testing", medical_terms=False, dosage=False, negation=False, latency=False),
-        license=LicenseStatus(verified=True, notes="madlad400-3b and qwen3-tts are both Apache-2.0, verified 2026-09-25 — see docs/MODEL_LICENSE_MATRIX.md. License is no longer the blocker for this pair; certification (real regression evidence against these specific models) is."),
+        license=LicenseStatus(verified=True, notes="opus-mt-en-dra (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25 — see docs/MODEL_LICENSE_MATRIX.md. License is no longer the blocker; certification (real regression evidence against this specific model's output) is. No TTS model is both commercially licensed and CPU-feasible yet — captions-only until qwen3-tts's GPU/reference-voice prerequisites are met."),
     )
     ta_en = LanguagePairConfig(
         source="ta", target="en",
-        translation_primary="madlad400-3b",
-        translation_fallback=None,
-        tts_primary="qwen3-tts",
-        tts_fallback=None,
+        translation_primary="opus-mt-ta-en",
+        translation_fallback="madlad400-3b",
+        tts_primary=None,
+        tts_fallback="qwen3-tts",
         certification=Certification(status="testing", medical_terms=False, dosage=False, negation=False, latency=False),
-        license=LicenseStatus(verified=True, notes="Same as en->ta."),
+        license=LicenseStatus(verified=True, notes="opus-mt-dra-en (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25. Same as en->ta otherwise."),
     )
-    # en<->ml: switched the same way as en->ta/ta->en. Was already
-    # "testing" (English/Tamil-only safety-validator coverage is a
-    # separate, still-open blocker), so this pair's status is unchanged —
-    # only its provider and license.verified value change.
+    # en<->ml: same CPU-feasible OPUS-MT checkpoint (opus-mt-en-dra also
+    # covers Malayalam) and captions-only TTS status as en->ta. Was
+    # already "testing" before any model switch (safety validator's
+    # negation/terminology tables are English/Tamil-only today) — a
+    # second, independent, still-open blocker on top of certification.
     en_ml = LanguagePairConfig(
         source="en", target="ml",
-        translation_primary="madlad400-3b",
-        translation_fallback=None,
-        tts_primary="qwen3-tts",
-        tts_fallback=None,
+        translation_primary="opus-mt-en-ml",
+        translation_fallback="madlad400-3b",
+        tts_primary=None,
+        tts_fallback="qwen3-tts",
         certification=Certification(status="testing", medical_terms=False, dosage=False, negation=False, latency=False),
-        license=LicenseStatus(verified=True, notes="Same as en->ta — madlad400-3b/qwen3-tts are Apache-2.0. Safety-validator language coverage remains a separate, still-open blocker for this pair specifically."),
+        license=LicenseStatus(verified=True, notes="Same opus-mt-en-dra checkpoint as en->ta (Apache-2.0). Safety-validator language coverage remains a separate, still-open blocker for this pair specifically."),
     )
     # de->en: the build spec's own worked example of a "certified
     # specialist" route. OPUS-MT is a genuinely real, small, commercially

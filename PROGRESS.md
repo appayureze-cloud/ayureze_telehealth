@@ -741,3 +741,60 @@ skips cleanly — `test_ai_agent_full_lifecycle` unaffected,
 reason instead of failing). Go/Web/Flutter/Playwright not re-run for this
 specific change — no shared code touched, already confirmed green earlier
 this session.
+
+## Post-audit — Real deployment target is a CPU-only VPS: made the translation/TTS backend deploy-time selectable, defaulted to a CPU-feasible commercial option
+
+The prior switch to MADLAD-400/Qwen3-TTS was licensing-correct but
+GPU-only per both models' own docs — the real deployment target turned
+out to be a **CPU-only VPS**, so neither would actually run there either.
+Investigated two more candidates for CPU-friendly, commercially-licensed
+TTS: **k2-fsa/OmniVoice** (pretrained weights are CC-BY-NC despite an
+Apache-2.0 codebase — same non-commercial problem, plus GPU-oriented with
+unconfirmed Tamil support) and **Piper TTS** (engine is MIT and genuinely
+CPU-fast, but its Tamil voice's specific license is unverified/mixed,
+depending on training dataset) — both rejected, real gap remains open for
+TTS specifically.
+
+For translation, found a genuinely CPU-feasible commercial option:
+`Helsinki-NLP/opus-mt-en-dra`/`opus-mt-dra-en` (Apache-2.0, small MarianMT
+models covering English<->Tamil/Malayalam/Kannada/Telugu, needs a
+`>>tam<<`-style target tag for the one-to-many direction — verified
+against the live model cards). `OPUSMTProvider` gained `target_lang_tag`
+support for this. Built `_DirectionalOpusMT` (`factory.py`) to dispatch
+between the two single-direction checkpoints a real doctor<->patient
+conversation needs.
+
+**Made `build_default_pipeline()` deploy-time selectable** rather than
+picking one backend and removing the other — `app/config.py`'s new
+`AI_TRANSLATION_BACKEND` (`opus-mt` default | `madlad`) and
+`AI_TTS_BACKEND` (`none` default | `qwen3-tts`). Nothing is deleted:
+MADLAD-400/Qwen3-TTS remain fully intact as the GPU-path option for when
+real GPU infrastructure exists. `language_registry.py`'s en<->ta/en<->ml
+entries updated to match (primary = opus-mt, fallback = madlad/qwen3-tts).
+
+**Made TTS genuinely optional** in the orchestrator
+(`TranslationPipeline(tts=None)`) rather than only offering "a working
+TTS or a crashed pipeline" — real transcription/translation/safety
+validation all still run; `PipelineResult.audio` is simply `None`. This is
+CAPTIONS-ONLY mode, the real default now: no TTS candidate investigated so
+far is both commercially licensed and CPU-feasible. `main.py`'s
+`/start` handler unaffected by this specific change (still returns 503 on
+`ModelNotAvailableError`, now from the OPUS-MT translator specifically in
+this sandbox rather than MADLAD).
+
+**Real, meaningful difference from the previous switch**: with the new
+defaults (`opus-mt`/`none`), `build_default_pipeline()` needs NO GPU at
+all — only `AI_ALLOW_MODEL_DOWNLOAD=true` on a real deploy. It still
+doesn't run in THIS sandbox (no downloads happen here either, by
+instruction), but a real CPU-only VPS deployment now has a genuine,
+non-GPU-blocked path to real translation (captions), not just a
+GPU-blocked one.
+
+Added real unit tests: `_DirectionalOpusMT` dispatch logic and
+backend-selection error handling (`test_factory.py`, 5 tests), captions-only
+orchestrator behavior including that the safety gate still applies with
+no TTS configured (`test_tts_gate.py`, +2 tests). Full regression re-run
+clean: AI-agent Python unit (181, up from 174), real-model (12 passed + 3
+skip cleanly, same skip count as before — still gated on
+`AI_ALLOW_MODEL_DOWNLOAD`, now for the CPU-feasible model), integration (1
+passed + 1 skips cleanly, unchanged).

@@ -33,6 +33,27 @@ class Settings(BaseSettings):
     ai_agent_enable_pipeline: bool = False
     ai_agent_whisper_model_size: str = "tiny"
 
+    # build_default_pipeline()'s actual backend selection (app/pipeline/
+    # factory.py). Deploy-time choice, not a code change — neither backend
+    # is removed from the codebase by selecting the other:
+    #   translation: "opus-mt" (default) — Helsinki-NLP/opus-mt-en-dra/
+    #     -dra-en, Apache-2.0, small enough for real CPU inference; this
+    #     is what actually runs on a CPU-only VPS today.
+    #     "madlad" — MADLAD-400 3B, Apache-2.0 but GPU-only per its own
+    #     docs (not downloaded unless ai_allow_model_download=true AND a
+    #     GPU is present) — set this once real GPU infrastructure exists.
+    #   tts: "none" (default) — captions-only. No TTS model currently has
+    #     both a verified commercial license AND CPU feasibility (Qwen3-TTS/
+    #     CosyVoice3 need GPU; MMS-TTS/NLLB-adjacent options are
+    #     CC-BY-NC-4.0 — see docs/MODEL_LICENSE_MATRIX.md).
+    #     "qwen3-tts" — switches to Qwen3-TTS once GPU infra AND a
+    #     reference voice clip per language exist (see
+    #     ai_tts_reference_audio_path/ai_tts_reference_text below).
+    ai_translation_backend: str = "opus-mt"  # "opus-mt" | "madlad"
+    ai_tts_backend: str = "none"  # "none" | "qwen3-tts"
+    ai_tts_reference_audio_path: str | None = None
+    ai_tts_reference_text: str | None = None
+
     # Streaming pipeline (this pass's addition — see app/pipeline/
     # streaming_pipeline.py). Opt-in and OFF by default: the existing,
     # live-verified whole-utterance pipeline above remains the default

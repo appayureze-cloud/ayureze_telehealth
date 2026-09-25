@@ -45,8 +45,15 @@ class TranslationPipeline:
         stt: STTProvider,
         lid: LanguageIDProvider,
         translator: TranslationProvider,
-        tts: TTSProvider,
+        tts: TTSProvider | None = None,
     ):
+        """tts=None runs the pipeline in CAPTIONS-ONLY mode: transcription,
+        translation, and safety validation all run normally and
+        PipelineResult.translation/safety are fully populated, but
+        PipelineResult.audio is always None and no TTS stage timing is
+        recorded. Used when no commercially-licensed, CPU-feasible TTS
+        model is configured — see app/pipeline/factory.py and
+        docs/ai/README.md."""
         self._stt = stt
         self._lid = lid
         self._translator = translator
@@ -156,7 +163,7 @@ class TranslationPipeline:
             span.set_attribute("ayureze.safe", safety_result.safe)
 
         audio_out: SynthesizedAudio | None = None
-        if safety_result.safe and translated_text.strip():
+        if safety_result.safe and translated_text.strip() and self._tts is not None:
             with tracing.tracer().start_as_current_span("pipeline.tts") as span:
                 span.set_attribute("ayureze.session_id", session_id)
                 t0 = time.monotonic()

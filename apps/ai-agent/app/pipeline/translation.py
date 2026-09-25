@@ -68,18 +68,27 @@ class OPUSMTProvider(TranslationProvider, ModelLifecycle):
 
     Not downloaded in this build (AI_ALLOW_MODEL_DOWNLOAD is false by
     default) — load() raises ModelNotAvailableError, and
-    TranslationRouter treats that as "use the configured fallback
-    (MADLAD-400), never silently degrade to plaintext or an unapproved
-    model."
+    TranslationRouter treats that as "use the configured fallback,
+    never silently degrade to plaintext or an unapproved model."
+
+    Some OPUS-MT checkpoints are ONE-TO-MANY (a single English->Dravidian
+    checkpoint covering Tamil/Malayalam/Kannada/Telugu, not a dedicated
+    per-pair one) — verified against Helsinki-NLP/opus-mt-en-dra's own
+    model card (2026-09-25), such checkpoints require a sentence-initial
+    `>>xxx<<` target-language token (e.g. `>>tam<<` for Tamil). Pass
+    `target_lang_tag` for these; leave it None for a dedicated bilingual
+    checkpoint (e.g. opus-mt-de-en) or a many-to-one checkpoint (e.g.
+    opus-mt-dra-en), neither of which needs one.
     """
 
     def __init__(self, source_lang: str, target_lang: str, checkpoint: str | None = None,
-                 cache_dir: Path | str = DEFAULT_CACHE_DIR):
+                 cache_dir: Path | str = DEFAULT_CACHE_DIR, target_lang_tag: str | None = None):
         ModelLifecycle.__init__(self)
         self._source_lang = source_lang
         self._target_lang = target_lang
         self._checkpoint = checkpoint or f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"
         self._cache_dir = str(cache_dir)
+        self._target_lang_tag = target_lang_tag
         self._model = None
         self._tokenizer = None
 
@@ -134,7 +143,8 @@ class OPUSMTProvider(TranslationProvider, ModelLifecycle):
             raise RuntimeError("load() must be called before translate()")
         if not text.strip():
             return ""
-        inputs = self._tokenizer(text, return_tensors="pt", padding=True)
+        input_text = f"{self._target_lang_tag} {text}" if self._target_lang_tag else text
+        inputs = self._tokenizer(input_text, return_tensors="pt", padding=True)
         output_ids = self._model.generate(**inputs, max_new_tokens=128)
         return self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
 
