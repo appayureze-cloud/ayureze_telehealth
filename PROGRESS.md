@@ -699,3 +699,45 @@ documented, not resolved.
 up from 7 — includes real streaming STT/TTS tests), integration (2,
 unchanged and still passing — confirms the existing live path is
 untouched), Web SDK (19), Flutter (41), Playwright (15).
+
+## Post-audit — Switched the default translation/TTS models off NLLB-200/MMS-TTS (explicit request)
+
+Following the licensing finding above, explicitly requested: switched
+`app/pipeline/factory.py`'s `build_default_pipeline()` — the function
+every real session uses — from NLLB-200/MMS-TTS to MADLAD-400/Qwen3-TTS
+(both Apache-2.0), with no fallback configured back to the old models.
+Same switch made in `language_registry.py`'s default en<->ta/en<->ml
+entries. `NLLBTranslationProvider`/`MmsTTSProvider` remain in the codebase
+(other tests and `StreamingMmsTTSProvider` still use them directly) but
+are the default nowhere anymore.
+
+**Explicitly accepted, real consequence**: MADLAD-400/Qwen3-TTS are not
+downloaded in this sandbox (no GPU) — `build_default_pipeline()` now
+raises `ModelNotAvailableError`. **AI translation does not currently run
+in this environment.** Added a matching fix in `main.py`'s
+`POST /v1/agent/sessions/{id}/start`: this now returns a clear `503`
+instead of an unhandled 500, since the previous code had no handling for
+this failure mode at all. `tests/test_pipeline_live_integration.py` and
+the 3 `build_default_pipeline`-dependent cases in
+`tests/pipeline/test_pipeline_models.py` now `pytest.skip()` with an
+explicit reason instead of failing or passing falsely.
+
+**Certification correctly reset, not carried over**: en<->ta's prior
+"certified" status was real evidence measured against NLLB-200/MMS-TTS's
+actual translation output — it does not transfer to MADLAD-400/Qwen3-TTS
+without re-running the same regression evidence. `language_registry.py`
+resets it to `"testing"` (all flags `False`). Licensing is now resolved
+for this pair (`license.verified=True`); certification and GPU
+availability are the two remaining, real gates —
+`is_production_ready("en", "ta")` is still `False`, now for those reasons
+instead.
+
+**Full regression re-run clean**: AI-agent Python unit (174, up from 173
+— 1 test rewritten into 2 to reflect the new registry state), real-model
+(12 passed + 3 skip cleanly, down from 15 passed — the 3 skips are the
+direct, expected, accepted consequence above), integration (1 passed + 1
+skips cleanly — `test_ai_agent_full_lifecycle` unaffected,
+`test_live_translation_pipeline_produces_captions` skips with a clear
+reason instead of failing). Go/Web/Flutter/Playwright not re-run for this
+specific change — no shared code touched, already confirmed green earlier
+this session.

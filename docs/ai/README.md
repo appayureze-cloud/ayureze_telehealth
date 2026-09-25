@@ -1,5 +1,30 @@
 # AI Translation Agent
 
+## IMPORTANT: the default translation/TTS models were switched — AI translation currently does not run in this sandbox
+
+`app/pipeline/factory.py`'s `build_default_pipeline()` — used by every
+real session via `app/agent.py` — was switched from NLLB-200/MMS-TTS to
+**MADLAD-400/Qwen3-TTS**, after this codebase's own license audit found
+NLLB-200 and MMS-TTS are both `CC-BY-NC-4.0` (non-commercial; NLLB's own
+model card states it is "not released for production deployment") — see
+`docs/MODEL_LICENSE_MATRIX.md`. There is deliberately **no fallback**
+configured back to the old models.
+
+**Real, direct consequence**: MADLAD-400 and Qwen3-TTS are not downloaded
+in this environment (no GPU). `build_default_pipeline()` now raises
+`ModelNotAvailableError`, and `POST /v1/agent/sessions/{id}/start` returns
+a clear `503` instead. Everything below describing the Day 6/7 whole-
+utterance pipeline's translation/TTS behavior is now **historical** — it
+describes what ran against NLLB-200/MMS-TTS before this switch, not the
+current default. STT (`FasterWhisperSTT`) and every non-translation/TTS
+part of the agent lifecycle are unaffected. `tests/test_pipeline_live_integration.py`
+and the `build_default_pipeline`-dependent cases in
+`tests/pipeline/test_pipeline_models.py` now `skip` with an explicit
+reason rather than passing — see `docs/MODEL_LICENSE_MATRIX.md`'s
+"Finding" section for the full reasoning, options, and current state
+(licensing resolved; certification and GPU availability are the two
+remaining gates).
+
 ## Streaming architecture (post-Day-7 addition)
 
 A new, OPT-IN streaming pipeline (default off:
@@ -7,19 +32,17 @@ A new, OPT-IN streaming pipeline (default off:
 whole-utterance pipeline documented below, adding real-time partial ASR,
 incremental commit/safety/TTS staging, and a language-registry-driven
 router for new translation/TTS/STT models. It has NOT replaced or been
-wired into the live LiveKit audio path documented in this file — that
-remains the default, live-verified pipeline. See:
+wired into the live LiveKit audio path documented in this file. See:
 
 - `docs/ai/streaming.md` — architecture, data flow, why it's a separate
   opt-in path, and what has/hasn't been verified
-- `docs/ai/models.md` — every new model provider class and its real status
+- `docs/ai/models.md` — every model provider class and its real status
 - `docs/ai/language-registry.md` — how a language pair is routed and
   certified
 - `docs/ai/latency.md` — real measured latency of the new components
-- `docs/MODEL_LICENSE_MATRIX.md` — **includes a real finding that this
-  pipeline's EXISTING NLLB-200/MMS-TTS models are non-commercially
-  licensed (CC-BY-NC-4.0)** — read this before any commercial deployment
-  decision
+- `docs/MODEL_LICENSE_MATRIX.md` — the licensing finding and the default-
+  pipeline model switch above — read this before any commercial
+  deployment decision
 
 ## Day 5: the agent as a real encrypted LiveKit participant
 

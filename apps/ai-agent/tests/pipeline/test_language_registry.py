@@ -12,15 +12,33 @@ def test_unregistered_pair_returns_none():
     assert reg.get("fr", "zh") is None
 
 
-def test_en_ta_is_fully_certified_but_not_production_ready_due_to_license():
-    """Real finding from this pass: NLLB-200/MMS-TTS are CC-BY-NC-4.0
-    (non-commercial). Certification alone must never be enough —
-    is_production_ready() requires BOTH certification AND a verified
-    commercial-compatible license."""
+def test_en_ta_was_switched_from_nllb_mms_tts_to_madlad_qwen3_tts():
+    """Real change this pass: en->ta's default translation/TTS providers
+    were switched away from NLLB-200/MMS-TTS (found CC-BY-NC-4.0,
+    non-commercial) to MADLAD-400/Qwen3-TTS (Apache-2.0), with NO fallback
+    configured back to the old models — a deliberate full removal from
+    this pair's production routing, not just a reordering."""
     reg = default_registry()
     cfg = reg.get("en", "ta")
-    assert cfg.certification.is_certified is True
-    assert cfg.license.verified is False
+    assert cfg.translation_primary == "madlad400-3b"
+    assert cfg.translation_fallback is None
+    assert cfg.tts_primary == "qwen3-tts"
+    assert cfg.tts_fallback is None
+
+
+def test_en_ta_license_is_now_verified_but_certification_was_reset():
+    """The new models are commercially licensed, so license.verified is
+    now True — but certification was correctly RESET to "testing" rather
+    than carried over from NLLB/MMS-TTS: the real regression evidence
+    behind the old "certified" status was measured against NLLB/MMS-TTS's
+    actual output, and does not transfer to a different model without
+    re-verification. is_production_ready() is still False, now for a
+    different, equally real reason."""
+    reg = default_registry()
+    cfg = reg.get("en", "ta")
+    assert cfg.license.verified is True
+    assert cfg.certification.is_certified is False
+    assert cfg.certification.status == "testing"
     assert reg.is_production_ready("en", "ta") is False
 
 

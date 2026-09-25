@@ -5,7 +5,17 @@ the pipeline as if it were a subscribed LiveKit audio track, since this
 test environment has no real speaker/microphone.
 
 Run with: pytest -m models -v tests/pipeline/test_pipeline_models.py
-(downloads ~2.5GB of model weights on first run — see requirements-pipeline.txt)
+
+The `pipeline` fixture below (build_default_pipeline()) now requires
+MADLAD-400 + Qwen3-TTS, not the old NLLB-200/MMS-TTS — see
+docs/MODEL_LICENSE_MATRIX.md for why, and docs/ai/models.md for these
+models' status. Neither is downloaded in this sandbox (no GPU), so the
+three tests using that fixture SKIP here rather than running; they are
+real tests, not vestigial, and will run for real on a GPU host with
+AI_ALLOW_MODEL_DOWNLOAD=true. `synthesize_input_audio()` below still uses
+MmsTTSProvider directly (unaffected by the switch) purely to generate a
+synthetic "microphone" input signal, independent of the pipeline's own
+(now different) TTS output.
 """
 
 from __future__ import annotations
@@ -14,6 +24,7 @@ import numpy as np
 import pytest
 
 from app.pipeline.factory import build_default_pipeline
+from app.pipeline.model_lifecycle import ModelNotAvailableError
 from app.pipeline.orchestrator import SAMPLE_RATE
 from app.pipeline.tts import MmsTTSProvider
 
@@ -38,7 +49,17 @@ def synthesize_input_audio(text: str, lang: str = "en") -> np.ndarray:
 
 @pytest.fixture(scope="module")
 def pipeline():
-    return build_default_pipeline(whisper_model_size="tiny")
+    # build_default_pipeline() was switched this pass from NLLB-200/
+    # MMS-TTS (found CC-BY-NC-4.0, non-commercial — see
+    # docs/MODEL_LICENSE_MATRIX.md) to MADLAD-400/Qwen3-TTS (Apache-2.0),
+    # deliberately with no fallback to the old models. Neither new model
+    # is downloaded in this sandbox (no GPU, AI_ALLOW_MODEL_DOWNLOAD=false
+    # by default) — this is the correct, fail-closed behavior, not a bug,
+    # so this fixture skips rather than erroring. See docs/ai/models.md.
+    try:
+        return build_default_pipeline(whisper_model_size="tiny")
+    except ModelNotAvailableError as e:
+        pytest.skip(f"default pipeline now requires a GPU host with AI_ALLOW_MODEL_DOWNLOAD=true: {e}")
 
 
 def test_dosage_instruction_round_trip_en_to_ta(pipeline):

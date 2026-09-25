@@ -284,6 +284,23 @@ class Qwen3TTSProvider(StreamingTTSProvider):
         finally:
             self._cancelled_utterances.discard(utterance_id)
 
+    def synthesize(self, text: str, lang: str) -> SynthesizedAudio:
+        """Adapter satisfying the OLD, non-streaming TTSProvider interface
+        (build_default_pipeline()/orchestrator.py expect `.synthesize()`,
+        not `.stream()`) by consuming this provider's own stream() to
+        completion and concatenating the result. Real generation happens
+        exactly once either way (generate_voice_clone() is a single batch
+        call regardless — see stream()'s own docstring), so this adds no
+        extra inference cost over calling stream() directly."""
+        import uuid
+
+        utterance_id = f"sync-{uuid.uuid4()}"
+        chunks = list(self.stream(text, lang, utterance_id))
+        if not chunks:
+            return SynthesizedAudio(samples=np.zeros((0,), dtype=np.float32), sample_rate=16000)
+        samples = np.concatenate([c.samples for c in chunks])
+        return SynthesizedAudio(samples=samples, sample_rate=chunks[0].sample_rate)
+
 
 class CosyVoice3Provider(StreamingTTSProvider):
     """FunAudioLLM/Fun-CosyVoice3-0.5B-2512 (build spec section 3

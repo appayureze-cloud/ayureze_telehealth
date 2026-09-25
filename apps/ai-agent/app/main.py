@@ -23,6 +23,7 @@ from .config import load_settings
 from .lifecycle import AgentState
 from .logging_setup import configure_logging, log
 from .metrics import AI_AGENT_ACTIVE_SESSIONS
+from .pipeline.model_lifecycle import ModelNotAvailableError
 from .registry import AgentRegistry
 
 settings = load_settings()
@@ -78,7 +79,16 @@ async def start_agent(session_id: str, req: StartRequest):
         # block the event loop (and every other in-flight request,
         # including /health) on that.
         loop = asyncio.get_event_loop()
-        pipeline = await loop.run_in_executor(None, _get_pipeline)
+        try:
+            pipeline = await loop.run_in_executor(None, _get_pipeline)
+        except ModelNotAvailableError as e:
+            # build_default_pipeline() requires a real GPU host with
+            # AI_ALLOW_MODEL_DOWNLOAD=true (MADLAD-400/Qwen3-TTS — see
+            # docs/ai/models.md). A clear 503 here, not an opaque 500 —
+            # the caller (Go API / client) can distinguish "translation
+            # pipeline unavailable in this environment" from a genuine
+            # server bug.
+            raise HTTPException(status_code=503, detail=f"AI translation pipeline unavailable: {e}") from e
     agent = AIAgent(
         session_id=session_id,
         tenant_id=req.tenant_id,

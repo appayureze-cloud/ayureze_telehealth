@@ -30,19 +30,22 @@ production-ready on licensing grounds alone).
 
 ## This build's default registry — real, evidenced state, not aspiration
 
-| Pair | Certification | License verified | `is_production_ready()` | Why |
-|---|---|---|---|---|
-| en → ta | ✅ certified (all 4 flags) | ❌ **False** | ❌ **False** | Real 75-case safety corpus + real live-integration test back the certification. NLLB-200/MMS-TTS are CC-BY-NC-4.0 (non-commercial) — see the license matrix. |
-| ta → en | ✅ certified | ❌ False | ❌ False | Same as above. |
-| en → ml | ⚠️ testing (0/4 flags) | ❌ False | ❌ False | Safety validator's negation/terminology tables are English/Tamil-only today (existing, documented limitation) — a second, independent blocker on top of the same licensing gap. |
-| de → en | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of a "certified specialist" route (OPUS-MT). License verified for `opus-mt-de-en` specifically; certification blocked on regression testing against the safety corpus, not done this pass. |
-| ja → en | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of "no certified specialist → MADLAD-400." Routes DIRECTLY to `madlad400-3b` as primary (no fallback configured) — MADLAD-400 itself is not yet certified either. |
+| Pair | Translation / TTS primary | Certification | License verified | `is_production_ready()` | Why |
+|---|---|---|---|---|---|
+| en → ta | `madlad400-3b` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ **True** | ❌ **False** | **Switched this pass** from NLLB-200/MMS-TTS (CC-BY-NC-4.0) to MADLAD-400/Qwen3-TTS (Apache-2.0), no fallback to the old models. Licensing is resolved; certification was correctly RESET (not carried over) since the prior safety-corpus/live-integration/latency evidence was measured against NLLB/MMS-TTS's actual output, not MADLAD/Qwen3-TTS's. Also currently unavailable in this sandbox (no GPU) — see `docs/MODEL_LICENSE_MATRIX.md`. |
+| ta → en | `madlad400-3b` / `qwen3-tts` | ⚠️ testing | ✅ True | ❌ False | Same as en → ta. |
+| en → ml | `madlad400-3b` / `qwen3-tts` | ⚠️ testing (0/4 flags) | ✅ True | ❌ False | Same model switch as en → ta. Was already `testing` before the switch (safety validator's negation/terminology tables are English/Tamil-only — a separate, still-open blocker for this pair specifically). |
+| de → en | `opus-mt-de-en` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of a "certified specialist" route (OPUS-MT). License verified for `opus-mt-de-en` specifically; certification blocked on regression testing against the safety corpus, not done this pass. |
+| ja → en | `madlad400-3b` / — | ❌ uncertified | ✅ True | ❌ False | The build spec's own worked example of "no certified specialist → MADLAD-400." Routes DIRECTLY to `madlad400-3b` as primary (no fallback configured) — MADLAD-400 itself is not yet certified either. |
 
 Every row above reflects real evidence (or its real absence) — none is
 aspirational. Registering a new pair or promoting one to `certified` is a
 `LanguageRegistry.register()` call once the real regression evidence
 exists; the registry itself enforces nothing more or less than what's been
-demonstrated.
+demonstrated. **No pair in this registry is currently `certified`** —
+en↔ta held that status against NLLB-200/MMS-TTS specifically, and it was
+correctly given up (not transferred) when those models were removed from
+production routing — see `docs/MODEL_LICENSE_MATRIX.md`.
 
 ## Router fail-closed behavior
 
