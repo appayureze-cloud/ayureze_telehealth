@@ -576,3 +576,50 @@ substitution all passed as `safe=True` — is now **FIXED and VERIFIED**.
   (English/Tamil only; Malayalam not yet covered; curated, not
   exhaustive, vocabulary tables) and `docs/security/README.md` for the
   updated red-team finding status.
+
+## Post-audit — Live AI integration: VAD bug, then E2EE key-derivation bug (both fixed)
+
+Closed the last two software-side gaps in `test_pipeline_live_integration.py`
+(the full Go API → FastAPI → AI Agent → real LiveKit room → real E2EE →
+real STT/translation/TTS chain, no mocks), across two passes:
+
+- **Pass 1 — Silero VAD bug**: `app/pipeline/vad.py`'s `SileroVAD` was
+  missing the 64-sample context buffer Silero's own official calling
+  convention requires, confirmed against the SHA-256-matched official
+  model file and `snakers4/silero-vad`'s own reference implementation.
+  Fixed; added `tests/pipeline/test_vad_tts_compatibility.py` (4/4
+  passing) and a real recorded-speech fixture (`tests/fixtures/jfk.flac`,
+  openai/whisper's own MIT-licensed public-domain JFK sample) so the live
+  test no longer depends on TTS-synthesized audio's acoustic quirks.
+- **Pass 2 — token-grants hypothesis disproven, real root cause found**:
+  after the VAD fix, the live test still received zero-RMS audio, but
+  only inside its full orchestration — three minimal reproductions
+  (bare `rtc.Room()` pairs, with/without E2EE, and the real
+  `LiveAudioProcessor` wired directly) all received correct audio.
+  Systematically ruled out, each with real evidence: event-loop
+  blocking (real blocking `httpx.Client` calls didn't break a known-good
+  repro), the token-grants hypothesis (disproven twice — a structural
+  JWT comparison showing identical grants, and a real controlled
+  token-swap experiment where both the Go-issued and a self-minted
+  token failed identically), and the FastAPI/ASGI/registry scaffolding
+  (bypassed entirely by driving the real `AIAgent` class directly —
+  still failed). Root cause: the test itself (not `app/agent.py`, which
+  was always correct) called `base64.b64decode(e2ee_key)` before handing
+  it to `KeyProviderOptions`, when this codebase's documented convention
+  (since commit `4d14357`) is to pass the UTF-8 encoding of the base64
+  *text* itself, never decoded. The doctor and the AI agent were
+  encrypting/decrypting with two different keys — real encrypted RTP
+  genuinely arrived, but decrypted to all-zero PCM, exactly the observed
+  symptom and exactly what no other hypothesis could explain.
+- **Fix**: one line in `tests/test_pipeline_live_integration.py`
+  (`key_bytes = join_resp["e2ee_key"].encode("utf-8")`), test-only — no
+  production code changed. `xfail(strict=True)` marker removed.
+- **Verified**: `test_live_translation_pipeline_produces_captions` now
+  passes reliably (4 consecutive real runs). Full regression re-run
+  clean: Go tests, AI-agent Python unit (116) + integration (2) +
+  real-model (7) suites, Web SDK (19), Flutter (41), Playwright (15).
+- **Result**: no software-side blocker remains on the live AI
+  integration path. The only open items are external-environment
+  verification — VPS deployment, a real TURN relay test against that
+  deployment, and a real Android/Flutter device E2EE test — none of
+  which are reproducible inside this sandbox.
