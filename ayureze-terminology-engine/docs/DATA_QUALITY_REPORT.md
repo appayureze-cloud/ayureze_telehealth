@@ -49,20 +49,26 @@ retired in this phase.
 | Stage | Pairs found |
 |---|---|
 | exact_normalized_match | 51 |
-| known_synonym_match | 212 |
-| scientific_name_match | 0* |
+| known_synonym_match | 210 |
+| scientific_name_match | 2 |
 | high_confidence_fuzzy_match | 539 |
 | **Total** | **802** |
 
-\* Zero NEW pairs at this specific stage in this run — not because no
-botanical-name duplicates exist, but because every real botanical-name
-duplicate pair actually present in this dataset (see the Giloy/Amrita
-case below) was ALSO caught by the earlier, broader
-`known_synonym_match` stage (they share Sanskrit synonyms too), and each
-pair is recorded once, under the strongest evidence that first applies —
-see `deduplication/pipeline.py`'s own docstring. The stage's logic is
-exercised and passing in `tests/integration/test_deduplication.py` with a
-synthetic case isolated to botanical-name-only overlap.
+The `scientific_name_match` stage has 2 real examples, confirmed by
+directly inspecting their names: **Kutaj / Indrayava** and **Shigru /
+Shigru Patra** each share an identical botanical name (Kutaj/Indrayava are
+both *Holarrhena antidysenterica*) but NO overlapping synonym — their
+Sanskrit synonym lists are genuinely different words (e.g. Kutaj's
+"Kalinga" vs. Indrayava's "Kalingaka" — close but not identical after
+normalization, so they correctly do NOT trigger the exact-match synonym
+stage). This is exactly the case this stage exists for: real botanical-
+name-only duplicates that a synonym-based check alone would miss. Most
+other botanical-name duplicates in this dataset (e.g. Giloy/Amrita, below)
+also happen to share an exact synonym and so are caught by the earlier,
+broader `known_synonym_match` stage instead — each pair is recorded once,
+under the strongest evidence that first applies (see
+`deduplication/pipeline.py`'s own docstring). Both stages are directly
+exercised in `tests/integration/test_deduplication.py`.
 
 ### A real, notable finding: Giloy and Amrita
 
@@ -87,13 +93,17 @@ Giloe, ...") was also ingested from AyurWiki — a real example of
 ## Unresolved conflicts
 
 - **107 ingredient references** in the Bhaishajya Kalpana Kosha data
-  (`main_ingredients[]`) had no exact-normalized-name match against the
-  360 herb_database concepts — the formulation source's own ingredient
-  phrasing doesn't always match herb_database's canonical spelling
-  one-to-one. These are preserved as `alias`-type names on the
+  (`main_ingredients[]`) had no exact-normalized-name match against any
+  existing HERB or FORMULATION concept — the formulation source's own
+  ingredient phrasing doesn't always match another entry's canonical
+  spelling one-to-one. These are preserved as `alias`-type names on the
   formulation's own concept rather than silently dropped, but no
-  `HAS_INGREDIENT` relationship could be created for them. (468 ingredient
-  references WERE successfully resolved.)
+  `HAS_INGREDIENT` relationship could be created for them. (466 ingredient
+  references WERE successfully resolved and linked — some to HERB
+  concepts, some to other FORMULATION concepts for real pharmacological
+  reasons, e.g. a rasayana genuinely listing "Loha Bhasma" iron-ash as an
+  ingredient; see `docs/INGESTION.md`'s idempotency section for the full
+  investigation of this.)
 - **22 of 162** Siddhanta Kosha records' `name` field didn't match the
   expected `"Latin (Devanagari)"` format — used verbatim as a single name
   rather than split, and counted, not silently mishandled.

@@ -26,7 +26,7 @@ resolution API. Built from scratch, isolated from the rest of the
   human review — it never auto-merges.
 
 **Real numbers from this build's own last run**: 5,085 canonical concepts,
-7,366 names, 685 evidenced relationships, 4,872 source records, 802
+7,366 names, 683 evidenced relationships, 4,872 source records, 802
 deduplication candidates. See `docs/DATA_QUALITY_REPORT.md`.
 
 ## What this does NOT do
@@ -130,9 +130,11 @@ target markets, but not yet obtained) before its adapter can be enabled.
 
 ## Limitations (honest, not hidden)
 
-- Ingestion is not idempotent — re-running `scripts/run_ingestion.py`
-  without truncating first creates duplicate concepts. Most sources have
-  no stable record ID to detect "already ingested" against.
+- ~~Ingestion is not idempotent~~ **fixed (2026-09-26)** — re-running
+  `scripts/run_ingestion.py` without truncating first is now safe: a
+  second run against the same data reports `concepts_created: 0,
+  names_created: 0` for all 6 sources (verified for real, twice, not just
+  asserted) — see `docs/INGESTION.md`.
 - NAMASTE ingestion covers 14 real sample rows, not the full 7,363-code
   dataset (which lives in a live external system outside this phase's
   approved sources).
@@ -140,9 +142,12 @@ target markets, but not yet obtained) before its adapter can be enabled.
   candidates currently await human review (`deduplication_candidates`
   table), including a real, high-confidence case (Giloy/Amrita, both
   *Tinospora cordifolia*) found in this build's own data.
-- `SnomedAdapter`, `Icd11Adapter`, and `LoincAdapter` are written and
-  tested for fail-closed behavior but not exercised against a real
-  license/credentials in this environment.
+- `GET /v1/biomedical/{system}/search` is wired in for all 6 biomedical
+  systems. `rxnorm`/`mesh` genuinely work today (real public APIs, no
+  credentials needed — verified with real live queries). `icd11`/`loinc`/
+  `snomed` are written and tested for fail-closed behavior (real `503`s)
+  but not exercised against a real license/credentials in this
+  environment; `atc` has no automated lookup path at all, by design.
 - No authentication layer — appropriate for this phase's standalone,
   non-patient-data scope (see `docs/SECURITY.md`).
 
