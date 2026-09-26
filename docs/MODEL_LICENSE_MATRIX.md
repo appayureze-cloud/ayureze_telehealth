@@ -168,6 +168,96 @@ against real input, not just written against documentation:
   the model itself; it remains wired in and ready to actually test the
   moment more disk (or real VPS/GPU infrastructure) is available.
 
+## 2026-09-26 update #2: market-language compatibility pass — 22 languages verified, license traps found and fixed, M2M-100 added
+
+A business stakeholder asked whether AyurEze's translation pipeline covers
+the major languages spoken in its target markets (UAE, Saudi Arabia,
+Qatar, Oman, Kuwait, Bahrain, Singapore, Malaysia, UK, Germany) — about 30
+distinct languages across those countries. Verified per-checkpoint against
+live HuggingFace model cards (never assumed from model family), then wired
+the results into `factory.py`'s `_OPUS_MT_ROUTES` and
+`language_registry.py`.
+
+**Cleanly solved — dedicated Apache-2.0 OPUS-MT checkpoints, both
+directions**: Arabic, Hindi, Urdu, Tagalog/Filipino (code `tl`, not
+`fil`), Indonesian, Welsh, Spanish, French, Russian, Ukrainian, Italian,
+plus Telugu (same `opus-mt-en-dra`/`opus-mt-dra-en` checkpoint already
+wired in for Tamil/Malayalam, `>>tel<<` tag). Registered in
+`language_registry.py` as `"uncertified"` (license-clean, not yet
+regression-tested against this build's safety corpus) — same honest
+status as the existing `de->en`/`ja->en` entries.
+
+**Three real license traps found and fixed** — same checkpoint-naming
+pattern as an ordinary Apache-2.0 Helsinki-NLP pair, but actually a
+different, non-Apache license:
+- **Turkish**: `opus-mt-tr-en` and `opus-mt-tc-big-en-tr` are **CC-BY-4.0**.
+  Fixed by routing through `opus-mt-en-trk`/`opus-mt-trk-en` (the Turkic
+  language-group model) instead — Apache-2.0, confirmed target tag
+  `>>tur<<`, and it scores BETTER (BLEU 34.6/26.8) than the CC-BY pair, so
+  this isn't even a quality tradeoff.
+- **Portuguese**: the only direct-ish checkpoint (`opus-mt-tc-big-en-pt`)
+  is **CC-BY-4.0** and a heavier model. Fixed via `opus-mt-en-ROMANCE`
+  (Apache-2.0), confirmed target tag `>>pt<<` — NOT `>>por<<`, an initial
+  guess that turned out wrong; this group uses ISO 639-1-style codes, not
+  639-3. `pt->en` has no dedicated checkpoint at all; routed through the
+  same ROMANCE group's many-to-one direction (`opus-mt-ROMANCE-en`, no tag
+  needed), which also covers `ro->en` for the same reason.
+- **Mandarin Chinese**: `opus-mt-en-zh` (en->zh) is genuinely Apache-2.0.
+  `opus-mt-zh-en` (zh->en) is **CC-BY-4.0** — a real, different license
+  family for the SAME language pair, opposite direction. Unlike the
+  Turkish/Portuguese traps, there is no equal-or-better Apache-2.0
+  alternative here: the only Apache-2.0 zh->en path (`opus-mt-mul-en`)
+  measures ~10 BLEU points worse (25.8 vs 36.1). Decision: use the
+  CC-BY-4.0 checkpoint anyway — it has no non-commercial restriction, only
+  an attribution requirement, and for a medical-accuracy-sensitive product
+  the quality gap matters more than the extra (still fully commercial-
+  compatible) compliance step. **Action item, not yet done**: display a
+  visible attribution credit somewhere in the product (an "open source
+  credits" page is the standard way to satisfy CC-BY-4.0's "reasonable to
+  the medium" attribution requirement) — this is a real product decision,
+  tracked here, not silently assumed handled.
+- Cantonese (`>>yue<<`) and Hokkien/Min Nan (`>>nan<<`) target tokens
+  technically exist inside `opus-mt-en-zh`'s vocabulary (and the reverse
+  direction inside `opus-mt-mul-en`'s source list) — but NEITHER has a
+  published benchmark score. Deliberately NOT registered as a pair: for a
+  medical product, shipping an unbenchmarked translation direction is a
+  real risk, not a missing config entry. Genuinely unsolved.
+
+**M2M-100 added as a new backend (`AI_TRANSLATION_BACKEND=m2m100`,
+`M2M100Provider` in `translation.py`) — MIT-licensed, actually downloaded
+and tested on CPU in this sandbox (no VPS), not just researched.** This
+finally fills the "CPU-feasible backbone" role `MADLADProvider`'s own
+docstring describes but MADLAD-400 can't fulfill (GPU-only). Real result,
+`facebook/m2m100_418M`, load time 14.1s, per-utterance latency ~1-2s on
+CPU:
+- `en->fa` (Persian), `en->ps` (Pashto), `en->bn` (Bengali): plausible,
+  structurally sound translations of a real dosage instruction — good
+  enough to mark `"testing"` in the registry.
+- `en->ne` (Nepali), `en->pa` (Punjabi): **silently dropped the tablet
+  count** ("two tablets" became just "medicine") — a real dosage-accuracy
+  failure, not a wording nitpick. Left `"uncertified"`.
+- `en->si` (Sinhala), `en->gu` (Gujarati): **failed outright** —
+  degenerate repetition loops (e.g. "දිනපතා" repeated 16 times, "2 વાગ્યે"
+  repeated 20+ times to the token limit), not real translations at all.
+  **No registry entry exists for these** — routing medical dialogue
+  through a model caught failing this badly would be actively dangerous,
+  not merely unverified.
+- Confirmed absent from M2M-100's 100-language list entirely: **Kurdish**,
+  **Cantonese**, **Hokkien** — M2M-100 does not solve these regardless of
+  quality.
+- `bn->en` uses OPUS-MT's own dedicated `opus-mt-bn-en` checkpoint
+  (Apache-2.0) instead of M2M-100, since a real, presumably-better
+  specialist option already exists for that specific direction.
+
+**Bottom line — genuinely unsolved as of 2026-09-26**: Kurdish (OPUS-MT
+group fallback BLEU ~4.0 and lumps Kurmanji/Sorani together; absent from
+M2M-100 entirely), Cantonese and Hokkien (no benchmarked model found via
+either OPUS-MT or M2M-100), and `en->si`/`en->gu`/`en->pa` specifically
+(every option tried — OPUS-MT group fallback, M2M-100 — either performs
+poorly or fails outright). These need either a different model, real
+per-language fine-tuning, or a third-party commercial MT API to actually
+solve — not a config change.
+
 ## Matrix
 
 | Model | Checkpoint | Code License | Weights License | Commercial Use | Redistribution | Attribution | Source URL | Verification Date | Status |
@@ -186,6 +276,12 @@ against real input, not just written against documentation:
 | **ai4bharat/indic-parler-tts (`AI_TTS_BACKEND=indic-parler-tts`, wired in)** | `ai4bharat/indic-parler-tts` (0.9B params) | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/ai4bharat/indic-parler-tts | 2026-09-25 | ✅ **License approved AND CPU-capable** (own example code has a documented CPU fallback path) — confirmed real Tamil support via named speakers ("Jaya"/"Kavitha"), no reference-voice-clip requirement. **NOT downloaded/benchmarked this pass** — CPU latency expected multi-second per utterance (0.9B params), not verified |
 | **Piper — ENGINE only (`AI_TTS_BACKEND=piper`, wired in)** | `rhasspy/piper` (archived, last release) or `OHF-Voice/piper1-gpl` (current) | **MIT** (archived rhasspy/piper, verified 2026-09-25) — current successor is **GPL-3.0** | N/A (engine, not weights) | Yes (MIT) / Yes-with-copyleft (GPL-3.0) | Yes | Yes | https://github.com/rhasspy/piper / https://github.com/OHF-Voice/piper1-gpl | 2026-09-25 | ✅ Engine license is fine either way **PROVIDED it is invoked via CLI subprocess only, never imported as a Python library** (`PiperTTSProvider` in `tts.py` does this deliberately) — GPL-3.0's copyleft attaches to linking/derivative works, not separate-process invocation ("mere aggregation", the same pattern commercial products use for other GPL CLI tools like ffmpeg builds). **Engine mechanics actually verified 2026-09-26** against a small, commercially-clean, non-Tamil voice (`en_US-lessac-medium`, deliberately not the unverified Tamil voice below) — real audio out, median ≈1.41s CPU synthesis latency per utterance |
 | **Piper — Tamil VOICE checkpoint (`ta_IN-Valluvar-medium.onnx`)** | `rhasspy/piper-voices` (ta_IN) | N/A | **UNVERIFIED** — its own listing defers to "the original dataset license," which could not be identified despite real research effort this pass | **UNKNOWN** | Unknown | Unknown | https://huggingface.co/rhasspy/piper-voices | 2026-09-25 | ⚠️ **Unknown = NOT APPROVED.** This is SEPARATE from the engine question above — the engine being safe to invoke does not make an unverified voice checkpoint's dataset license safe. `PiperTTSProvider.metadata()` deliberately reports `commercial_use=False` for this reason. **Do not enable in production without resolving this specific question** (contact the voice's uploader/dataset source, or use a different, verified voice checkpoint). |
+| OPUS-MT dedicated pairs (Arabic, Hindi, Urdu, Tagalog/Filipino, Indonesian, Welsh, Spanish, French, Russian, Ukrainian, Italian, Telugu) | `Helsinki-NLP/opus-mt-en-<code>` / `opus-mt-<code>-en` (see factory.py's `_OPUS_MT_ROUTES`) | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/Helsinki-NLP | 2026-09-26 | ✅ License approved for all 12, verified per-checkpoint (not assumed by family) — **NOT downloaded/certified this pass** (only en\<->ta/ml/te were actually run) |
+| OPUS-MT Turkic group (`AI_TRANSLATION_BACKEND=opus-mt`, en<->tr) | `Helsinki-NLP/opus-mt-en-trk` / `opus-mt-trk-en` | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/Helsinki-NLP/opus-mt-en-trk | 2026-09-26 | ✅ Deliberately used INSTEAD of `opus-mt-tr-en`/`opus-mt-tc-big-en-tr`, both CC-BY-4.0 — see the 2026-09-26 update #2 above. Target tag confirmed `>>tur<<`. Not downloaded this pass. |
+| OPUS-MT ROMANCE group (en<->pt, pt/ro->en) | `Helsinki-NLP/opus-mt-en-ROMANCE` / `opus-mt-ROMANCE-en` | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/Helsinki-NLP/opus-mt-en-ROMANCE | 2026-09-26 | ✅ Deliberately used INSTEAD of `opus-mt-tc-big-en-pt` (CC-BY-4.0). Target tag confirmed `>>pt<<`, not `>>por<<`. Not downloaded this pass. |
+| **OPUS-MT `opus-mt-en-zh`** | `Helsinki-NLP/opus-mt-en-zh` | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/Helsinki-NLP/opus-mt-en-zh | 2026-09-26 | ✅ Genuinely Apache-2.0. Target tag `>>cmn_Hans<<` used for Simplified Mandarin. Vocabulary also technically covers Cantonese/Hokkien (`>>yue<<`/`>>nan<<`) but neither is benchmarked — not registered as a pair. Not downloaded this pass. |
+| **OPUS-MT `opus-mt-zh-en`** | `Helsinki-NLP/opus-mt-zh-en` | **CC-BY-4.0** | **CC-BY-4.0** | Yes (attribution required) | Yes | **Yes — a visible credit, not just a NOTICE file** | https://huggingface.co/Helsinki-NLP/opus-mt-zh-en | 2026-09-26 | ⚠️ **Different license family from the rest of this table.** Commercially usable (no NC clause) but deliberately chosen over the Apache-2.0 `opus-mt-mul-en` alternative for a ~10 BLEU point quality gain (36.1 vs 25.8) — action item: add a visible attribution credit somewhere in-app. Not downloaded this pass. |
+| **facebook/m2m100_418M (`AI_TRANSLATION_BACKEND=m2m100`)** | `facebook/m2m100_418M` | MIT | MIT | Yes | Yes | No | https://huggingface.co/facebook/m2m100_418M | 2026-09-26 | ✅ **Actually downloaded and run on CPU this pass (no VPS)** — the CPU-feasible "backbone" MADLAD-400 can't be. Covers fa/ne/ps/bn/si/pa/gu (confirmed absent: ku/yue/nan). Real spot-check: en->fa/ps/bn plausible; en->ne/pa dropped the dosage count; **en->si/gu failed outright (degenerate repetition loops)** — see the 2026-09-26 update #2 above for the full, honest breakdown. |
 
 ### Rejected as "internationally recognized but no Tamil support"
 

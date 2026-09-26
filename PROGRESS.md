@@ -917,3 +917,88 @@ assertions), real-model (3 passed for real against downloaded checkpoints,
 up from 3 skips; the Qwen3-ASR/MADLAD/Qwen3-TTS-gated tests still skip
 cleanly — those remain genuinely GPU-only and out of scope for this
 CPU-only sandbox).
+
+## Market-language compatibility pass: 22 languages verified, 3 license traps fixed, M2M-100 added
+
+User supplied a table of major languages spoken in AyurEze's target
+markets (UAE, Saudi Arabia, Qatar, Oman, Kuwait, Bahrain, Singapore,
+Malaysia, UK, Germany — ~30 distinct languages) and asked whether they're
+compatible with the translation pipeline, then asked to actually solve the
+gaps found rather than just report them. Two research passes verified
+real per-checkpoint license/coverage data (never assumed from model
+family), then the findings were wired into real code, not just documented.
+
+**Cleanly solved (12 new dedicated Apache-2.0 OPUS-MT pairs)**: Arabic,
+Hindi, Urdu, Tagalog/Filipino, Indonesian, Welsh, Spanish, French,
+Russian, Ukrainian, Italian, Telugu. Registered in `language_registry.py`
+as "uncertified" (license-clean, not regression-tested) via a small loop
+over a name table rather than 22 near-identical blocks.
+
+**Three real license traps found and fixed** — same Helsinki-NLP naming
+pattern as an ordinary Apache-2.0 pair, but actually a different license:
+- Turkish: `opus-mt-tr-en`/`opus-mt-tc-big-en-tr` are CC-BY-4.0. Fixed via
+  the `trk` (Turkic) group model instead (Apache-2.0, confirmed target tag
+  `>>tur<<`) — which also scores BETTER (BLEU 34.6/26.8) than the CC-BY
+  pair, so this cost nothing.
+- Portuguese: the only direct-ish checkpoint is CC-BY-4.0. Fixed via the
+  `ROMANCE` group model (Apache-2.0); confirmed target tag is `>>pt<<`,
+  correcting an initial guess of `>>por<<` — this group uses ISO 639-1
+  codes, not 639-3.
+- Mandarin: `opus-mt-en-zh` is genuinely Apache-2.0, but `opus-mt-zh-en`
+  is CC-BY-4.0 with no equal-quality Apache-2.0 alternative (the only one,
+  `opus-mt-mul-en`, is ~10 BLEU points worse). Decision: use the CC-BY-4.0
+  checkpoint anyway (it's commercially fine, just needs attribution) for
+  the quality — flagged as a real action item (a visible in-app credit)
+  rather than silently assumed handled.
+- Cantonese/Hokkien target tokens technically exist inside the same zh
+  models but have no published benchmark — deliberately NOT registered as
+  a pair; shipping an unbenchmarked medical-translation direction is a
+  real risk, not a missing config entry.
+
+**Added `M2M100Provider` (`facebook/m2m100_418M`, MIT) as a new
+`AI_TRANSLATION_BACKEND=m2m100` option** — actually downloaded and run on
+CPU in this sandbox (no VPS), not just researched. This is the
+CPU-feasible "backbone" role `MADLADProvider`'s own docstring describes
+but MADLAD-400 can't fill (GPU-only). Real, run-for-real spot-check
+(load 14.1s, ~1-2s/utterance on CPU) against "Take two tablets twice
+daily for seven days." / a negation sentence:
+- en->fa (Persian), en->ps (Pashto), en->bn (Bengali): plausible,
+  structurally sound — marked "testing".
+- en->ne (Nepali), en->pa (Punjabi): silently DROPPED the tablet count —
+  a real dosage-accuracy failure, left "uncertified".
+- en->si (Sinhala), en->gu (Gujarati): FAILED OUTRIGHT — degenerate
+  repetition loops (e.g. one word repeated 16-20+ times to the token
+  limit), not real translations. No registry entry exists for these;
+  routing medical dialogue through a model caught failing this badly
+  would be actively dangerous, not merely unverified.
+- Kurdish, Cantonese, Hokkien confirmed absent from M2M-100's 100-language
+  list entirely — it does not solve these regardless of quality.
+- bn->en uses OPUS-MT's own dedicated `opus-mt-bn-en` checkpoint instead
+  of M2M-100, since a real, better specialist option exists for that
+  direction specifically.
+
+Also refactored `factory.py`'s translator construction: previously
+`_build_translator("opus-mt")` only ever built the hardcoded en<->ta
+pair. Now driven by a real `_OPUS_MT_ROUTES` table covering every verified
+pair (so `language_registry.py`'s claims and the actual running code
+cannot drift apart), with a new `ai_translation_language_pairs`
+config setting (comma-separated `src-tgt` list, default `"en-ta,ta-en"`
+— unchanged default behavior) so a given deployment loads only the
+languages its own patient population needs, not all 25+ checkpoints
+eagerly (~300MB+ each — that would be a real disk/memory problem, not a
+feature).
+
+**Genuinely unsolved as of this pass**: Kurdish (OPUS-MT fallback BLEU
+~4.0, lumps Kurmanji/Sorani together; absent from M2M-100), Cantonese and
+Hokkien (no benchmarked model found anywhere), and en->si/en->gu/en->pa
+specifically (every option tried performs poorly or fails outright). These
+need a different model, real fine-tuning, or a commercial third-party MT
+API — not a config change.
+
+Added 40 new tests (`test_factory.py`: route-table correctness, license-
+trap avoidance, M2M-100 fail-closed behavior, `parse_language_pairs`;
+`test_language_registry.py`: the new dedicated pairs, license-trap
+routing, the CC-BY-4.0 zh->en distinction, and — most importantly — that
+the catastrophically-failed/genuinely-unsolved pairs have NO registry
+route at all, not a route to a model known to fail). Full regression
+re-run clean: AI-agent Python unit (237, up from 192).

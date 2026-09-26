@@ -41,15 +41,17 @@ def _get_pipeline():
     AI_AGENT_ENABLE_PIPELINE=false."""
     global _pipeline
     if _pipeline is None:
-        from .pipeline.factory import build_default_pipeline
+        from .pipeline.factory import build_default_pipeline, parse_language_pairs
 
         log(
             logger, logging.INFO, "loading_translation_pipeline", event_type="loading_translation_pipeline",
             translation_backend=settings.ai_translation_backend, tts_backend=settings.ai_tts_backend,
+            translation_language_pairs=settings.ai_translation_language_pairs,
         )
         _pipeline = build_default_pipeline(
             whisper_model_size=settings.ai_agent_whisper_model_size,
             translation_backend=settings.ai_translation_backend,
+            translation_language_pairs=parse_language_pairs(settings.ai_translation_language_pairs),
             tts_backend=settings.ai_tts_backend,
             tts_ref_audio=settings.ai_tts_reference_audio_path,
             tts_ref_text=settings.ai_tts_reference_text,

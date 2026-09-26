@@ -36,12 +36,19 @@ class Settings(BaseSettings):
     # build_default_pipeline()'s actual backend selection (app/pipeline/
     # factory.py). Deploy-time choice, not a code change — neither backend
     # is removed from the codebase by selecting the other:
-    #   translation: "opus-mt" (default) — Helsinki-NLP/opus-mt-en-dra/
-    #     -dra-en, Apache-2.0, small enough for real CPU inference; this
-    #     is what actually runs on a CPU-only VPS today.
+    #   translation: "opus-mt" (default) — Helsinki-NLP per-pair MarianMT
+    #     checkpoints (see ai_translation_language_pairs below), Apache-2.0
+    #     (per-checkpoint verified — a few real exceptions exist, tracked
+    #     in factory.py's _OPUS_MT_ROUTES), small enough for real CPU
+    #     inference; this is what actually runs on a CPU-only VPS today.
     #     "madlad" — MADLAD-400 3B, Apache-2.0 but GPU-only per its own
     #     docs (not downloaded unless ai_allow_model_download=true AND a
     #     GPU is present) — set this once real GPU infrastructure exists.
+    #     "m2m100" — facebook/m2m100_418M, MIT, CPU-feasible. The backbone
+    #     for languages OPUS-MT can't serve well (Persian/Nepali/Pashto/
+    #     Bengali/Sinhala/Punjabi/Gujarati) — see M2M100Provider's
+    #     docstring and docs/MODEL_LICENSE_MATRIX.md. Per-language quality
+    #     for these pairs is unverified — not yet certified.
     #   tts: "none" (default) — captions-only.
     #     "qwen3-tts" — GPU-only, also needs a reference voice clip per
     #     language (see ai_tts_reference_audio_path/ai_tts_reference_text
@@ -58,6 +65,17 @@ class Settings(BaseSettings):
     #     `piper` executable on PATH.
     ai_translation_backend: str = "opus-mt"  # "opus-mt" | "madlad"
     ai_tts_backend: str = "none"  # "none" | "qwen3-tts" | "indic-parler-tts" | "piper"
+
+    # Which (source, target) OPUS-MT pairs this deployment actually loads
+    # when ai_translation_backend="opus-mt" — comma-separated "src-tgt"
+    # entries, e.g. "en-ta,ta-en,en-ar,ar-en". Deliberately NOT "load every
+    # registered pair": each OPUS-MT checkpoint is ~300MB+ and a real VPS
+    # should only load the languages its own patient population actually
+    # needs (see docs/ai/models.md's language-coverage table for what's
+    # available) — eagerly loading all 25+ verified pairs on one process
+    # would be a real disk/memory problem, not a feature. Default preserves
+    # this build's original en<->ta-only behavior exactly.
+    ai_translation_language_pairs: str = "en-ta,ta-en"
     ai_tts_reference_audio_path: str | None = None
     ai_tts_reference_text: str | None = None
     ai_tts_piper_checkpoint_path: str | None = None

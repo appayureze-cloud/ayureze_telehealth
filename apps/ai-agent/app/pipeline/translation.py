@@ -149,6 +149,122 @@ class OPUSMTProvider(TranslationProvider, ModelLifecycle):
         return self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
 
 
+class M2M100Provider(TranslationProvider, ModelLifecycle):
+    """facebook/m2m100_418M (build spec section G's "global backbone"
+    role, finally CPU-viable) — a single multilingual seq2seq checkpoint
+    covering 100 languages via `tokenizer.src_lang` + a
+    `forced_bos_token_id` target token, verified against the model's own
+    real quickstart code (2026-09-26):
+
+        tokenizer.src_lang = "fa"
+        encoded = tokenizer(text, return_tensors="pt")
+        generated = model.generate(**encoded, forced_bos_token_id=tokenizer.get_lang_id("en"))
+
+    MIT license, confirmed directly from the model card (2026-09-26) — see
+    docs/MODEL_LICENSE_MATRIX.md. This is what actually fills the role
+    MADLADProvider's docstring describes ("the backbone model
+    TranslationRouter uses when no certified specialist exists") for a
+    CPU-only deployment: MADLAD-400 is GPU-only per its own docs, but
+    M2M-100 has no such requirement stated on its model card, and at 418M
+    params is far smaller than MADLAD's 3B.
+
+    Exists specifically for language pairs OPUS-MT can't serve well on
+    this build's CPU-only target: OPUS-MT has no dedicated bilingual
+    checkpoint for Persian/Nepali/Pashto/Kurdish and only a poor-quality
+    group-model fallback for Bengali/Sinhala/Punjabi/Gujarati (real BLEU
+    scores checked 2026-09-26 ranged ~1-19 — see
+    docs/MODEL_LICENSE_MATRIX.md). M2M-100 covers fa/ne/ps/bn/si/pa/gu
+    (confirmed present in its 100-language list) but NOT ku/yue/nan
+    (confirmed absent) — it does not solve Kurdish, Cantonese, or
+    Hokkien.
+
+    REAL RESULT, actually run on CPU in this build's own sandbox
+    (2026-09-26, no VPS) against "Take two tablets twice daily for seven
+    days." / "Do not take this medicine if you are pregnant.": en->fa,
+    en->ps, and en->bn produced plausible, structurally sound
+    translations. en->ne and en->pa both silently DROPPED the tablet
+    count ("two"/"2"). **en->si and en->gu FAILED OUTRIGHT** — degenerate
+    repetition loops (the model repeated a single word/phrase to the
+    `max_new_tokens` limit, e.g. "දිනපතා" ×16 for Sinhala, "2 વાગ્યે" ×20+
+    for Gujarati), not real translations at all. This is exactly why
+    en->si and en->gu are NOT in any enabled route table — do not add
+    them without a real fix (different model, or per-language prompting/
+    decoding changes) and re-verification. fa/ps/bn/ne/pa remain
+    "testing", not "certified" — one spot-check per language is
+    evidence, not a certification.
+    """
+
+    CHECKPOINTS = {"418M": "facebook/m2m100_418M", "1.2B": "facebook/m2m100_1.2B"}
+
+    def __init__(self, size: str = "418M", cache_dir: Path | str = DEFAULT_CACHE_DIR):
+        ModelLifecycle.__init__(self)
+        if size not in self.CHECKPOINTS:
+            raise ValueError(f"unknown M2M-100 size {size!r}, expected one of {list(self.CHECKPOINTS)}")
+        self._size = size
+        self._checkpoint = self.CHECKPOINTS[size]
+        self._cache_dir = str(cache_dir)
+        self._model = None
+        self._tokenizer = None
+
+    def load(self) -> None:
+        if self._loaded:
+            return
+        if os.environ.get("AI_ALLOW_MODEL_DOWNLOAD", "false").lower() != "true":
+            raise ModelNotAvailableError(
+                f"{self._checkpoint}: AI_ALLOW_MODEL_DOWNLOAD is not 'true' — this build never "
+                "downloads new model weights implicitly."
+            )
+        try:
+            from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+        except ImportError as e:
+            raise ModelNotAvailableError(f"{self._checkpoint}: transformers M2M100 classes unavailable ({e})") from e
+
+        import time as _time
+
+        t0 = _time.monotonic()
+        self._tokenizer = M2M100Tokenizer.from_pretrained(self._checkpoint, cache_dir=self._cache_dir)
+        self._model = M2M100ForConditionalGeneration.from_pretrained(self._checkpoint, cache_dir=self._cache_dir)
+        self._load_seconds = _time.monotonic() - t0
+        self._loaded = True
+
+    def health(self) -> ModelHealth:
+        return ModelHealth(healthy=self._loaded, loaded=self._loaded,
+                            detail="ok" if self._loaded else "not loaded (see load())")
+
+    def metadata(self) -> ModelMetadata:
+        return ModelMetadata(
+            provider_id=f"m2m100-{self._size}",
+            checkpoint=self._checkpoint,
+            version=self._size,
+            code_license="MIT",
+            weights_license="MIT",
+            commercial_use=True,
+            redistribution=True,
+            attribution_required=False,
+            source_url=f"https://huggingface.co/{self._checkpoint}",
+            verified_date="2026-09-26",
+            certified=False,
+            notes=(
+                "CPU-feasible backbone for languages OPUS-MT can't serve well — NOT a fix for "
+                "Kurdish/Cantonese/Hokkien, which aren't in M2M-100's 100-language list. Real "
+                "2026-09-26 spot-check on CPU: en->fa/ps/bn plausible; en->ne/pa silently dropped "
+                "the dosage count; en->si/gu FAILED OUTRIGHT (degenerate repetition loops, not real "
+                "translations) — si/gu must not be routed through this model without a real fix."
+            ),
+        )
+
+    def translate(self, text: str, source_lang: str, target_lang: str) -> str:
+        if not self._loaded:
+            raise RuntimeError("load() must be called before translate()")
+        if not text.strip():
+            return ""
+        self._tokenizer.src_lang = source_lang
+        inputs = self._tokenizer(text, return_tensors="pt")
+        target_token_id = self._tokenizer.get_lang_id(target_lang)
+        output_ids = self._model.generate(**inputs, forced_bos_token_id=target_token_id, max_new_tokens=128)
+        return self._tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
+
+
 # MADLAD-400 target-language tokens are plain ISO 639-1 codes for the
 # languages this build might route to it (build spec: "verify... supported
 # language list before enabling a model" — do not extend this table to a
