@@ -848,3 +848,72 @@ library" safety property) and 2 more in `test_factory.py` (backend
 dispatch for both new options). Full regression re-run clean: AI-agent
 Python unit (192, up from 181), real-model (12 passed + 3 skip cleanly,
 unchanged).
+
+## Real-model verification in this sandbox, no VPS — user instructed "fix all here without vps"
+
+This sandbox's own container is CPU-only, so it stood in for the actual
+CPU-only VPS deployment target for the two backends that need no GPU
+(`opus-mt`, `piper`). With `AI_ALLOW_MODEL_DOWNLOAD=true` set explicitly,
+both were actually downloaded and run against real input — not left as
+written-but-unverified code.
+
+**OPUS-MT** (`Helsinki-NLP/opus-mt-en-dra` + `opus-mt-dra-en`): downloaded
+and run for real. Found and fixed a real bug: `terminology.py`'s Tamil
+"daily" word list was curated only against NLLB-200's old phrasing and
+didn't recognize OPUS-MT's actual output ("நாளும்"), causing a false-
+positive safety block on a genuinely correct translation — fixed by adding
+it to both word lists, verified against real model output, zero
+regressions in the existing 88-case terminology/safety suite. Confirmed
+negation works for real ("Do not take this medicine." round-trips
+correctly). Found, but could NOT fix (a real model-quality limitation, not
+a code bug): OPUS-MT mistranslates "tablet(s)" to "பலகை"/"மேசை"
+(board/table) instead of "மாத்திரை", non-deterministically across
+otherwise-identical runs, and in one run additionally dropped "twice" from
+"twice daily" — the safety validator correctly caught and BLOCKED both
+cases end-to-end against the real model, proving fail-closed works in
+practice, but meaning real dosage instructions with tablet counts will
+often be blocked rather than delivered. Also fixed `test_pipeline_models.py`'s
+three real-model tests, which had a stale `assert result.audio is not None`
+left over from before the captions-only default — they now assert the
+pipeline's actual contract (unsafe => always blocked and no audio; safe =>
+still no audio, since the default backend is captions-only) instead of
+assuming a fixed, always-safe translation outcome; all three pass for real
+against the downloaded checkpoints. `ta_en` was spot-checked with one
+hand-crafted sentence and got a badly garbled English translation — one
+data point isn't enough to call this a real model weakness vs. this
+input's own awkward phrasing, so `ta_en`'s certification flags were left
+False rather than assumed working by symmetry with `en_ta`.
+`language_registry.py`'s `en_ta`/`ta_en` entries and notes were updated
+with this real evidence; neither is "certified" (`en_ta.negation` is now
+`True`, everything else stays `False` for the honest reasons above).
+
+**Piper engine**: installed `piper-tts` v1.8.0 globally (never imported
+into the app's own venv — the class only ever shells out to the CLI, by
+design) and ran `PiperTTSProvider.synthesize()` for real against a small,
+well-known, disk-cheap English voice (`en_US-lessac-medium`) — deliberately
+NOT the legally-unverified Tamil voice, to keep "does the engine code
+work" separate from "is this specific voice's license resolved". Got real,
+correct, non-silent audio (RMS ≈0.135). Measured CPU synthesis latency over
+5 runs of a representative dosage sentence: median ≈1.41s, range
+1.30-1.43s (single utterance, no batching, no GPU) — confirms the engine
+is genuinely fast enough for interactive use.
+
+**`ai4bharat/indic-parler-tts` was deliberately NOT downloaded**: this
+sandbox's writable-disk allowance had only ~3.8-4.1GB free after the
+OPUS-MT downloads, and the model's real footprint at 0.9B params is
+estimated at 4GB+ — attempting it risked a corrupted partial download or
+exhausting the sandbox outright for no test benefit given how little
+margin remained. Documented as an honest resource constraint, not a
+finding about the model.
+
+Updated `docs/MODEL_LICENSE_MATRIX.md` (new "2026-09-26 update" section
+plus refreshed OPUS-MT/Piper matrix rows), `docs/ai/models.md` (OPUS-MT and
+Piper rows marked ✅ with the real findings), and `language_registry.py`
+(as above) to reflect this real evidence rather than leave the docs saying
+"not downloaded/certified this pass" once they no longer were. Full
+regression re-run clean: AI-agent Python unit (192, unchanged — no unit
+test logic changed, only comments/docs and the two real-model test
+assertions), real-model (3 passed for real against downloaded checkpoints,
+up from 3 skips; the Qwen3-ASR/MADLAD/Qwen3-TTS-gated tests still skip
+cleanly — those remain genuinely GPU-only and out of scope for this
+CPU-only sandbox).

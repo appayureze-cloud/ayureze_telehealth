@@ -338,11 +338,18 @@ _TAMIL_FREQUENCY_SUBSTRINGS: list[tuple[str, str]] = [
     ("படுக்கும் நேரத்தில்", "at_bedtime"),
 ]
 _TAMIL_EVERY_N_HOURS_RE = re.compile(r"ஒவ்வொரு\s*(\d+)\s*மணி\s*நேர")
-# Bare "daily" with no count phrase already matched above. Tamil has two
-# common synonyms for "daily"/"every day" — தினமும் and தினசரி — both
-# seen in this build's own real NLLB-200 output (the latter surfaced by
-# this pass's own real-model test run, not assumed).
-_TAMIL_BARE_DAILY_SYNONYMS = ("தினமும்", "தினசரி")
+# Bare "daily" with no count phrase already matched above. Tamil has
+# several common synonyms for "daily"/"every day" — தினமும் and தினசரி,
+# both seen in this build's own real NLLB-200 output, and நாளும் ("...also/
+# every day", as in ஒவ்வொரு நாளும் "every single day") — added after this
+# pass's own real-model testing surfaced OPUS-MT (a different translation
+# model, added when this build switched translation providers for
+# licensing reasons — see docs/MODEL_LICENSE_MATRIX.md) using this
+# construction for "daily" instead of தினமும்/தினசரி. Widening this list
+# only makes the validator recognize MORE genuinely-correct Tamil
+# phrasings as matching — it never weakens the fail-closed guarantee for
+# translations that actually dropped the frequency.
+_TAMIL_BARE_DAILY_SYNONYMS = ("தினமும்", "தினசரி", "நாளும்")
 
 # General "<Tamil number word> முறை" ("N times") + a separate daily-
 # context marker anywhere in the same text — added after this pass's own
@@ -359,7 +366,14 @@ _TAMIL_NUMBER_WORDS: dict[str, int] = {
     "ஒரு": 1, "இரண்டு": 2, "மூன்று": 3, "நான்கு": 4, "ஐந்து": 5,
 }  # fmt: skip
 _TAMIL_TIMES_COUNT_RE = re.compile(r"(" + "|".join(_TAMIL_NUMBER_WORDS) + r")\s*முறை")
-_TAMIL_DAILY_CONTEXT_MARKERS = ("தினமும்", "தினசரி", "நாளுக்கு", "நாளொன்றுக்கு")
+# நாளும் added alongside the existing markers for the same OPUS-MT reason
+# as _TAMIL_BARE_DAILY_SYNONYMS above — confirmed against this pass's own
+# real OPUS-MT output ("ஒவ்வொரு நாளும் இரண்டு முறை", "every day two
+# times"), where the count word and this daily marker appear as separate,
+# non-adjacent words in the sentence (this function already matches them
+# independently, not as one fixed phrase — see the comment above this
+# block — so adding the marker alone is sufficient).
+_TAMIL_DAILY_CONTEXT_MARKERS = ("தினமும்", "தினசரி", "நாளுக்கு", "நாளொன்றுக்கு", "நாளும்")
 _TAMIL_FREQUENCY_CODE_FOR_COUNT = {1: "once_daily", 2: "twice_daily", 3: "thrice_daily"}
 
 

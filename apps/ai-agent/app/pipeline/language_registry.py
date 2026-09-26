@@ -119,19 +119,41 @@ def _default_pairs() -> dict[tuple[str, str], LanguagePairConfig]:
     # points at qwen3-tts for the future GPU path (also needs a reference
     # voice clip per language — see app/config.py).
     #
-    # certification stays "testing"/all-False: the 75-case safety corpus
-    # has NOT been re-run against opus-mt-en-dra's actual translation
-    # output (it was run against NLLB-200's, before the licensing-driven
-    # switch) — real regression evidence for THIS specific model is still
-    # outstanding work, tracked here rather than assumed.
+    # certification stays "testing"/all-False even after this pass's real
+    # CPU-sandbox regression run (2026-09-26, no VPS — see
+    # docs/ai/models.md for the full evidence): status="certified"
+    # requires medical_terms AND dosage AND negation AND latency all
+    # True, and dosage genuinely is NOT true yet for real reasons found
+    # by actually running opus-mt-en-dra's live output through the
+    # safety validator:
+    #   - negation: confirmed working ("Do not take this medicine."
+    #     round-trips and is correctly compared).
+    #   - frequency recognition: was a FALSE POSITIVE (terminology.py's
+    #     Tamil "daily" word list was curated against NLLB-200's
+    #     phrasing and didn't recognize OPUS-MT's own "நாளும்" — fixed
+    #     in this pass; verified against real model output, zero
+    #     regressions in the existing 88-case terminology/safety suite).
+    #   - dosage/medical vocabulary: OPUS-MT genuinely mistranslates
+    #     "tablet(s)" -> "பலகை"/"மேசை" (board/table) instead of the
+    #     correct "மாத்திரை", non-deterministically across otherwise-
+    #     identical runs, and has also been observed to silently drop
+    #     "twice" from "twice daily". The safety validator correctly
+    #     catches and blocks both (fail-closed proven working end-to-end
+    #     against the real model), but that means real digit/count-
+    #     bearing dosage instructions will often be blocked rather than
+    #     actually delivered — a genuine, unresolved OPUS-MT quality
+    #     limitation, not a safety-validator bug. Certification cannot
+    #     honestly move to "certified" until this is fixed (e.g. a
+    #     medical-vocabulary glossary/constrained-decoding step, or a
+    #     different model) and the full 75-case corpus is re-run.
     en_ta = LanguagePairConfig(
         source="en", target="ta",
         translation_primary="opus-mt-en-ta",
         translation_fallback="madlad400-3b",
         tts_primary=None,
         tts_fallback="qwen3-tts",
-        certification=Certification(status="testing", medical_terms=False, dosage=False, negation=False, latency=False),
-        license=LicenseStatus(verified=True, notes="opus-mt-en-dra (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25 — see docs/MODEL_LICENSE_MATRIX.md. License is no longer the blocker; certification (real regression evidence against this specific model's output) is. No TTS model is both commercially licensed and CPU-feasible yet — captions-only until qwen3-tts's GPU/reference-voice prerequisites are met."),
+        certification=Certification(status="testing", medical_terms=False, dosage=False, negation=True, latency=False),
+        license=LicenseStatus(verified=True, notes="opus-mt-en-dra (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25 — see docs/MODEL_LICENSE_MATRIX.md. License is no longer the blocker; certification is, and specifically the real 'tablet'->board/table mistranslation found in this build's own 2026-09-26 CPU-sandbox regression run (see docs/ai/models.md) — not lack of testing infrastructure. No TTS model is both commercially licensed and CPU-feasible yet — captions-only until qwen3-tts's GPU/reference-voice prerequisites are met."),
     )
     ta_en = LanguagePairConfig(
         source="ta", target="en",
@@ -140,7 +162,7 @@ def _default_pairs() -> dict[tuple[str, str], LanguagePairConfig]:
         tts_primary=None,
         tts_fallback="qwen3-tts",
         certification=Certification(status="testing", medical_terms=False, dosage=False, negation=False, latency=False),
-        license=LicenseStatus(verified=True, notes="opus-mt-dra-en (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25. Same as en->ta otherwise."),
+        license=LicenseStatus(verified=True, notes="opus-mt-dra-en (checkpoint backing the primary route) is Apache-2.0, verified 2026-09-25. A single hand-crafted Tamil medical sentence produced a badly garbled, semantically unrelated English translation in this build's own 2026-09-26 spot check (see docs/ai/models.md) — not yet enough test cases to know if that's this specific input's phrasing or a genuine ta->en model weakness, so negation/dosage/latency are left False pending a real multi-case check, not assumed working by symmetry with en->ta."),
     )
     # en<->ml: same CPU-feasible OPUS-MT checkpoint (opus-mt-en-dra also
     # covers Malayalam) and captions-only TTS status as en->ta. Was
