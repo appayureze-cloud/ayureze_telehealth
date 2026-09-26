@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -7,8 +8,17 @@ from sqlalchemy.orm import Session
 from api.rate_limit import RateLimiter, client_key
 from config.settings import get_settings
 from database import get_db
+from mappings.atc import AtcAdapter
+from mappings.base import AdapterNotConfiguredError, BiomedicalAdapter
+from mappings.icd11 import ICD11Adapter
+from mappings.loinc import LoincAdapter
+from mappings.mesh import MeshAdapter
+from mappings.rxnorm import RxNormAdapter
+from mappings.snomed import SnomedAdapter
 from models import Concept, ConceptName, ConceptRelationship, DeduplicationCandidate, Source, SourceRecord
 from schemas.terminology import (
+    BiomedicalLookupResultResponse,
+    BiomedicalSearchResponse,
     ConceptNameResponse,
     ConceptRelationshipResponse,
     ConceptResponse,
@@ -23,6 +33,21 @@ from schemas.terminology import (
     StatsResponse,
 )
 from terminology.search import search_terms
+
+# Every adapter this endpoint can route to — see docs/LICENSE_MATRIX.md
+# for which of these actually work without extra setup (rxnorm/mesh, real
+# public APIs) vs. correctly raise AdapterNotConfiguredError (icd11/loinc
+# need real credentials this deployment doesn't have; snomed is disabled
+# by policy until a licensed terminology server is configured; atc has no
+# automated lookup path at all, ever, per its source's own terms).
+_BIOMEDICAL_ADAPTERS: dict[str, type[BiomedicalAdapter]] = {
+    "rxnorm": RxNormAdapter,
+    "mesh": MeshAdapter,
+    "icd11": ICD11Adapter,
+    "loinc": LoincAdapter,
+    "snomed": SnomedAdapter,
+    "atc": AtcAdapter,
+}
 
 router = APIRouter()
 _settings = get_settings()
@@ -72,6 +97,35 @@ def resolve(request: Request, body: ResolveRequest, db: Session = Depends(get_db
     return ResolveResponse(
         query=body.text,
         matches=[ResolveMatch(concept_id=m.concept_id, canonical_name=m.canonical_name, category=m.category, match_type=m.match_type, confidence=m.confidence) for m in matches],
+    )
+
+
+@router.get("/v1/biomedical/{system}/search", response_model=BiomedicalSearchResponse)
+def biomedical_search(request: Request, system: str, q: str = Query(..., min_length=1)) -> BiomedicalSearchResponse:
+    """Live lookup only — spec section 18: never a bulk local copy. `system`
+    is one of rxnorm/mesh (genuinely work today, real public APIs, no
+    credentials needed) or icd11/loinc/snomed/atc (correctly return 503:
+    real credentials/licensing this deployment doesn't have, or — for atc
+    — a permanent, by-design absence of any automated lookup path at all).
+    See docs/LICENSE_MATRIX.md for exactly why each one is in which state.
+    """
+    _enforce_rate_limit(request)
+    q = _validate_query_length(q)
+    adapter_cls = _BIOMEDICAL_ADAPTERS.get(system)
+    if adapter_cls is None:
+        raise HTTPException(status_code=404, detail=f"unknown biomedical system {system!r}; available: {sorted(_BIOMEDICAL_ADAPTERS)}")
+
+    adapter = adapter_cls()
+    try:
+        results = adapter.lookup(q)
+    except AdapterNotConfiguredError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"upstream {system} service error: {e}") from e
+
+    return BiomedicalSearchResponse(
+        system=system, query=q,
+        results=[BiomedicalLookupResultResponse(code=r.code, display=r.display, source=r.source, source_url=r.source_url) for r in results],
     )
 
 

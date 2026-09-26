@@ -96,3 +96,16 @@ class StatsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     database: str
+
+
+class BiomedicalLookupResultResponse(BaseModel):
+    code: str
+    display: str
+    source: str
+    source_url: str
+
+
+class BiomedicalSearchResponse(BaseModel):
+    system: str
+    query: str
+    results: list[BiomedicalLookupResultResponse]

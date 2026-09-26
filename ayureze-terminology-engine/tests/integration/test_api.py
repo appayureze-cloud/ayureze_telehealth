@@ -143,3 +143,75 @@ def test_resolve_with_empty_text_returns_422(client):
 def test_search_sql_injection_attempt_is_treated_as_literal_text(client, seeded):
     response = client.get("/v1/terminology/search", params={"q": "Tulsi'; DROP TABLE concepts;--"})
     assert response.status_code == 200  # never a 500, never actually executes anything
+
+
+# --- /v1/biomedical/{system}/search ---
+#
+# rxnorm/mesh's SUCCESS path genuinely calls live public APIs (verified
+# manually with real queries — see docs/API.md's captured real responses,
+# e.g. a real "ibuprofen" RxNorm lookup and a real "hypertension" MeSH
+# lookup, both returned live 2026-09-26) — deliberately NOT re-verified
+# over the network in this automated suite, to keep it fast and immune to
+# network flakiness/rate limits. Everything below IS network-free and
+# real: the routing/error-handling logic, and every gated adapter's
+# fail-closed check (which happens before any network call is attempted).
+
+def test_unknown_biomedical_system_returns_404(client):
+    response = client.get("/v1/biomedical/fakesystem/search", params={"q": "test"})
+    assert response.status_code == 404
+    assert "fakesystem" in response.json()["detail"]
+
+
+def test_snomed_returns_503_when_not_configured(client, monkeypatch):
+    monkeypatch.delenv("TERMINOLOGY_SNOMED_SERVER_URL", raising=False)
+    response = client.get("/v1/biomedical/snomed/search", params={"q": "diabetes"})
+    assert response.status_code == 503
+    assert "SNOMED" in response.json()["detail"]
+
+
+def test_icd11_returns_503_when_not_configured(client, monkeypatch):
+    monkeypatch.delenv("TERMINOLOGY_ICD11_CLIENT_ID", raising=False)
+    monkeypatch.delenv("TERMINOLOGY_ICD11_CLIENT_SECRET", raising=False)
+    response = client.get("/v1/biomedical/icd11/search", params={"q": "diabetes"})
+    assert response.status_code == 503
+    assert "ICD-11" in response.json()["detail"]
+
+
+def test_loinc_returns_503_when_not_configured(client, monkeypatch):
+    monkeypatch.delenv("TERMINOLOGY_LOINC_USERNAME", raising=False)
+    monkeypatch.delenv("TERMINOLOGY_LOINC_PASSWORD", raising=False)
+    response = client.get("/v1/biomedical/loinc/search", params={"q": "diabetes"})
+    assert response.status_code == 503
+    assert "LOINC" in response.json()["detail"]
+
+
+def test_atc_always_returns_503():
+    response = TestClient(app).get("/v1/biomedical/atc/search", params={"q": "diabetes"})
+    assert response.status_code == 503
+    assert "WHO Collaborating Centre" in response.json()["detail"]
+
+
+def test_biomedical_search_success_shape(client, monkeypatch):
+    """A fake, in-process adapter proves the route correctly maps a
+    BiomedicalLookupResult into the API's response schema — the real
+    rxnorm/mesh network success path is verified manually (see note above
+    this test block)."""
+    import api.routes as routes_module
+    from mappings.base import BiomedicalAdapter, BiomedicalLookupResult
+
+    class _FakeAdapter(BiomedicalAdapter):
+        def lookup(self, term):
+            return [BiomedicalLookupResult(code="FAKE123", display=f"Fake result for {term}", source="FakeSource", source_url="https://example.test/FAKE123")]
+
+    monkeypatch.setitem(routes_module._BIOMEDICAL_ADAPTERS, "rxnorm", _FakeAdapter)
+    response = client.get("/v1/biomedical/rxnorm/search", params={"q": "aspirin"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["system"] == "rxnorm"
+    assert body["query"] == "aspirin"
+    assert body["results"] == [{"code": "FAKE123", "display": "Fake result for aspirin", "source": "FakeSource", "source_url": "https://example.test/FAKE123"}]
+
+
+def test_biomedical_search_query_too_long_returns_422(client):
+    response = client.get("/v1/biomedical/rxnorm/search", params={"q": "a" * 300})
+    assert response.status_code == 422

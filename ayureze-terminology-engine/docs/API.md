@@ -77,7 +77,7 @@ the 6 adapter-only biomedical terminologies with `record_count: 0` — see
   "concepts_by_domain": {"AYURVEDA": 4858, "BIOMEDICAL": 213, "INTEROP": 14},
   "concepts_by_category": {"AYURVEDIC_CONCEPT": 206, "DISEASE": 213, "FORMULATION": 176, "HERB": 2575, "MEDICINE_TERM": 1536, "NAMASTE_CODE": 14, "PATHOLOGY_TERM": 203, "SIDDHANTA": 162},
   "total_names": 7366,
-  "total_relationships": 685,
+  "total_relationships": 683,
   "total_source_records": 4872,
   "total_sources": 12,
   "deduplication_candidates_pending": 802,
@@ -101,14 +101,63 @@ the 6 adapter-only biomedical terminologies with `record_count: 0` — see
   multi-replica deployment would need a shared store instead — documented,
   not silently pretended away.
 
-## Adapter endpoints (biomedical terminologies)
+## `GET /v1/biomedical/{system}/search?q=` — adapter endpoints (biomedical terminologies)
 
-Not yet exposed as HTTP endpoints in Phase 1 — `mappings/*.py`'s adapters
-(`RxNormAdapter`, `MeshAdapter` genuinely working against live public
-APIs; `ICD11Adapter`/`LoincAdapter`/`SnomedAdapter` requiring credentials
-not configured in this environment; `AtcAdapter` permanently disabled)
-are library-level only. Wiring them behind
-`GET /v1/biomedical/{system}/search?q=` is recommended next-phase work —
-seeing them exercised directly in `docs/LICENSE_MATRIX.md` and this
-build's own test output was prioritized over building a thin HTTP wrapper
-with no additional real content to show.
+**Now wired in and exercised for real (2026-09-26)** — `system` is one of
+`rxnorm`, `mesh`, `icd11`, `loinc`, `snomed`, `atc`. Live lookup only,
+never a bulk local copy (spec section 18) — see `docs/LICENSE_MATRIX.md`
+for why each one is in the state it's in.
+
+**`rxnorm` and `mesh` genuinely work today** — real public APIs, no
+credentials needed. Real captured responses from this build's own testing:
+
+```
+GET /v1/biomedical/rxnorm/search?q=ibuprofen
+{"system": "rxnorm", "query": "ibuprofen", "results": [
+  {"code": "1100070", "display": "famotidine 26.6 MG / ibuprofen 800 MG Oral Tablet [Duexis]", "source": "RxNorm", "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1100070"},
+  {"code": "1101919", "display": "ibuprofen 200 MG Oral Tablet [Counteract IB]", "source": "RxNorm", "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1101919"},
+  ...
+]}
+
+GET /v1/biomedical/mesh/search?q=hypertension
+{"system": "mesh", "query": "hypertension", "results": [
+  {"code": "T034127", "display": "Benign Intracranial Hypertension", "source": "MeSH", "source_url": "http://id.nlm.nih.gov/mesh/T034127"},
+  ...
+]}
+```
+
+**`icd11`, `loinc`, `snomed` correctly return a real `503`** — credentials/
+licensing this deployment doesn't have, never a faked result:
+
+```
+GET /v1/biomedical/snomed/search?q=diabetes -> 503
+{"detail": "SNOMED CT is disabled: no TERMINOLOGY_SNOMED_SERVER_URL configured. ..."}
+
+GET /v1/biomedical/icd11/search?q=diabetes -> 503
+{"detail": "ICD-11 adapter requires TERMINOLOGY_ICD11_CLIENT_ID/TERMINOLOGY_ICD11_CLIENT_SECRET ..."}
+
+GET /v1/biomedical/loinc/search?q=diabetes -> 503
+{"detail": "LOINC adapter requires TERMINOLOGY_LOINC_USERNAME/TERMINOLOGY_LOINC_PASSWORD ..."}
+```
+
+**`atc` always returns `503`, by design** — no automated lookup path
+exists at all, per the WHO Collaborating Centre's own published terms:
+
+```
+GET /v1/biomedical/atc/search?q=diabetes -> 503
+{"detail": "ATC/DDD has no automated lookup path in this codebase, by design: ..."}
+```
+
+An unrecognized `system` value returns a real `404` naming the valid
+options:
+
+```
+GET /v1/biomedical/fakesystem/search?q=test -> 404
+{"detail": "unknown biomedical system 'fakesystem'; available: ['atc', 'icd11', 'loinc', 'mesh', 'rxnorm', 'snomed']"}
+```
+
+Same query-length limit and rate limiting as `/v1/terminology/search`
+(a 300-char query returns `422`, verified). The route only ever
+constructs the fixed, hardcoded adapter for a known `system` name — a
+caller can never supply an arbitrary URL for this endpoint to fetch
+(spec section 23).
