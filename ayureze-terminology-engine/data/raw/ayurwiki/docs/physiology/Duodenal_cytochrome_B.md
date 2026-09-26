@@ -1,0 +1,9 @@
+---
+title: "Duodenal cytochrome B"
+categories:
+  - "Physiology"
+date: 2016-11-28
+---
+# Duodenal cytochrome B
+
+**Duodenal cytochrome B** (Dcytb) has been identified as the reductase enzyme which catalyzes the reduction of Fe3+ to Fe2+ in the process of iron absorption in the duodenum of mammals. According to research carried out, it appears that Dcytb upregulation is controlled by a number of independent stimulators or inhibitors of iron absorption. Furthermore, Dcytb has also been shown to exist in other tissues besides the apical region of the duodenum; and as such, it is believed to play a major role in iron metabolism in tissues.
