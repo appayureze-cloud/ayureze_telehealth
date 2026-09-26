@@ -42,17 +42,25 @@ class Settings(BaseSettings):
     #     "madlad" — MADLAD-400 3B, Apache-2.0 but GPU-only per its own
     #     docs (not downloaded unless ai_allow_model_download=true AND a
     #     GPU is present) — set this once real GPU infrastructure exists.
-    #   tts: "none" (default) — captions-only. No TTS model currently has
-    #     both a verified commercial license AND CPU feasibility (Qwen3-TTS/
-    #     CosyVoice3 need GPU; MMS-TTS/NLLB-adjacent options are
-    #     CC-BY-NC-4.0 — see docs/MODEL_LICENSE_MATRIX.md).
-    #     "qwen3-tts" — switches to Qwen3-TTS once GPU infra AND a
-    #     reference voice clip per language exist (see
-    #     ai_tts_reference_audio_path/ai_tts_reference_text below).
+    #   tts: "none" (default) — captions-only.
+    #     "qwen3-tts" — GPU-only, also needs a reference voice clip per
+    #     language (see ai_tts_reference_audio_path/ai_tts_reference_text
+    #     below).
+    #     "indic-parler-tts" — ai4bharat/indic-parler-tts, Apache-2.0
+    #     (confirmed commercial-clean), confirmed Tamil support, has a
+    #     documented CPU fallback (0.9B params — expect multi-second
+    #     latency per utterance on CPU, not benchmarked).
+    #     "piper" — invoked via CLI subprocess only, genuinely CPU-fast.
+    #     REAL UNRESOLVED GAP: the specific Tamil voice checkpoint's
+    #     dataset license could not be verified — see
+    #     docs/MODEL_LICENSE_MATRIX.md before enabling in production.
+    #     Needs ai_tts_piper_checkpoint_path (a local .onnx file) and the
+    #     `piper` executable on PATH.
     ai_translation_backend: str = "opus-mt"  # "opus-mt" | "madlad"
-    ai_tts_backend: str = "none"  # "none" | "qwen3-tts"
+    ai_tts_backend: str = "none"  # "none" | "qwen3-tts" | "indic-parler-tts" | "piper"
     ai_tts_reference_audio_path: str | None = None
     ai_tts_reference_text: str | None = None
+    ai_tts_piper_checkpoint_path: str | None = None
 
     # Streaming pipeline (this pass's addition — see app/pipeline/
     # streaming_pipeline.py). Opt-in and OFF by default: the existing,

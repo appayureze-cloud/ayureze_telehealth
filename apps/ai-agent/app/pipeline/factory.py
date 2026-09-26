@@ -18,17 +18,27 @@ removed from the codebase by choosing the other:
   its own docs). Select this once real GPU infrastructure exists.
 
 - tts_backend="none" (default): CAPTIONS-ONLY (TranslationPipeline(tts=
-  None) — see orchestrator.py). No TTS model currently has both a
-  verified commercial license AND CPU feasibility — see
-  docs/MODEL_LICENSE_MATRIX.md.
+  None) — see orchestrator.py).
 - tts_backend="qwen3-tts": Qwen3-TTS (Apache-2.0, GPU-only, also needs a
   reference voice clip per language — ai_tts_reference_audio_path/
   ai_tts_reference_text in app/config.py).
+- tts_backend="indic-parler-tts": ai4bharat/indic-parler-tts (Apache-2.0,
+  confirmed commercial-clean, confirmed Tamil support via named speakers
+  — no reference-voice-clip question). CPU-CAPABLE (has a documented CPU
+  fallback path, unlike Qwen3-TTS/CosyVoice3) but 0.9B params — expect
+  multi-second latency per utterance on CPU, not benchmarked in this pass.
+- tts_backend="piper": Piper, invoked via CLI subprocess only (never
+  imported as a Python library — see PiperTTSProvider's docstring for
+  why: its actively-maintained successor is GPL-3.0). Genuinely CPU-fast
+  by design. REAL, UNRESOLVED GAP: the specific Tamil voice checkpoint's
+  dataset license could not be verified this pass — see
+  docs/MODEL_LICENSE_MATRIX.md before enabling in production.
 
-Both MADLAD-400 and Qwen3-TTS are NOT downloaded unless
-AI_ALLOW_MODEL_DOWNLOAD=true AND a real GPU is present — selecting them
-without that infrastructure raises ModelNotAvailableError, same as before
-this function became selectable.
+None of MADLAD-400, Qwen3-TTS, or indic-parler-tts are downloaded unless
+AI_ALLOW_MODEL_DOWNLOAD=true (and, for the GPU-only ones, a real GPU is
+present) — selecting them without that infrastructure raises
+ModelNotAvailableError. Piper additionally requires a local `.onnx` voice
+checkpoint path and the `piper` executable on PATH.
 """
 
 from __future__ import annotations
@@ -37,7 +47,7 @@ from .lid import LangidProvider
 from .orchestrator import TranslationPipeline
 from .stt import FasterWhisperSTT
 from .translation import MADLADProvider, OPUSMTProvider, TranslationProvider
-from .tts import Qwen3TTSProvider, TTSProvider
+from .tts import IndicParlerTTSProvider, PiperTTSProvider, Qwen3TTSProvider, TTSProvider
 
 
 class _DirectionalOpusMT(TranslationProvider):
@@ -84,14 +94,26 @@ def _build_translator(backend: str) -> TranslationProvider:
     raise ValueError(f"unknown ai_translation_backend {backend!r}, expected 'opus-mt' or 'madlad'")
 
 
-def _build_tts(backend: str, ref_audio: str | None, ref_text: str | None) -> TTSProvider | None:
+def _build_tts(
+    backend: str, ref_audio: str | None, ref_text: str | None, piper_checkpoint: str | None = None,
+) -> TTSProvider | None:
     if backend == "none":
         return None
     if backend == "qwen3-tts":
         tts = Qwen3TTSProvider(ref_audio=ref_audio, ref_text=ref_text)
         tts.load()
         return tts
-    raise ValueError(f"unknown ai_tts_backend {backend!r}, expected 'none' or 'qwen3-tts'")
+    if backend == "indic-parler-tts":
+        tts = IndicParlerTTSProvider()
+        tts.load()
+        return tts
+    if backend == "piper":
+        tts = PiperTTSProvider(checkpoint=piper_checkpoint)
+        tts.load()
+        return tts
+    raise ValueError(
+        f"unknown ai_tts_backend {backend!r}, expected 'none', 'qwen3-tts', 'indic-parler-tts', or 'piper'"
+    )
 
 
 def build_default_pipeline(
@@ -100,10 +122,11 @@ def build_default_pipeline(
     tts_backend: str = "none",
     tts_ref_audio: str | None = None,
     tts_ref_text: str | None = None,
+    tts_piper_checkpoint: str | None = None,
 ) -> TranslationPipeline:
     return TranslationPipeline(
         stt=FasterWhisperSTT(model_size=whisper_model_size),
         lid=LangidProvider(),
         translator=_build_translator(translation_backend),
-        tts=_build_tts(tts_backend, tts_ref_audio, tts_ref_text),
+        tts=_build_tts(tts_backend, tts_ref_audio, tts_ref_text, tts_piper_checkpoint),
     )

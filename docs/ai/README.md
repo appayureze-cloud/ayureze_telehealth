@@ -17,21 +17,30 @@ removes the other from the codebase:
 | **default** | `opus-mt` | `Helsinki-NLP/opus-mt-en-dra`/`opus-mt-dra-en` | Apache-2.0, CPU-feasible (small MarianMT models) | This is what actually runs on a real CPU-only VPS |
 | alternative | `madlad` | MADLAD-400 3B | Apache-2.0, **GPU required** | Select once real GPU infra exists |
 
-| | `AI_TTS_BACKEND` | Requires | Status |
-|---|---|---|---|
-| **default** | `none` | — | **Captions-only** — no TTS model currently has both a verified commercial license AND CPU feasibility (Qwen3-TTS/CosyVoice3 need GPU; k2-fsa/OmniVoice's pretrained weights are CC-BY-NC despite an Apache-2.0 codebase; Piper's Tamil voice license is unverified/mixed) |
-| alternative | `qwen3-tts` | GPU + a reference voice clip per language | Select once both exist — see `AI_TTS_REFERENCE_AUDIO_PATH`/`AI_TTS_REFERENCE_TEXT` |
+| | `AI_TTS_BACKEND` | Model | Requires | Status |
+|---|---|---|---|---|
+| **default** | `none` | — | — | **Captions-only** |
+| alternative | `indic-parler-tts` | `ai4bharat/indic-parler-tts` (0.9B) | Apache-2.0, confirmed commercial-clean, confirmed Tamil (named speakers, no reference clip needed) | CPU-capable (has a documented fallback) but latency unverified — expect multi-second per utterance |
+| alternative | `piper` | Piper, via CLI subprocess only (never imported as a library) | MIT (archived engine) / GPL-3.0 (current engine, safe via subprocess) — **but the specific Tamil voice checkpoint's dataset license is UNVERIFIED** | Genuinely CPU-fast by design; do not enable in production until the voice license question is resolved — see `docs/MODEL_LICENSE_MATRIX.md` |
+| alternative | `qwen3-tts` | Qwen3-TTS | GPU + a reference voice clip per language | Select once both exist — see `AI_TTS_REFERENCE_AUDIO_PATH`/`AI_TTS_REFERENCE_TEXT` |
+
+Two internationally well-known, permissively-licensed TTS projects
+(Kokoro-82M, Bark) were also checked specifically for being
+globally-recognized rather than region-specific — both confirmed to not
+support Tamil at all, so neither has a provider class.
 
 **Real, direct consequence with the default config**: neither the OPUS-MT
-checkpoints nor MADLAD-400/Qwen3-TTS are downloaded in this sandbox
-(`AI_ALLOW_MODEL_DOWNLOAD=false` by default — no model is fetched
-implicitly regardless of backend). `build_default_pipeline()` raises
-`ModelNotAvailableError` here, and `POST /v1/agent/sessions/{id}/start`
-returns a clear `503` instead. On a real deploy with
-`AI_ALLOW_MODEL_DOWNLOAD=true`, the default `opus-mt`/`none` backends need
-no GPU at all and will actually load and run — captions (translated text)
-work, synthesized voice audio does not, until a TTS gap above is closed.
-`TranslationPipeline(tts=None)` (`orchestrator.py`) runs this
+checkpoints nor any of the alternative translation/TTS backends are
+downloaded in this sandbox (`AI_ALLOW_MODEL_DOWNLOAD=false` by default —
+no model is fetched implicitly regardless of backend).
+`build_default_pipeline()` raises `ModelNotAvailableError` here, and
+`POST /v1/agent/sessions/{id}/start` returns a clear `503` instead. On a
+real deploy with `AI_ALLOW_MODEL_DOWNLOAD=true`, the default
+`opus-mt`/`none` backends need no GPU at all and will actually load and
+run — captions (translated text) work; synthesized voice audio needs one
+of the TTS alternatives above, each with its own real tradeoff (latency
+for indic-parler-tts, an unresolved voice-license question for piper, GPU
+for qwen3-tts). `TranslationPipeline(tts=None)` (`orchestrator.py`) runs
 captions-only mode: transcription, translation, and safety validation all
 run for real; `PipelineResult.audio` is simply always `None`.
 

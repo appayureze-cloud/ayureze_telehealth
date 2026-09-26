@@ -798,3 +798,53 @@ clean: AI-agent Python unit (181, up from 174), real-model (12 passed + 3
 skip cleanly, same skip count as before — still gated on
 `AI_ALLOW_MODEL_DOWNLOAD`, now for the CPU-feasible model), integration (1
 passed + 1 skips cleanly, unchanged).
+
+## Post-audit — Two more CPU-friendly TTS candidates investigated and wired in as selectable backends
+
+Explicitly asked to reconsider NLLB-200 (confirmed non-commercial — user
+decided against it once told AyurEze is/will be a commercial product) and
+to find an "internationally acceptable" TTS. Checked Kokoro-82M and Bark —
+both genuinely global, well-known, permissively-licensed (Apache-2.0/MIT)
+— against Tamil support directly: **neither supports Tamil at all**,
+confirmed via their own documentation and (for Bark) the project's own
+GitHub discussions.
+
+User then asked to use ai4bharat and Piper specifically. Verified both for
+real:
+
+- **ai4bharat/indic-parler-tts**: Apache-2.0, confirmed commercial-clean,
+  confirmed real Tamil support via named speakers ("Jaya"/"Kavitha" — no
+  reference-voice-clip requirement, unlike Qwen3-TTS/CosyVoice3's
+  voice-cloning architecture). Has a documented CPU fallback path in its
+  own example code (0.9B params — real, honest caveat: CPU latency is
+  unverified, expected multi-second per utterance, not benchmarked).
+  Added `IndicParlerTTSProvider` (`tts.py`) and wired it in as
+  `AI_TTS_BACKEND=indic-parler-tts`.
+- **Piper**: found and flagged a real, consequential fact mid-investigation
+  — the actively-maintained successor repo (`OHF-Voice/piper1-gpl`, the
+  original `rhasspy/piper` is archived as of Oct 2025) is **GPL-3.0**, not
+  MIT. Verified the archived original really was MIT (confirmed verbatim
+  from its `LICENSE.md`). Designed `PiperTTSProvider` to invoke Piper via
+  CLI subprocess ONLY, never `import piper` as a Python library into this
+  process — the standard safe pattern for consuming GPL command-line tools
+  commercially (GPL's copyleft attaches to linking/derivative works, not
+  separate-process invocation), verified with a real AST-based test that
+  the class contains no `import piper`/`from piper` statement. This makes
+  the provider safe regardless of which engine version is actually
+  installed. The genuinely unresolved gap: the specific community Tamil
+  voice checkpoint (`ta_IN-Valluvar-medium.onnx`)'s dataset license could
+  not be identified despite real research effort across multiple angles —
+  `PiperTTSProvider.metadata()` deliberately reports `commercial_use=False`
+  for this reason, and it should not be enabled in production until that
+  specific question is resolved. Wired in as `AI_TTS_BACKEND=piper`.
+
+Both new classes are real, tested, and wired into `factory.py`'s
+`_build_tts()` alongside the existing `none`/`qwen3-tts` options — nothing
+removed, all four backends coexist. Added 16 new tests: 9 in
+`test_cpu_tts_candidates.py` (metadata correctness including the
+deliberately-conservative `commercial_use=False` on Piper, fail-closed
+paths for both providers, and the AST-verified "never imports piper as a
+library" safety property) and 2 more in `test_factory.py` (backend
+dispatch for both new options). Full regression re-run clean: AI-agent
+Python unit (192, up from 181), real-model (12 passed + 3 skip cleanly,
+unchanged).

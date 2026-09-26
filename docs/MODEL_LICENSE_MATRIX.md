@@ -36,17 +36,40 @@ AND CPU-feasible — see below. The same default was applied in
 `app/pipeline/language_registry.py`'s `en<->ta`/`en<->ml` entries
 (primary = opus-mt, fallback = madlad/qwen3-tts).
 
-**Two more candidates investigated for CPU-friendly TTS, both rejected**:
-- **k2-fsa/OmniVoice**: codebase is Apache-2.0, but its **pretrained
-  weights are `CC-BY-NC`** — "due to constraints from its training data
-  (e.g., Emilia)" per its own model card. Same non-commercial problem as
-  NLLB/MMS-TTS. Also GPU-oriented (CUDA/Apple Silicon documented, no CPU
-  inference path), and Tamil support isn't explicitly confirmed in its
-  documented language list.
-- **Piper TTS**: engine is MIT and genuinely CPU-fast, but its specific
-  Tamil voice model's license depends on the training dataset and is
-  unverified/mixed — not confirmed commercially clean without deeper
-  per-voice research not done this pass.
+**Four more TTS candidates investigated for CPU-friendly, commercially-safe
+audio**:
+- **k2-fsa/OmniVoice — REJECTED**: codebase is Apache-2.0, but its
+  **pretrained weights are `CC-BY-NC`** — "due to constraints from its
+  training data (e.g., Emilia)" per its own model card. Same
+  non-commercial problem as NLLB/MMS-TTS. Also GPU-oriented, and Tamil
+  support isn't explicitly confirmed in its documented language list.
+- **Kokoro-82M and Bark — REJECTED (checked per an explicit request for
+  internationally-recognized, not region-specific, projects)**: both are
+  genuinely global, well-known, permissively-licensed (Apache-2.0 / MIT)
+  projects — but **neither supports Tamil at all**, confirmed directly
+  against their documentation and (for Bark) the project's own GitHub
+  discussions.
+- **ai4bharat/indic-parler-tts — WIRED IN
+  (`AI_TTS_BACKEND=indic-parler-tts`)**: Apache-2.0, confirmed
+  commercially clean, confirmed real Tamil support via named speakers, a
+  documented CPU fallback path. The honest tradeoff is unverified CPU
+  latency (0.9B params — expected multi-second per utterance, not
+  real-time) and that AI4Bharat is a regional (India-focused) research
+  lab rather than a globally-branded one — its Apache-2.0 license is
+  exactly as legally valid and enforceable internationally as any other
+  Apache-2.0 project regardless of where it was built.
+- **Piper — PARTIALLY WIRED IN (`AI_TTS_BACKEND=piper`)**: the ENGINE is a
+  genuinely international, general-purpose open-source project (used
+  worldwide in Home Assistant, NVDA, Mycroft), MIT-licensed in its
+  archived form (current successor is GPL-3.0 — see the matrix row
+  below). `PiperTTSProvider` invokes it via CLI subprocess only, never as
+  an imported Python library, to stay safe under either license. The
+  REAL, UNRESOLVED gap is separate: the specific community-contributed
+  Tamil voice checkpoint's dataset license could not be verified despite
+  real research effort — `PiperTTSProvider.metadata()` reports
+  `commercial_use=False` for exactly this reason, and it should not be
+  enabled in production until that specific question is resolved (or a
+  different, verified voice checkpoint is substituted).
 
 **This resolves the LICENSING gate for translation, but opens a different,
 equally real one: CERTIFICATION.** The prior "certified" status for
@@ -91,7 +114,21 @@ intact as the selectable GPU-path backend.
 | Qwen3-TTS (`AI_TTS_BACKEND=qwen3-tts`, GPU-path alternative) | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base | 2026-09-25 | ✅ License approved but **GPU-only** — selectable, not the default (default is `none`/captions-only); **NOT downloaded/certified this pass**; still requires a reference voice clip per language even once downloaded |
 | CosyVoice3 (alternative TTS, not wired into a config backend) | `FunAudioLLM/Fun-CosyVoice3-0.5B-2512` | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512 | 2026-09-25 | ✅ License approved — **NOT downloaded/certified this pass**; requires a reference voice clip per language (same open question) |
 | k2-fsa/OmniVoice (investigated, REJECTED for CPU-friendly TTS) | `k2-fsa/OmniVoice` | Apache-2.0 (code) | **CC-BY-NC** (pretrained weights) | **NO** | Restricted | Yes | https://huggingface.co/k2-fsa/OmniVoice | 2026-09-25 | ❌ **NOT commercially approved** — weights license restricted by training data (e.g. Emilia dataset) despite an Apache-2.0 codebase; also GPU-oriented (no documented CPU path) and Tamil support unconfirmed |
-| Piper TTS (investigated, license unverified for the relevant voice) | Piper engine (MIT) + a Tamil voice model | MIT (engine) | **Unverified/mixed** (per-voice, depends on training dataset) | Unverified | Unverified | Depends on voice | https://huggingface.co/rhasspy/piper-voices | 2026-09-25 | ⚠️ **Unknown = NOT APPROVED** for the Tamil voice specifically — engine itself is genuinely CPU-fast and MIT-licensed; would need dataset-level license research on the specific voice before use |
+| **ai4bharat/indic-parler-tts (`AI_TTS_BACKEND=indic-parler-tts`, wired in)** | `ai4bharat/indic-parler-tts` (0.9B params) | Apache-2.0 | Apache-2.0 | Yes | Yes | Yes | https://huggingface.co/ai4bharat/indic-parler-tts | 2026-09-25 | ✅ **License approved AND CPU-capable** (own example code has a documented CPU fallback path) — confirmed real Tamil support via named speakers ("Jaya"/"Kavitha"), no reference-voice-clip requirement. **NOT downloaded/benchmarked this pass** — CPU latency expected multi-second per utterance (0.9B params), not verified |
+| **Piper — ENGINE only (`AI_TTS_BACKEND=piper`, wired in)** | `rhasspy/piper` (archived, last release) or `OHF-Voice/piper1-gpl` (current) | **MIT** (archived rhasspy/piper, verified 2026-09-25) — current successor is **GPL-3.0** | N/A (engine, not weights) | Yes (MIT) / Yes-with-copyleft (GPL-3.0) | Yes | Yes | https://github.com/rhasspy/piper / https://github.com/OHF-Voice/piper1-gpl | 2026-09-25 | ✅ Engine license is fine either way **PROVIDED it is invoked via CLI subprocess only, never imported as a Python library** (`PiperTTSProvider` in `tts.py` does this deliberately) — GPL-3.0's copyleft attaches to linking/derivative works, not separate-process invocation ("mere aggregation", the same pattern commercial products use for other GPL CLI tools like ffmpeg builds) |
+| **Piper — Tamil VOICE checkpoint (`ta_IN-Valluvar-medium.onnx`)** | `rhasspy/piper-voices` (ta_IN) | N/A | **UNVERIFIED** — its own listing defers to "the original dataset license," which could not be identified despite real research effort this pass | **UNKNOWN** | Unknown | Unknown | https://huggingface.co/rhasspy/piper-voices | 2026-09-25 | ⚠️ **Unknown = NOT APPROVED.** This is SEPARATE from the engine question above — the engine being safe to invoke does not make an unverified voice checkpoint's dataset license safe. `PiperTTSProvider.metadata()` deliberately reports `commercial_use=False` for this reason. **Do not enable in production without resolving this specific question** (contact the voice's uploader/dataset source, or use a different, verified voice checkpoint). |
+
+### Rejected as "internationally recognized but no Tamil support"
+
+Investigated per an explicit request for a globally-recognized (not
+region-specific) open-source TTS project. Both are genuinely
+international, well-known, and permissively licensed — but neither
+supports Tamil at all, confirmed directly:
+
+| Model | License | Tamil support |
+|---|---|---|
+| Kokoro-82M (`hexgrad/Kokoro-82M`) | Apache-2.0 | ❌ Confirmed NOT supported (8 languages: English/Chinese/Japanese/Spanish/French/Hindi/Italian/Portuguese) |
+| Bark (`suno-ai/bark`) | MIT | ❌ Confirmed NOT supported (community has requested it in the project's own GitHub discussions; never shipped) |
 
 ## What "License approved" does NOT mean here
 

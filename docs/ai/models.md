@@ -28,16 +28,19 @@ these.
 
 ## TTS
 
-`AI_TTS_BACKEND` selects between captions-only (default) and Qwen3-TTS.
+`AI_TTS_BACKEND` selects between `none` (default, captions-only),
+`qwen3-tts`, `indic-parler-tts`, and `piper`.
 
 | Class | File | Status | Notes |
 |---|---|---|---|
-| *(none — captions-only)* | `orchestrator.py` | 🔄 **`AI_TTS_BACKEND=none`, the default** | `TranslationPipeline(tts=None)` — transcription/translation/safety all run for real; `PipelineResult.audio` is always `None`. No TTS candidate investigated so far is both commercially licensed AND CPU-feasible — see `docs/MODEL_LICENSE_MATRIX.md` (Qwen3-TTS/CosyVoice3 need GPU; k2-fsa/OmniVoice's weights are CC-BY-NC; Piper's Tamil voice license is unverified). |
+| *(none — captions-only)* | `orchestrator.py` | 🔄 **`AI_TTS_BACKEND=none`, the default** | `TranslationPipeline(tts=None)` — transcription/translation/safety all run for real; `PipelineResult.audio` is always `None`. |
+| `IndicParlerTTSProvider` | `tts.py` | 🔄 `AI_TTS_BACKEND=indic-parler-tts` — selectable, not downloaded/benchmarked | `ai4bharat/indic-parler-tts` (0.9B). Apache-2.0, confirmed commercially clean, confirmed Tamil support via named speakers ("Jaya"/"Kavitha") — no reference-voice-clip requirement, unlike Qwen3-TTS/CosyVoice3. Has a documented CPU fallback path but CPU latency is unverified (expected multi-second per utterance at 0.9B params). Needs the separate `parler-tts` package. |
+| `PiperTTSProvider` | `tts.py` | 🔄 `AI_TTS_BACKEND=piper` — selectable, not downloaded/benchmarked | Invoked via CLI subprocess only (`piper --model <voice.onnx> ...`), **never imported as a Python library** — deliberately, since the actively-maintained successor (`OHF-Voice/piper1-gpl`) is GPL-3.0 while the archived original is MIT; subprocess invocation is safe under either. Genuinely CPU-fast by design. **The specific Tamil voice checkpoint's dataset license is unverified** — `metadata().commercial_use` is deliberately `False` for this reason. Do not enable in production without resolving that first. |
 | `Qwen3TTSProvider` | `tts.py` | 🔄 `AI_TTS_BACKEND=qwen3-tts` — selectable GPU-path alternative, not downloaded/run | `Qwen/Qwen3-TTS-12Hz-1.7B-Base`. Advertises real streaming ("Extreme Low-Latency Streaming Generation") but no distinct streaming method signature is publicly documented as of verification date — this class implements the documented batch `generate_voice_clone()` path, plus a `.synthesize()` adapter (consumes its own `.stream()` to completion) so it satisfies the old, non-streaming `TTSProvider` interface `build_default_pipeline()` needs. Requires a reference voice clip per language (`AI_TTS_REFERENCE_AUDIO_PATH`/`AI_TTS_REFERENCE_TEXT` — open design question, see `docs/ai/streaming.md`). |
 | `StreamingMmsTTSProvider` | `tts.py` | ✅ New, real, tested against real audio | Wraps `MmsTTSProvider` — synthesizes the FULL utterance (VITS is non-autoregressive), then chunks the output for ordered/cancellable delivery. **Does not reduce first-audio latency** — see `docs/ai/latency.md`'s real finding. Used by the new streaming architecture, not `build_default_pipeline()`. |
 | `MmsTTSProvider` | `tts.py` | ⚠️ No longer a `build_default_pipeline()` option | `facebook/mms-tts-{eng,tam,mal}`. **CC-BY-NC-4.0 — non-commercial.** Still used directly by `StreamingMmsTTSProvider` and by some tests as a synthetic "microphone" input generator (not as the pipeline's own TTS output). |
 | `CosyVoice3Provider` | `tts.py` | ⚠️ Written, not wired into a config backend, not downloaded/run | `FunAudioLLM/Fun-CosyVoice3-0.5B-2512`. Has a REAL documented `stream=True` flag (unlike Qwen3-TTS above), but every inference method requires a reference speaker (same open question), needs a local checkpoint directory (not a bare HF repo id), and needs `third_party/Matcha-TTS` on the Python path. |
-| k2-fsa/OmniVoice, Piper TTS | — (not implemented) | ❌ Investigated and rejected | See `docs/MODEL_LICENSE_MATRIX.md` — OmniVoice's pretrained weights are CC-BY-NC despite Apache-2.0 code; Piper's Tamil voice license is unverified/mixed. No provider class written for either. |
+| k2-fsa/OmniVoice, Kokoro-82M, Bark | — (not implemented) | ❌ Investigated and rejected | See `docs/MODEL_LICENSE_MATRIX.md` — OmniVoice's pretrained weights are CC-BY-NC despite Apache-2.0 code; Kokoro/Bark are internationally well-known and permissively licensed but confirmed to not support Tamil at all. No provider class written for any of these. |
 
 ## Why "written, not downloaded/run" instead of skipping these entirely
 

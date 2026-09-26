@@ -6,6 +6,7 @@ model weights to test."""
 import pytest
 
 from app.pipeline.factory import _build_translator, _build_tts, _DirectionalOpusMT
+from app.pipeline.model_lifecycle import ModelNotAvailableError
 from app.pipeline.translation import TranslationProvider
 
 
@@ -48,3 +49,23 @@ def test_build_tts_rejects_unknown_backend():
 
 def test_build_tts_none_backend_returns_none_without_touching_any_model():
     assert _build_tts("none", None, None) is None
+
+
+def test_build_tts_indic_parler_tts_fails_closed_without_download_permission():
+    with pytest.raises(ModelNotAvailableError, match="AI_ALLOW_MODEL_DOWNLOAD"):
+        _build_tts("indic-parler-tts", None, None)
+
+
+def test_build_tts_piper_fails_closed_without_a_checkpoint_configured():
+    import os
+
+    old = os.environ.get("AI_ALLOW_MODEL_DOWNLOAD")
+    os.environ["AI_ALLOW_MODEL_DOWNLOAD"] = "true"
+    try:
+        with pytest.raises(ModelNotAvailableError, match="no local voice checkpoint"):
+            _build_tts("piper", None, None, piper_checkpoint=None)
+    finally:
+        if old is None:
+            os.environ.pop("AI_ALLOW_MODEL_DOWNLOAD", None)
+        else:
+            os.environ["AI_ALLOW_MODEL_DOWNLOAD"] = old

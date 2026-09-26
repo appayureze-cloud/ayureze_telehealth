@@ -53,6 +53,7 @@ def _get_pipeline():
             tts_backend=settings.ai_tts_backend,
             tts_ref_audio=settings.ai_tts_reference_audio_path,
             tts_ref_text=settings.ai_tts_reference_text,
+            tts_piper_checkpoint=settings.ai_tts_piper_checkpoint_path,
         )
         log(logger, logging.INFO, "translation_pipeline_loaded", event_type="translation_pipeline_loaded")
     return _pipeline
