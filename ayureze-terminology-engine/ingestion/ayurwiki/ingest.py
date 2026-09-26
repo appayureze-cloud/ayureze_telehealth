@@ -36,7 +36,7 @@ from pathlib import Path
 import yaml
 from sqlalchemy.orm import Session
 
-from ingestion.common import IngestionStats, add_name, create_concept, create_source_record, get_or_create_source, link_source_record_to_concept
+from ingestion.common import IngestionStats, add_name, get_or_create_record_and_concept, get_or_create_source
 
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw" / "ayurwiki" / "docs"
 MANIFEST_SOURCE_NAME = "ayurwiki"
@@ -106,23 +106,18 @@ def ingest(db: Session) -> IngestionStats:
                 thin_stub_count += 1
 
             relative_path = f"{directory}/{file_path.relative_to(dir_path)}"
-            source_record = create_source_record(
-                db, source, source_record_id=relative_path,
+            definition = cleaned_body[:2000] if cleaned_body else None
+
+            source_record, concept, _is_new = get_or_create_record_and_concept(
+                db, stats, source, source_record_id=relative_path,
                 original_payload={"title": title, "categories": frontmatter.get("categories"), "date": str(frontmatter.get("date") or ""), "body": raw_text},
                 source_url=f"{REPO_URL}/blob/main/docs/{relative_path}",
-            )
-
-            definition = cleaned_body[:2000] if cleaned_body else None
-            concept = create_concept(
-                db, prefix=prefix, domain="AYURVEDA", category=category,
+                prefix=prefix, domain="AYURVEDA", category=category,
                 canonical_name=title, definition=definition,
                 confidence=0.4 if len(cleaned_body) < _MIN_CONTENT_CHARS else 0.8,
             )
-            link_source_record_to_concept(db, source_record, concept)
-            stats.concepts_created += 1
 
-            if add_name(db, concept, title, language="en", name_type="preferred", source_record=source_record, script="Latin"):
-                stats.names_created += 1
+            add_name(db, stats, concept, title, language="en", name_type="preferred", source_record=source_record, script="Latin")
 
             stats.imported_count += 1
 

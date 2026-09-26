@@ -22,11 +22,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ingestion.common import IngestionStats, add_name, create_concept, create_source_record, get_or_create_biomedical_stub, get_or_create_source, link_source_record_to_concept
-from models import ConceptRelationship
+from ingestion.common import IngestionStats, add_name, add_relationship_if_new, get_or_create_biomedical_stub, get_or_create_record_and_concept, get_or_create_source
 
 RAW_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "pathology" / "Encyclopedia-of-Ayurvedic-Pathology.json"
 MANIFEST_SOURCE_NAME = "encyclopedia_of_ayurvedic_pathology"
@@ -52,11 +50,6 @@ def ingest(db: Session) -> IngestionStats:
             stats.reject(f"record[{idx}]: missing required 'transliteratedName' field")
             continue
 
-        source_record = create_source_record(
-            db, source, source_record_id=str(idx), original_payload=entry,
-            source_url="https://github.com/sciencewithsaucee-sudo/Encyclopedia-of-Ayurvedic-Pathology",
-        )
-
         definition_parts = [
             f"System: {entry['system']}" if entry.get("system") else None,
             f"Sadhya-Asadhyata (prognosis): {entry['sadhyaAsadhyata']}" if entry.get("sadhyaAsadhyata") else None,
@@ -70,34 +63,27 @@ def ingest(db: Session) -> IngestionStats:
                 definition_parts.append(f"{field}: {'; '.join(values)}")
         definition = " | ".join(p for p in definition_parts if p) or None
 
-        concept = create_concept(
-            db, prefix="AYU-PATHOLOGY", domain="AYURVEDA", category="PATHOLOGY_TERM",
+        source_record, concept, _is_new = get_or_create_record_and_concept(
+            db, stats, source, source_record_id=str(idx), original_payload=entry,
+            source_url="https://github.com/sciencewithsaucee-sudo/Encyclopedia-of-Ayurvedic-Pathology",
+            prefix="AYU-PATHOLOGY", domain="AYURVEDA", category="PATHOLOGY_TERM",
             canonical_name=name, definition=definition,
         )
-        link_source_record_to_concept(db, source_record, concept)
-        stats.concepts_created += 1
 
-        if add_name(db, concept, name, language="sa", name_type="preferred", source_record=source_record, script="Latin"):
-            stats.names_created += 1
+        add_name(db, stats, concept, name, language="sa", name_type="preferred", source_record=source_record, script="Latin")
         sanskrit = (entry.get("sanskritName") or "").strip()
-        if add_name(db, concept, sanskrit, language="sa", name_type="synonym", source_record=source_record, script="Devanagari"):
-            stats.names_created += 1
+        add_name(db, stats, concept, sanskrit, language="sa", name_type="synonym", source_record=source_record, script="Devanagari")
 
         correlation = (entry.get("correlation") or "").strip()
         if correlation:
-            stub = get_or_create_biomedical_stub(db, correlation)
-            if stub.confidence == 0.5 and db.execute(
-                select(ConceptRelationship).where(ConceptRelationship.concept_id_b == stub.concept_id)
-            ).first() is None:
+            stub, stub_is_new = get_or_create_biomedical_stub(db, correlation)
+            if stub_is_new:
                 biomedical_stubs_created += 1
-            db.add(ConceptRelationship(
-                concept_id_a=concept.concept_id,
-                concept_id_b=stub.concept_id,
-                relationship_type="RELATED_TO",
+            add_relationship_if_new(
+                db, concept.concept_id, stub.concept_id, "RELATED_TO",
                 evidence=f"Encyclopedia of Ayurvedic Pathology's own 'correlation' field for '{name}': '{correlation}' (source-asserted, NOT independently verified against ICD-11/SNOMED)",
-                confidence=0.5,
-                source_record_id=source_record.id,
-            ))
+                source_record=source_record, confidence=0.5,
+            )
 
         stats.imported_count += 1
 

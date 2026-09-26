@@ -17,7 +17,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from ingestion.common import IngestionStats, add_name, create_concept, create_source_record, get_or_create_source, link_source_record_to_concept
+from ingestion.common import IngestionStats, add_name, get_or_create_record_and_concept, get_or_create_source
 
 RAW_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "siddhanta" / "Siddhanta-Kosha.json"
 MANIFEST_SOURCE_NAME = "siddhanta_kosha"
@@ -57,11 +57,6 @@ def ingest(db: Session) -> IngestionStats:
         if devanagari_name is None:
             unparsed_name_format += 1
 
-        source_record = create_source_record(
-            db, source, source_record_id=str(idx), original_payload=entry,
-            source_url="https://github.com/sciencewithsaucee-sudo/Siddhanta-Kosha",
-        )
-
         definition_parts = [
             entry.get("explanation"),
             f"Shloka: {entry['shloka']} {entry.get('shloka_ref', '')}".strip() if entry.get("shloka") else None,
@@ -69,17 +64,16 @@ def ingest(db: Session) -> IngestionStats:
         ]
         definition = " | ".join(p for p in definition_parts if p) or None
 
-        concept = create_concept(
-            db, prefix="AYU-SIDDHANTA", domain="AYURVEDA", category="SIDDHANTA",
+        source_record, concept, _is_new = get_or_create_record_and_concept(
+            db, stats, source, source_record_id=str(idx), original_payload=entry,
+            source_url="https://github.com/sciencewithsaucee-sudo/Siddhanta-Kosha",
+            prefix="AYU-SIDDHANTA", domain="AYURVEDA", category="SIDDHANTA",
             canonical_name=latin_name, definition=definition,
         )
-        link_source_record_to_concept(db, source_record, concept)
-        stats.concepts_created += 1
 
-        if add_name(db, concept, latin_name, language="sa", name_type="preferred", source_record=source_record, script="Latin"):
-            stats.names_created += 1
-        if devanagari_name and add_name(db, concept, devanagari_name, language="sa", name_type="synonym", source_record=source_record, script="Devanagari"):
-            stats.names_created += 1
+        add_name(db, stats, concept, latin_name, language="sa", name_type="preferred", source_record=source_record, script="Latin")
+        if devanagari_name:
+            add_name(db, stats, concept, devanagari_name, language="sa", name_type="synonym", source_record=source_record, script="Devanagari")
 
         stats.imported_count += 1
 

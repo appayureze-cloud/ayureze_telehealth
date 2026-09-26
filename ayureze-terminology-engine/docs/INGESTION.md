@@ -90,12 +90,49 @@ deliberately, not smoothed over.
 
 ## Re-running / idempotency
 
-Ingesters are **not** currently idempotent against re-running without a
-truncate first — running `scripts/run_ingestion.py` twice against the same
-database would create duplicate concepts (a second complete set of new
-`concept_id`s), not silently skip already-ingested records. This is a
-known Phase 1 limitation (see the final report's "known limitations") —
-a real production ingestion pipeline would need a stable natural key per
-source record (most of these sources have no stable ID field at all, an
-upstream data-quality gap in the sources themselves, not something this
-pipeline can fabricate) to detect "already ingested" reliably.
+**FIXED (2026-09-26)** — this used to be a real, documented gap (running
+`scripts/run_ingestion.py` twice created a second complete set of new
+`concept_id`s). All 6 ingesters now go through
+`ingestion/common.py`'s `get_or_create_record_and_concept`/`add_name`/
+`add_relationship_if_new`, keyed on the natural key `(source_id,
+source_record_id)` — the array index or file path each ingester already
+used is that record's stable identity across runs, as long as the
+underlying source file's ordering/paths don't change between
+re-ingestions (a real, documented assumption, not a hidden one).
+
+**Verified for real**, not just written: truncated the database, ran
+`scripts/run_ingestion.py` once (identical real numbers to the table
+above), then ran it again immediately — the second run reported
+`concepts_created: 0, names_created: 0` for all 6 sources, and the final
+concept/name/source-record counts in Postgres were byte-identical to the
+first run (5,085 / 7,366 / 4,872). A changed payload is detected and the
+`source_records` row is updated in place (tracked as
+`payload_updated_on_rerun`) without re-minting the concept's ID or
+duplicating its names.
+
+**A real bug this fix surfaced and corrected in passing**: the original
+(pre-idempotent) runs had inserted 2 genuine exact-duplicate
+`HAS_INGREDIENT` rows (a Bhaishajya Kalpana Kosha formulation listing the
+same ingredient twice in its own `main_ingredients` array) — the new
+`add_relationship_if_new` check collapsed these to 1 row each, so the
+relationship count dropped from 685 to 683 on the first idempotent
+re-ingestion. This is a real, correct cleanup, not data loss.
+
+**A second thing investigated as a possible bug and found NOT to be
+one**: `bhaishajya/ingest.py`'s `_find_herb_concept_id` originally matched
+an ingredient name against ANY concept, with no category filter. Checking
+every existing `HAS_INGREDIENT` relationship's target category found 167
+pointing at another `FORMULATION` concept rather than a `HERB` — initially
+flagged as mislinking, but closer inspection showed this is real Ayurvedic
+pharmacology: compound preparations (bhasmas like "Loha Bhasma", or
+intermediate ghritas/tailas) are genuinely listed as ingredients of more
+complex formulations, and the source catalogues those preparations as
+their own entries too. The fix applied is a category allow-list
+(`HERB`/`FORMULATION`, confirmed to be the only two categories any
+existing relationship actually pointed at) rather than a narrowing to
+`HERB` only, which would have incorrectly broken 167 real relationships.
+See `_find_herb_concept_id`'s own docstring for the full account.
+
+Test coverage: `tests/integration/test_idempotent_ingestion.py` (5 tests)
+locks in the concept/name/relationship idempotency behavior directly
+against the helper functions, independent of any specific source's data.

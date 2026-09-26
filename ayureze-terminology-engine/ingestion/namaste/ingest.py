@@ -33,8 +33,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from ingestion.common import IngestionStats, add_name, create_concept, create_source_record, get_or_create_biomedical_stub, get_or_create_source, link_source_record_to_concept
-from models import ConceptRelationship
+from ingestion.common import IngestionStats, add_name, add_relationship_if_new, get_or_create_biomedical_stub, get_or_create_record_and_concept, get_or_create_source
 
 RAW_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "namaste" / "namaste_sample.csv"
 MANIFEST_SOURCE_NAME = "namaste"
@@ -63,11 +62,6 @@ def ingest(db: Session) -> IngestionStats:
             stats.reject(f"row[{idx}]: missing namaste_code or term_original")
             continue
 
-        source_record = create_source_record(
-            db, source, source_record_id=namaste_code, original_payload=row,
-            source_url=REPO_URL,
-        )
-
         term_english = (row.get("term_english") or "").strip()
         gloss_match = _GLOSS_PATTERN.match(term_english) if term_english else None
         biomedical_gloss = gloss_match.group("gloss").strip() if gloss_match else None
@@ -79,28 +73,23 @@ def ingest(db: Session) -> IngestionStats:
         ]
         definition = " | ".join(p for p in definition_parts if p)
 
-        concept = create_concept(
-            db, prefix="NAMASTE", domain="INTEROP", category="NAMASTE_CODE",
+        source_record, concept, _is_new = get_or_create_record_and_concept(
+            db, stats, source, source_record_id=namaste_code, original_payload=row, source_url=REPO_URL,
+            prefix="NAMASTE", domain="INTEROP", category="NAMASTE_CODE",
             canonical_name=term_original, definition=definition,
         )
-        link_source_record_to_concept(db, source_record, concept)
-        stats.concepts_created += 1
 
-        if add_name(db, concept, term_original, language="unspecified", name_type="preferred", source_record=source_record, script="Latin"):
-            stats.names_created += 1
-        if term_english and add_name(db, concept, term_english, language="en", name_type="synonym", source_record=source_record, script="Latin"):
-            stats.names_created += 1
+        add_name(db, stats, concept, term_original, language="unspecified", name_type="preferred", source_record=source_record, script="Latin")
+        if term_english:
+            add_name(db, stats, concept, term_english, language="en", name_type="synonym", source_record=source_record, script="Latin")
 
         if biomedical_gloss:
-            stub = get_or_create_biomedical_stub(db, biomedical_gloss)
-            db.add(ConceptRelationship(
-                concept_id_a=concept.concept_id,
-                concept_id_b=stub.concept_id,
-                relationship_type="RELATED_TO",
+            stub, _stub_is_new = get_or_create_biomedical_stub(db, biomedical_gloss)
+            add_relationship_if_new(
+                db, concept.concept_id, stub.concept_id, "RELATED_TO",
                 evidence=f"NAMASTE sample data's own term_english field for '{namaste_code}': '{term_english}' (source-asserted parenthetical gloss, NOT independently verified against ICD-11/SNOMED)",
-                confidence=0.5,
-                source_record_id=source_record.id,
-            ))
+                source_record=source_record, confidence=0.5,
+            )
 
         stats.imported_count += 1
 

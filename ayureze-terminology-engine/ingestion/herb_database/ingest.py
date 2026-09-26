@@ -23,7 +23,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from ingestion.common import IngestionStats, add_name, create_concept, create_source_record, get_or_create_source, link_source_record_to_concept
+from ingestion.common import IngestionStats, add_name, get_or_create_record_and_concept, get_or_create_source
 
 RAW_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "herb_database" / "herb.json"
 MANIFEST_SOURCE_NAME = "herb_database"
@@ -46,34 +46,24 @@ def ingest(db: Session) -> IngestionStats:
             stats.reject(f"record[{idx}]: missing required 'name' field")
             continue
 
-        source_record = create_source_record(
-            db, source, source_record_id=str(idx), original_payload=herb,
+        source_record, concept, _is_new = get_or_create_record_and_concept(
+            db, stats, source, source_record_id=str(idx), original_payload=herb,
             source_url="https://github.com/sciencewithsaucee-sudo/herb-database",
-        )
-
-        concept = create_concept(
-            db, prefix="AYU-HERB", domain="AYURVEDA", category="HERB",
+            prefix="AYU-HERB", domain="AYURVEDA", category="HERB",
             canonical_name=name, definition=herb.get("preview") or None,
         )
-        link_source_record_to_concept(db, source_record, concept)
-        stats.concepts_created += 1
 
-        if add_name(db, concept, name, language="sa", name_type="preferred", source_record=source_record, script="Latin"):
-            stats.names_created += 1
+        add_name(db, stats, concept, name, language="sa", name_type="preferred", source_record=source_record, script="Latin")
 
         botanical = (herb.get("botanical_name") or "").strip()
-        if add_name(db, concept, botanical, language="la", name_type="botanical", source_record=source_record, script="Latin"):
-            stats.names_created += 1
-        elif botanical == "":
+        if not add_name(db, stats, concept, botanical, language="la", name_type="botanical", source_record=source_record, script="Latin") and botanical == "":
             stats.reject(f"record[{idx}] ({name}): missing botanical_name")
 
         english = (herb.get("english_name") or "").strip()
-        if add_name(db, concept, english, language="en", name_type="synonym", source_record=source_record, script="Latin"):
-            stats.names_created += 1
+        add_name(db, stats, concept, english, language="en", name_type="synonym", source_record=source_record, script="Latin")
 
         for synonym in herb.get("sanskrit_synonyms") or []:
-            if add_name(db, concept, synonym, language="sa", name_type="synonym", source_record=source_record, script="Latin"):
-                stats.names_created += 1
+            add_name(db, stats, concept, synonym, language="sa", name_type="synonym", source_record=source_record, script="Latin")
 
         stats.imported_count += 1
 
