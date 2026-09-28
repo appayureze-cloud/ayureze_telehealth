@@ -28,6 +28,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # host networking at BUILD time only (this has no effect on the
+      # running container, which stays on terminology-net below) — lets
+      # `pip install` reach the network from behind a build host's own
+      # local proxy (e.g. a corporate proxy, or this sandbox's
+      # TLS-intercepting proxy at 127.0.0.1, see /root/.ccr/README.md)
+      # that would otherwise be unreachable from a container's isolated
+      # network namespace. A no-op on a host with normal, unrestricted
+      # network access.
+      network: host
+      args:
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
     container_name: terminology-api
     restart: unless-stopped
     depends_on:
