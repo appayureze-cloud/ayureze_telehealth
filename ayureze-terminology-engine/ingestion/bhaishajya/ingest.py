@@ -6,7 +6,11 @@ Mapping decisions:
   - formulation["ingredients"]+"indications"+"dosage"+"anupana"+"reference"
     -> concatenated into Concept.definition (all free text in the source;
     Phase 1 does not invent structured dosage/ingredient-quantity fields
-    the source does not provide as data)
+    the source does not provide as data) — this ALSO means the full raw
+    ingredient list is always preserved here even for an ingredient
+    reference that resolves to no relationship at all (see the bug note
+    below on why an unresolved reference is no longer duplicated as a
+    ConceptName too).
   - formulation["main_ingredients"][] -> a HAS_INGREDIENT concept_relationship
     to an existing HERB or FORMULATION concept (see _find_herb_concept_id's
     own docstring for why FORMULATION is a real, correct target too —
@@ -14,15 +18,44 @@ Mapping decisions:
     of more complex formulations), ONLY when a concept with that exact
     normalized name already exists in the registry (herb_database's
     ingestion must run first for the HERB half of this) — this is real
-    cross-source evidence linking, not a guess. An ingredient name with no
-    matching concept is recorded as a name on the formulation's own
-    concept instead (so the information isn't silently lost) and counted
-    as an unresolved ingredient reference in IngestionStats.
+    cross-source evidence linking, not a guess. Before trying an exact
+    match, `_split_parenthetical` splits the source's own "Primary
+    (Gloss)" naming convention (e.g. "Dhatri (Amalaki)") into its two
+    literal name candidates — the SAME deterministic parsing already used
+    elsewhere in this codebase for siddhanta's "Latin (Devanagari)" and
+    namaste's parenthetical English gloss, just applied here to
+    main_ingredients text. Nothing here is a similarity/fuzzy guess: both
+    candidate strings are literal substrings the source itself wrote,
+    tried against the exact same normalized-name index used everywhere
+    else in this codebase.
+
+A REAL BUG found and fixed while investigating a real "why are only 466 of
+573 ingredient references resolved" question (2026-09-28): an ingredient
+reference with NO matching concept used to be recorded as an `alias`
+ConceptName on the REFERENCING formulation's own concept — e.g. "Chandraprabha
+Vati lists Triphala as an ingredient, no 'Triphala' concept exists yet, so
+attach 'Triphala' as an alias of Chandraprabha Vati itself." That is wrong on
+its face (Chandraprabha Vati is not itself known by the name "Triphala"), and
+it actively corrupted later matching: once "Triphala" became indexed as an
+alias of "Avipattikar Churna" (the first formulation to reference it,
+processed earlier in the source file), EVERY subsequent formulation that also
+referenced the (never-modeled-as-its-own-concept) "Triphala" ingredient
+exact-matched onto Avipattikar Churna instead — confirmed for real: the live
+database had 68 HAS_INGREDIENT relationships whose "ingredient" was actually
+just whichever unrelated formulation happened to mention that name first
+(Trikatu -> Hingvashtak Churna, Triphala -> Avipattikar Churna, Chitraka ->
+Chitrakaharitaki, Nimba -> Mahatiktaka Ghrita, Tagara/Bhringaraja ->
+Shadbindu Taila, Vidari -> Vidaryadyasava). Fixed by no longer adding that
+alias at all — the raw ingredient text was never lost anyway, since it's
+already preserved verbatim in Concept.definition's "Ingredients:" segment
+(see above). See docs/INGESTION.md for the full account and the corrected
+relationship count after re-ingestion.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from sqlalchemy import select
@@ -31,6 +64,8 @@ from sqlalchemy.orm import Session
 from ingestion.common import IngestionStats, add_name, add_relationship_if_new, get_or_create_record_and_concept, get_or_create_source
 from models import Concept, ConceptName
 from normalization import normalize_name
+
+_PARENTHETICAL_RE = re.compile(r"^(.*?)\s*\(([^()]+)\)\s*$")
 
 RAW_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "bhaishajya" / "Bhaishajya-Kalpana-Kosha.json"
 MANIFEST_SOURCE_NAME = "bhaishajya_kalpana_kosha"
@@ -75,6 +110,22 @@ def _find_herb_concept_id(db: Session, ingredient_name: str) -> str | None:
     ).scalar_one_or_none()
 
 
+def _split_parenthetical(ingredient_name: str) -> list[str]:
+    """Splits the source's own "Primary (Gloss)" convention (e.g. "Dhatri
+    (Amalaki)", "Amrita (Guduchi)") into its two literal name candidates,
+    tried in the order the source itself states them. Returns
+    [ingredient_name] unchanged when the text doesn't match this exact
+    pattern — this is deterministic parsing of the source's own
+    punctuation, not a similarity guess (same convention already used for
+    siddhanta's "Latin (Devanagari)" and namaste's parenthetical gloss)."""
+    match = _PARENTHETICAL_RE.match(ingredient_name.strip())
+    if not match:
+        return [ingredient_name]
+    primary, gloss = match.group(1).strip(), match.group(2).strip()
+    candidates = [c for c in (primary, gloss) if c]
+    return candidates or [ingredient_name]
+
+
 def ingest(db: Session) -> IngestionStats:
     stats = IngestionStats(source_name=MANIFEST_SOURCE_NAME)
     source = get_or_create_source(db, load_manifest_entry())
@@ -109,16 +160,29 @@ def ingest(db: Session) -> IngestionStats:
         add_name(db, stats, concept, name, language="sa", name_type="preferred", source_record=source_record, script="Latin")
 
         for ingredient in formulation.get("main_ingredients") or []:
-            herb_concept_id = _find_herb_concept_id(db, ingredient)
-            if herb_concept_id and herb_concept_id != concept.concept_id:
-                add_relationship_if_new(
-                    db, concept.concept_id, herb_concept_id, "HAS_INGREDIENT",
-                    evidence=f"Bhaishajya Kalpana Kosha record '{name}' lists '{ingredient}' in main_ingredients",
-                    source_record=source_record,
-                )
+            herb_concept_id = None
+            matched_via = None
+            for candidate_name in _split_parenthetical(ingredient):
+                found = _find_herb_concept_id(db, candidate_name)
+                if found and found != concept.concept_id:
+                    herb_concept_id, matched_via = found, candidate_name
+                    break
+
+            if herb_concept_id:
+                evidence = f"Bhaishajya Kalpana Kosha record '{name}' lists '{ingredient}' in main_ingredients"
+                if matched_via != ingredient:
+                    evidence += f" (matched via '{matched_via}')"
+                add_relationship_if_new(db, concept.concept_id, herb_concept_id, "HAS_INGREDIENT", evidence=evidence, source_record=source_record)
             else:
+                # No matching concept — NOT recorded as a name on this
+                # formulation's own concept (see the module docstring's bug
+                # note: doing so previously polluted the name index and
+                # caused later, unrelated formulations to mis-link onto
+                # whichever formulation happened to mention the same
+                # unresolved ingredient first). The raw ingredient text is
+                # never lost regardless — it's already preserved verbatim
+                # in `definition`'s "Ingredients:" segment above.
                 unresolved_ingredients += 1
-                add_name(db, stats, concept, ingredient, language="sa", name_type="alias", source_record=source_record, script="Latin")
 
         stats.imported_count += 1
 

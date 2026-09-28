@@ -49,12 +49,77 @@ current version. Summary:
   `english_name`→synonym, `sanskrit_synonyms[]`→synonym. No stable source
   ID exists — array index used as `source_record_id`.
 - **bhaishajya**: `main_ingredients[]` resolved against already-ingested
-  HERB concepts by exact normalized name match → `HAS_INGREDIENT`
-  relationship when found (468 real relationships created); an
-  unresolved ingredient name (107 of them — the source's own dosage/
-  ingredient text uses looser phrasing than the herb database's canonical
-  names) is recorded as an `alias` name on the formulation's own concept
-  instead of silently discarded.
+  HERB/FORMULATION concepts by exact normalized name match → `HAS_INGREDIENT`
+  relationship when found. **Updated 2026-09-28**: before trying an exact
+  match, an ingredient reference in the source's own "Primary (Gloss)"
+  format (e.g. "Dhatri (Amalaki)") is now split into its two literal name
+  candidates — the same deterministic parsing already used for siddhanta's
+  "Latin (Devanagari)" and namaste's parenthetical gloss, applied here to
+  main_ingredients text (see `_split_parenthetical` in
+  `ingestion/bhaishajya/ingest.py`). An ingredient with no matching
+  concept is counted as unresolved but is **no longer** recorded as a name
+  on the referencing formulation's own concept — see the real bug this
+  fixes, below. The raw ingredient list is never lost either way: it is
+  always preserved verbatim in `Concept.definition`'s "Ingredients:"
+  segment.
+
+### A real bug found and fixed (2026-09-28): unresolved-ingredient aliasing corrupted later matches
+
+Investigating "why are only 466 of 573 ingredient references resolved"
+found that an unresolved ingredient reference was being recorded as an
+`alias` `ConceptName` on the **referencing** formulation's own concept —
+e.g. "Chandraprabha Vati lists 'Triphala' as an ingredient, no 'Triphala'
+concept exists yet, so attach 'Triphala' as an alias of Chandraprabha Vati
+itself." That's wrong on its face, and it actively corrupted later
+matching: once "Triphala" became indexed as an alias of "Avipattikar
+Churna" (the first formulation in the source file to reference it), every
+*subsequent* formulation that also referenced the never-modeled-as-its-
+own-concept "Triphala" ingredient exact-matched onto Avipattikar Churna
+instead.
+
+**Fixed in code and covered by tests** (`tests/unit/test_bhaishajya_ingredient_matching.py`,
+`tests/integration/test_bhaishajya_ingestion.py` — 8 tests total, including
+one that directly reproduces this exact cross-linking scenario and asserts
+it no longer happens) — the alias-adding call for an unresolved ingredient
+was removed entirely.
+
+**The real scope of the corruption was measured precisely**, not
+estimated: an initial spot check of 6 specific ingredient names found 68
+wrong relationships, but that was only a lower bound from checking a
+handful of examples, not an exhaustive count — corrected by running the
+FIXED ingester against a completely fresh, empty throwaway database (not
+the live one) and comparing every count directly against the still-live
+pre-fix database:
+
+| Metric | Before (live, buggy) | After (fresh dry run, fixed) | Difference |
+|---|---|---|---|
+| Total concepts | 5,085 | 5,085 | 0 (correct — no concepts should be added/lost) |
+| Total names | 7,366 | 7,259 | **-107** (exactly the wrongly-added alias names, now gone) |
+| Total relationships | 683 | 574 | **-109** (wrong `HAS_INGREDIENT` rows) |
+| `HAS_INGREDIENT` relationships specifically | 466 | 357 | **-109** |
+| Deduplication candidates | 802 | 798 | -4 (fewer spurious matches caused by the same bad alias names) |
+| Bhaishajya unresolved ingredient references | 107 | 218 | **+111** (the true, honest number — most of the old "resolved" total was fake) |
+
+So the real damage was **109 wrong relationships**, not 68 — the honest
+number only came from actually re-running the fixed pipeline and diffing
+real counts, not from extrapolating the initial spot check. The
+parenthetical-splitting improvement (see above) is a real but smaller
+gain: of the 573 total ingredient references, 355 now resolve
+legitimately (down from the previously-reported-but-partly-fake 466); the
+true unresolved count is 218, up from the previously-reported 107 — an
+apparent regression that is in fact the correction of a false positive,
+not new unresolved coverage.
+
+**This dry run was against a disposable, freshly-created database, never
+against the live dev database** — fixing the code does not retroactively
+undo the 109 wrong relationships + 107 wrong alias names already
+committed by earlier (pre-fix) ingestion runs into the live database.
+Clearing them requires either a full truncate + re-ingestion (this
+project's own established pattern for the idempotency fix, see above) or
+a targeted cleanup delete — both are real deletions of existing database
+rows, so, unlike every other change in this phase, this one is **not**
+applied to the live dev database without the user's explicit go-ahead
+first.
 - **pathology**: the `correlation` field (a REAL source-asserted
   biomedical term, e.g. Amavata → "Rheumatoid Arthritis") creates an
   unverified `BIO-DISEASE` stub concept + a `RELATED_TO` (never

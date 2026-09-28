@@ -92,18 +92,38 @@ Giloe, ...") was also ingested from AyurWiki — a real example of
 
 ## Unresolved conflicts
 
-- **107 ingredient references** in the Bhaishajya Kalpana Kosha data
-  (`main_ingredients[]`) had no exact-normalized-name match against any
-  existing HERB or FORMULATION concept — the formulation source's own
-  ingredient phrasing doesn't always match another entry's canonical
-  spelling one-to-one. These are preserved as `alias`-type names on the
-  formulation's own concept rather than silently dropped, but no
-  `HAS_INGREDIENT` relationship could be created for them. (466 ingredient
-  references WERE successfully resolved and linked — some to HERB
-  concepts, some to other FORMULATION concepts for real pharmacological
-  reasons, e.g. a rasayana genuinely listing "Loha Bhasma" iron-ash as an
-  ingredient; see `docs/INGESTION.md`'s idempotency section for the full
-  investigation of this.)
+- **A real bug found and fixed 2026-09-28** (see `docs/INGESTION.md` for
+  the full account and the exact before/after numbers): the "107
+  unresolved ingredient references" figure below this bullet in earlier
+  versions of this report was itself understating a real correctness
+  problem, not just a coverage gap — those 107 unresolved references had
+  been silently attached as `alias` names on the **referencing**
+  formulation's own concept, which in turn caused **109** of the 683
+  `HAS_INGREDIENT` relationships reported elsewhere in this document to be
+  **wrong**: the "ingredient" was actually just whichever unrelated
+  formulation happened to mention that unresolved name first (e.g. every
+  formulation genuinely containing "Triphala" ended up linked to
+  "Avipattikar Churna," an unrelated formulation, instead of to no
+  relationship at all). That 109 figure was measured precisely by running
+  the fixed code against a fresh, disposable database and diffing every
+  count against the still-live pre-fix database — an initial spot check of
+  6 ingredient names had found only 68 wrong rows, which turned out to be
+  a lower bound, not the real total; the docs are corrected to the
+  verified 109, not the earlier partial estimate. The code is fixed and
+  covered by 8 new tests (`tests/unit/test_bhaishajya_ingredient_matching.py`,
+  `tests/integration/test_bhaishajya_ingestion.py`), and the fix also adds
+  honest new resolutions via the source's own "Primary (Gloss)"
+  parenthetical convention (e.g. "Dhatri (Amalaki)" now resolves via
+  "Amalaki") — but **the live dev database has not yet been re-ingested**
+  with the fix, so the 683 relationship count and the 107/466 split
+  reported elsewhere in this document are still the PRE-FIX, partially-
+  wrong numbers as of this writing. After a correct re-ingestion, the real
+  unresolved count would be 218 (up from 107) — the honest number, since
+  most of what the old count called "resolved" was actually a false
+  match. A full truncate + re-ingestion (this project's own established
+  pattern) would apply this fix to the live data, but that is a real
+  deletion of existing database rows and was deliberately not performed
+  without the user's explicit go-ahead.
 - **22 of 162** Siddhanta Kosha records' `name` field didn't match the
   expected `"Latin (Devanagari)"` format — used verbatim as a single name
   rather than split, and counted, not silently mishandled.
