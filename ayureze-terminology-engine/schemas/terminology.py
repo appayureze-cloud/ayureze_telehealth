@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SearchMatchResponse(BaseModel):
@@ -109,3 +109,32 @@ class BiomedicalSearchResponse(BaseModel):
     system: str
     query: str
     results: list[BiomedicalLookupResultResponse]
+
+
+class DeduplicationCandidateResponse(BaseModel):
+    id: int
+    candidate_a: str
+    candidate_a_name: str
+    candidate_b: str
+    candidate_b_name: str
+    similarity: float
+    reason: str
+    status: str
+    reviewed_by: str | None
+    review_notes: str | None
+
+
+class DeduplicationReviewRequest(BaseModel):
+    # A named human decision-maker, never defaulted or inferred — spec
+    # section 13's review queue exists precisely because an algorithm must
+    # not make this call.
+    reviewed_by: str = Field(..., min_length=1, max_length=128)
+    review_notes: str | None = Field(None, max_length=2000)
+
+    @field_validator("reviewed_by")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("reviewed_by must not be blank")
+        return v

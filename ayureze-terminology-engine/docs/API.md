@@ -161,3 +161,47 @@ Same query-length limit and rate limiting as `/v1/terminology/search`
 constructs the fixed, hardcoded adapter for a known `system` name — a
 caller can never supply an arbitrary URL for this endpoint to fetch
 (spec section 23).
+
+## `/v1/deduplication/candidates` — the review queue (spec section 13)
+
+**Added 2026-09-28.** Never auto-merges anything — this is the
+human-in-the-loop review action `deduplication/pipeline.py`'s own
+docstring always anticipated (`services/deduplication_review.py`).
+
+### `GET /v1/deduplication/candidates?status=pending` — real captured response
+
+Defaults to `status=pending`; also accepts `accepted`/`rejected`. Ordered
+by similarity descending. Real row from this build's own live data (the
+documented Giloy/Amrita finding, see `docs/DATA_QUALITY_REPORT.md`):
+
+```json
+{
+  "id": 165,
+  "candidate_a": "AYU-HERB-000004", "candidate_a_name": "Giloy",
+  "candidate_b": "AYU-HERB-000078", "candidate_b_name": "Amrita",
+  "similarity": 1.0, "reason": "known_synonym_match",
+  "status": "pending", "reviewed_by": null, "review_notes": null
+}
+```
+
+### `POST /v1/deduplication/candidates/{id}/accept`
+
+Request: `{"reviewed_by": "dr.sharma@example.test", "review_notes": "confirmed same plant"}`
+
+Marks the candidate `accepted` and creates a human-evidenced `SYNONYM_OF`
+`ConceptRelationship` between the two concepts — **it does NOT merge,
+delete, or retire either concept's `concept_id`**; both remain
+independently addressable, exactly as the "never auto-merge" rule
+requires even for a human-confirmed decision. Idempotent: accepting twice
+never duplicates the relationship. Real `404` for an unknown candidate id,
+real `409` (not overwritten) if the candidate was already reviewed, real
+`422` if `reviewed_by` is blank.
+
+### `POST /v1/deduplication/candidates/{id}/reject`
+
+Same request shape. Marks the candidate `rejected` and creates **no**
+relationship — the two concepts stand as confirmed non-duplicates.
+
+Test coverage: `tests/integration/test_deduplication_review.py` (5 tests
+against the service layer) + 6 endpoint tests in
+`tests/integration/test_api.py`.

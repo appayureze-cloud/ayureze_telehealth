@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from api.rate_limit import RateLimiter, client_key
 from config.settings import get_settings
@@ -22,6 +22,8 @@ from schemas.terminology import (
     ConceptNameResponse,
     ConceptRelationshipResponse,
     ConceptResponse,
+    DeduplicationCandidateResponse,
+    DeduplicationReviewRequest,
     HealthResponse,
     ResolveMatch,
     ResolveRequest,
@@ -31,6 +33,12 @@ from schemas.terminology import (
     SourceRecordResponse,
     SourceResponse,
     StatsResponse,
+)
+from services.deduplication_review import (
+    CandidateAlreadyReviewedError,
+    CandidateNotFoundError,
+    accept_candidate,
+    reject_candidate,
 )
 from terminology.search import search_terms
 
@@ -197,6 +205,84 @@ def list_sources(db: Session = Depends(get_db)) -> list[SourceResponse]:
         )
         for s in sources
     ]
+
+
+@router.get("/v1/deduplication/candidates", response_model=list[DeduplicationCandidateResponse])
+def list_deduplication_candidates(
+    request: Request,
+    status: str = Query("pending", pattern="^(pending|accepted|rejected)$"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[DeduplicationCandidateResponse]:
+    """The review queue itself (spec section 13) — every row here is a
+    flagged, NOT auto-merged pair. Defaults to `status=pending` since
+    that's the actionable set; pass `status=accepted`/`rejected` to see
+    past decisions. Ordered by similarity descending so the strongest,
+    most obviously-correct candidates (e.g. exact_normalized_match at
+    1.0) surface first for a reviewer."""
+    _enforce_rate_limit(request)
+    concept_a = aliased(Concept)
+    concept_b = aliased(Concept)
+    rows = db.execute(
+        select(DeduplicationCandidate, concept_a.canonical_name, concept_b.canonical_name)
+        .join(concept_a, concept_a.concept_id == DeduplicationCandidate.candidate_a)
+        .join(concept_b, concept_b.concept_id == DeduplicationCandidate.candidate_b)
+        .where(DeduplicationCandidate.status == status)
+        .order_by(DeduplicationCandidate.similarity.desc(), DeduplicationCandidate.id)
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    return [
+        DeduplicationCandidateResponse(
+            id=c.id, candidate_a=c.candidate_a, candidate_a_name=name_a,
+            candidate_b=c.candidate_b, candidate_b_name=name_b,
+            similarity=c.similarity, reason=c.reason, status=c.status,
+            reviewed_by=c.reviewed_by, review_notes=c.review_notes,
+        )
+        for c, name_a, name_b in rows
+    ]
+
+
+def _candidate_response(db: Session, candidate: DeduplicationCandidate) -> DeduplicationCandidateResponse:
+    name_a = db.execute(select(Concept.canonical_name).where(Concept.concept_id == candidate.candidate_a)).scalar_one()
+    name_b = db.execute(select(Concept.canonical_name).where(Concept.concept_id == candidate.candidate_b)).scalar_one()
+    return DeduplicationCandidateResponse(
+        id=candidate.id, candidate_a=candidate.candidate_a, candidate_a_name=name_a,
+        candidate_b=candidate.candidate_b, candidate_b_name=name_b,
+        similarity=candidate.similarity, reason=candidate.reason, status=candidate.status,
+        reviewed_by=candidate.reviewed_by, review_notes=candidate.review_notes,
+    )
+
+
+@router.post("/v1/deduplication/candidates/{candidate_id}/accept", response_model=DeduplicationCandidateResponse)
+def accept_deduplication_candidate(candidate_id: int, body: DeduplicationReviewRequest, request: Request, db: Session = Depends(get_db)) -> DeduplicationCandidateResponse:
+    """Accepting NEVER merges the two concepts (spec section 13) — it
+    records the human decision and creates a human-evidenced SYNONYM_OF
+    relationship between them; both concept_ids remain independently
+    addressable and unchanged. See services/deduplication_review.py."""
+    _enforce_rate_limit(request)
+    try:
+        candidate = accept_candidate(db, candidate_id, body.reviewed_by, body.review_notes)
+    except CandidateNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except CandidateAlreadyReviewedError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return _candidate_response(db, candidate)
+
+
+@router.post("/v1/deduplication/candidates/{candidate_id}/reject", response_model=DeduplicationCandidateResponse)
+def reject_deduplication_candidate(candidate_id: int, body: DeduplicationReviewRequest, request: Request, db: Session = Depends(get_db)) -> DeduplicationCandidateResponse:
+    """Rejecting records the decision only — no relationship is created,
+    and both concepts stand as independent, non-duplicate entries."""
+    _enforce_rate_limit(request)
+    try:
+        candidate = reject_candidate(db, candidate_id, body.reviewed_by, body.review_notes)
+    except CandidateNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except CandidateAlreadyReviewedError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return _candidate_response(db, candidate)
 
 
 @router.get("/v1/stats", response_model=StatsResponse)

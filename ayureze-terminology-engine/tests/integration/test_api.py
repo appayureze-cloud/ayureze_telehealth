@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 from database import get_db
-from models import Concept, ConceptName, ConceptRelationship, Source, SourceRecord
+from models import Concept, ConceptName, ConceptRelationship, DeduplicationCandidate, Source, SourceRecord
 
 
 @pytest.fixture()
@@ -214,4 +214,67 @@ def test_biomedical_search_success_shape(client, monkeypatch):
 
 def test_biomedical_search_query_too_long_returns_422(client):
     response = client.get("/v1/biomedical/rxnorm/search", params={"q": "a" * 300})
+    assert response.status_code == 422
+
+
+# --- /v1/deduplication/candidates ---
+
+@pytest.fixture()
+def pending_candidate(db, seeded):
+    other = db.query(Concept).filter_by(concept_id="TEST-API-HERB-2").one()
+    candidate = DeduplicationCandidate(candidate_a=seeded.concept_id, candidate_b=other.concept_id, similarity=0.9, reason="high_confidence_fuzzy_match", status="pending")
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+def test_list_deduplication_candidates_defaults_to_pending(client, pending_candidate):
+    response = client.get("/v1/deduplication/candidates")
+    assert response.status_code == 200
+    body = response.json()
+    assert any(c["id"] == pending_candidate.id for c in body)
+    row = next(c for c in body if c["id"] == pending_candidate.id)
+    assert row["candidate_a_name"] == "Tulsi"
+    assert row["candidate_b_name"] == "Amla"
+    assert row["status"] == "pending"
+
+
+def test_accept_deduplication_candidate_creates_relationship(client, pending_candidate, db):
+    response = client.post(f"/v1/deduplication/candidates/{pending_candidate.id}/accept", json={"reviewed_by": "dr.sharma@example.test", "review_notes": "same plant"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "accepted"
+    assert body["reviewed_by"] == "dr.sharma@example.test"
+
+    rel = db.query(ConceptRelationship).filter_by(
+        concept_id_a=pending_candidate.candidate_a, concept_id_b=pending_candidate.candidate_b, relationship_type="SYNONYM_OF",
+    ).one_or_none()
+    assert rel is not None
+
+
+def test_reject_deduplication_candidate_creates_no_relationship(client, pending_candidate, db):
+    response = client.post(f"/v1/deduplication/candidates/{pending_candidate.id}/reject", json={"reviewed_by": "dr.sharma@example.test"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "rejected"
+    rel = db.query(ConceptRelationship).filter_by(
+        concept_id_a=pending_candidate.candidate_a, concept_id_b=pending_candidate.candidate_b, relationship_type="SYNONYM_OF",
+    ).one_or_none()
+    assert rel is None
+
+
+def test_accept_unknown_candidate_returns_404(client):
+    response = client.post("/v1/deduplication/candidates/999999999/accept", json={"reviewed_by": "someone"})
+    assert response.status_code == 404
+
+
+def test_accept_already_reviewed_candidate_returns_409(client, pending_candidate):
+    first = client.post(f"/v1/deduplication/candidates/{pending_candidate.id}/accept", json={"reviewed_by": "someone"})
+    assert first.status_code == 200
+    second = client.post(f"/v1/deduplication/candidates/{pending_candidate.id}/reject", json={"reviewed_by": "someone else"})
+    assert second.status_code == 409
+
+
+def test_accept_with_blank_reviewed_by_returns_422(client, pending_candidate):
+    response = client.post(f"/v1/deduplication/candidates/{pending_candidate.id}/accept", json={"reviewed_by": "   "})
     assert response.status_code == 422
