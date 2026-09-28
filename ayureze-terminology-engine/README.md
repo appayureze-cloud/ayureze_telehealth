@@ -27,7 +27,13 @@ resolution API. Built from scratch, isolated from the rest of the
 
 **Real numbers from this build's own last run**: 5,085 canonical concepts,
 7,366 names, 683 evidenced relationships, 4,872 source records, 802
-deduplication candidates. See `docs/DATA_QUALITY_REPORT.md`.
+deduplication candidates. See `docs/DATA_QUALITY_REPORT.md`. **Known
+caveat as of 2026-09-28**: 109 of those 683 relationships (and 107 of the
+7,366 names) are confirmed wrong — a real Bhaishajya ingredient-matching
+bug, fixed in code and tested and precisely measured against a disposable
+database, but not yet re-ingested into this live database (corrected
+numbers would be 5,085 / 7,259 / 574 / 4,872 / 798 — see "Limitations"
+below and `docs/DATA_QUALITY_REPORT.md`).
 
 ## What this does NOT do
 
@@ -130,6 +136,20 @@ target markets, but not yet obtained) before its adapter can be enabled.
 
 ## Limitations (honest, not hidden)
 
+- ~~`docker compose build`/`up` fails in this sandbox~~ **fixed (2026-09-28)**
+  — two real, independent bugs, both now fixed and verified with a full
+  `docker compose up -d` bringing up a real container that served real
+  `/health`, `/v1/stats`, and `/v1/terminology/search` responses against
+  the live 5,085-concept database: (1) the sandbox's outbound HTTPS proxy
+  binds to host-local loopback, unreachable from a container's isolated
+  network namespace — fixed with `network: host` on the build (a no-op on
+  a normal host with unrestricted network access) plus an optional
+  proxy-CA-trust step in the Dockerfile that only activates if a
+  `ca-bundle.crt` file is present in the build context; (2) a genuine,
+  sandbox-independent Dockerfile bug — `COPY pyproject.toml` ran before
+  `COPY . .`, so `pip install .` failed with "package directory 'api' does
+  not exist" on ANY machine, since this project's `pyproject.toml` lists
+  its own local packages. Both fixes are in `Dockerfile`/`docker-compose.yml`.
 - ~~Ingestion is not idempotent~~ **fixed (2026-09-26)** — re-running
   `scripts/run_ingestion.py` without truncating first is now safe: a
   second run against the same data reports `concepts_created: 0,
@@ -138,10 +158,29 @@ target markets, but not yet obtained) before its adapter can be enabled.
 - NAMASTE ingestion covers 14 real sample rows, not the full 7,363-code
   dataset (which lives in a live external system outside this phase's
   approved sources).
-- Deduplication candidates are flagged, never resolved — 802 pending
-  candidates currently await human review (`deduplication_candidates`
-  table), including a real, high-confidence case (Giloy/Amrita, both
-  *Tinospora cordifolia*) found in this build's own data.
+- **A real bug found 2026-09-28, fixed in code, NOT yet applied to this
+  live database**: 109 of the 683 `HAS_INGREDIENT` relationships (and 107
+  of the 7,366 names) are confirmed wrong, caused by a Bhaishajya
+  ingestion bug where an unresolved ingredient reference got wrongly
+  recorded as an alias of the formulation that merely *mentioned* it,
+  corrupting later exact-name matches — precisely measured by running the
+  fix against a disposable database and diffing every count against this
+  live one (an initial 6-name spot check had found only 68 wrong rows,
+  which turned out to be a lower bound, not the true total). Fixed and
+  covered by 8 new tests (`tests/unit/test_bhaishajya_ingredient_matching.py`,
+  `tests/integration/test_bhaishajya_ingestion.py`) — see
+  `docs/INGESTION.md` for the full account and exact before/after numbers.
+  Clearing the wrong rows from the live database needs a truncate +
+  re-ingestion, which is a real deletion of existing data and was
+  deliberately left for the user to authorize rather than performed
+  unasked.
+- Deduplication candidates are flagged, and can now be reviewed via
+  `GET/POST /v1/deduplication/candidates` (**added 2026-09-28**, see
+  `docs/API.md`) — accepting records a human-evidenced `SYNONYM_OF`
+  relationship, never a merge; 802 candidates currently await that review,
+  including the real, high-confidence Giloy/Amrita case (both *Tinospora
+  cordifolia*) found in this build's own data, confirmed still listed via
+  a real request against the live database.
 - `GET /v1/biomedical/{system}/search` is wired in for all 6 biomedical
   systems. `rxnorm`/`mesh` genuinely work today (real public APIs, no
   credentials needed — verified with real live queries). `icd11`/`loinc`/
@@ -150,6 +189,13 @@ target markets, but not yet obtained) before its adapter can be enabled.
   environment; `atc` has no automated lookup path at all, by design.
 - No authentication layer — appropriate for this phase's standalone,
   non-patient-data scope (see `docs/SECURITY.md`).
+- ~~No CI~~ **added 2026-09-28** — `.github/workflows/terminology-engine.yml`,
+  a separate workflow file scoped via a `paths:` filter to
+  `ayureze-terminology-engine/**` only, so it never touches or is blocked
+  by the existing telehealth stack's own CI (`.github/workflows/ci.yml`,
+  left untouched). Runs ruff + the full pytest suite against a real
+  Postgres service container, a real full ingestion + dedup + benchmark
+  run in a separate job, and a `docker compose build` check.
 
 See `docs/DATA_QUALITY_REPORT.md` for the full, itemized data quality
 findings, and the project's final report (delivered separately) for the

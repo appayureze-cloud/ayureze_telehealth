@@ -1,0 +1,105 @@
+name: Terminology Engine CI
+
+# Scoped entirely to ayureze-terminology-engine/ via the paths filter below
+# and its own dedicated job — deliberately a SEPARATE workflow file from
+# .github/workflows/ci.yml rather than an added job there, mirroring this
+# project's own isolation decisions (separate Postgres port, separate
+# docker-compose.yml, separate CI): a change to this standalone service
+# must never touch, and must never be blocked by, the existing telehealth
+# stack's CI (see ayureze-terminology-engine/docs/ARCHITECTURE.md).
+
+on:
+  push:
+    branches: [main]
+    paths: ["ayureze-terminology-engine/**", ".github/workflows/terminology-engine.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["ayureze-terminology-engine/**", ".github/workflows/terminology-engine.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: terminology-engine-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: ayureze-terminology-engine
+
+jobs:
+  test:
+    name: Lint + tests (real Postgres + pg_trgm)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: terminology
+          POSTGRES_PASSWORD: ci-terminology-password
+          POSTGRES_DB: ayureze_terminology_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U terminology -d ayureze_terminology_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TERMINOLOGY_TEST_DATABASE_URL: postgresql+psycopg://terminology:ci-terminology-password@localhost:5432/ayureze_terminology_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: ruff (lint)
+        run: ruff check .
+      - name: pytest (unit + integration — real Postgres, no mocking of the database layer)
+        run: pytest tests/ -v
+
+  benchmark:
+    name: Real ingestion + search-latency benchmark
+    runs-on: ubuntu-latest
+    # A separate job from `test`: this ingests the full real dataset
+    # (data/raw/ is committed to the repo — no network access needed) into
+    # its own throwaway Postgres to produce a REAL, populated database for
+    # scripts/benchmark.py to measure against, rather than reusing the
+    # `test` job's database (whose contents are just synthetic test
+    # fixtures, not the real 5,085-concept registry benchmark.py's own
+    # queries expect, e.g. "Tulsi", "Ashwagandha").
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: terminology
+          POSTGRES_PASSWORD: ci-terminology-password
+          POSTGRES_DB: ayureze_terminology
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U terminology -d ayureze_terminology"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TERMINOLOGY_DATABASE_URL: postgresql+psycopg://terminology:ci-terminology-password@localhost:5432/ayureze_terminology
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - run: alembic upgrade head
+      - run: python scripts/run_ingestion.py
+      - name: Run deduplication
+        run: python -c "from database import SessionLocal; from deduplication import run_deduplication; db = SessionLocal(); print(run_deduplication(db))"
+      - name: Real search-latency benchmark (informational — see docs/DATA_QUALITY_REPORT.md for the target)
+        run: python scripts/benchmark.py
+
+  docker-build:
+    name: docker compose build (terminology-api image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose build
+        working-directory: ayureze-terminology-engine
+        run: docker compose build terminology-api
