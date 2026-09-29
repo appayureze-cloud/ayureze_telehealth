@@ -62,6 +62,25 @@ current version. Summary:
   fixes, below. The raw ingredient list is never lost either way: it is
   always preserved verbatim in `Concept.definition`'s "Ingredients:"
   segment.
+- **pathology**: the `correlation` field (a REAL source-asserted
+  biomedical term, e.g. Amavata → "Rheumatoid Arthritis") creates an
+  unverified `BIO-DISEASE` stub concept + a `RELATED_TO` (never
+  `EXACT_MATCH`) relationship, confidence 0.5.
+- **siddhanta**: `name` field format `"Latin (Devanagari)"` is split into
+  two separate `ConceptName` rows; 22 of 162 records didn't match that
+  pattern and were used verbatim (counted, not silently mis-parsed).
+- **ayurwiki**: only `docs/{herbs,medicines,concepts,physiology}` (3,957
+  of the repository's ~5,400+ total articles) were retrieved — no
+  approved domain type covers yoga/traditions/manufacturers. A REAL BUG
+  was found and fixed during this build: an initial non-recursive glob
+  missed two subdirectories (`medicines/proprietary/`,
+  `concepts/prakriti/`), undercounting by 215 files until caught and
+  fixed (`rglob` instead of `glob`) — see the git history for this exact
+  commit.
+- **namaste**: `term_english`'s parenthetical gloss (e.g. "Amavata
+  (Rheumatoid Arthritis)") is split the same way as siddhanta's Latin/
+  Devanagari pattern, and linked via `RELATED_TO` the same way as
+  pathology's `correlation` field.
 
 ### A real bug found and fixed (2026-09-28): unresolved-ingredient aliasing corrupted later matches
 
@@ -86,12 +105,16 @@ was removed entirely.
 **The real scope of the corruption was measured precisely**, not
 estimated: an initial spot check of 6 specific ingredient names found 68
 wrong relationships, but that was only a lower bound from checking a
-handful of examples, not an exhaustive count — corrected by running the
-FIXED ingester against a completely fresh, empty throwaway database (not
-the live one) and comparing every count directly against the still-live
-pre-fix database:
+handful of examples, not an exhaustive count. The true scope was found by
+running the fixed ingester against a completely fresh, empty throwaway
+database and diffing every count against the still-live pre-fix database
+— then, once the difference was understood and verified, **applied for
+real**: the live dev database was truncated and fully re-ingested + re-
+deduplicated on 2026-09-29 (explicit user authorization — see git history
+for this exact commit), and the resulting real counts matched the earlier
+dry run exactly:
 
-| Metric | Before (live, buggy) | After (fresh dry run, fixed) | Difference |
+| Metric | Before (buggy) | After (fixed, live, verified) | Difference |
 |---|---|---|---|
 | Total concepts | 5,085 | 5,085 | 0 (correct — no concepts should be added/lost) |
 | Total names | 7,366 | 7,259 | **-107** (exactly the wrongly-added alias names, now gone) |
@@ -108,37 +131,12 @@ gain: of the 573 total ingredient references, 355 now resolve
 legitimately (down from the previously-reported-but-partly-fake 466); the
 true unresolved count is 218, up from the previously-reported 107 — an
 apparent regression that is in fact the correction of a false positive,
-not new unresolved coverage.
-
-**This dry run was against a disposable, freshly-created database, never
-against the live dev database** — fixing the code does not retroactively
-undo the 109 wrong relationships + 107 wrong alias names already
-committed by earlier (pre-fix) ingestion runs into the live database.
-Clearing them requires either a full truncate + re-ingestion (this
-project's own established pattern for the idempotency fix, see above) or
-a targeted cleanup delete — both are real deletions of existing database
-rows, so, unlike every other change in this phase, this one is **not**
-applied to the live dev database without the user's explicit go-ahead
-first.
-- **pathology**: the `correlation` field (a REAL source-asserted
-  biomedical term, e.g. Amavata → "Rheumatoid Arthritis") creates an
-  unverified `BIO-DISEASE` stub concept + a `RELATED_TO` (never
-  `EXACT_MATCH`) relationship, confidence 0.5.
-- **siddhanta**: `name` field format `"Latin (Devanagari)"` is split into
-  two separate `ConceptName` rows; 22 of 162 records didn't match that
-  pattern and were used verbatim (counted, not silently mis-parsed).
-- **ayurwiki**: only `docs/{herbs,medicines,concepts,physiology}` (3,957
-  of the repository's ~5,400+ total articles) were retrieved — no
-  approved domain type covers yoga/traditions/manufacturers. A REAL BUG
-  was found and fixed during this build: an initial non-recursive glob
-  missed two subdirectories (`medicines/proprietary/`,
-  `concepts/prakriti/`), undercounting by 215 files until caught and
-  fixed (`rglob` instead of `glob`) — see the git history for this exact
-  commit.
-- **namaste**: `term_english`'s parenthetical gloss (e.g. "Amavata
-  (Rheumatoid Arthritis)") is split the same way as siddhanta's Latin/
-  Devanagari pattern, and linked via `RELATED_TO` the same way as
-  pathology's `correlation` field.
+not new unresolved coverage. Re-verified against the live database after
+re-ingestion: the specific polluted alias names ("Trikatu", "Triphala",
+"Chitraka", "Nimba", "Tagara", "Vidari") no longer exist anywhere in
+`concept_names`, the full 90-test suite still passes, and the real search
+latency benchmark (`scripts/benchmark.py`) still passes at p95 = 10.16ms
+against the corrected data.
 
 ## A real, honest limitation found mid-build
 

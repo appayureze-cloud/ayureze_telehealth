@@ -1,11 +1,12 @@
 # Data quality report
 
 Real numbers from this build's own last full ingestion + deduplication
-run (2026-09-26). Nothing here is estimated — every count is either a
-direct SQL query result against the actual database or a stat object
-`ingestion/common.py`'s `IngestionStats` recorded during that exact run.
-Conflicts and quality issues are reported, never silently discarded (spec
-section 22).
+run (2026-09-29, after the Bhaishajya ingredient-matching bug fix below
+was applied to this live database). Nothing here is estimated — every
+count is either a direct SQL query result against the actual database or
+a stat object `ingestion/common.py`'s `IngestionStats` recorded during
+that exact run. Conflicts and quality issues are reported, never silently
+discarded (spec section 22).
 
 ## Source record counts
 
@@ -49,10 +50,14 @@ retired in this phase.
 | Stage | Pairs found |
 |---|---|
 | exact_normalized_match | 51 |
-| known_synonym_match | 210 |
+| known_synonym_match | 206 |
 | scientific_name_match | 2 |
 | high_confidence_fuzzy_match | 539 |
-| **Total** | **802** |
+| **Total** | **798** |
+
+(Was 802 before the 2026-09-28 Bhaishajya bug fix below — 4 fewer
+`known_synonym_match` pairs, because those 4 were spurious matches caused
+by the same wrongly-added alias names the fix removes.)
 
 The `scientific_name_match` stage has 2 real examples, confirmed by
 directly inspecting their names: **Kutaj / Indrayava** and **Shigru /
@@ -92,38 +97,35 @@ Giloe, ...") was also ingested from AyurWiki — a real example of
 
 ## Unresolved conflicts
 
-- **A real bug found and fixed 2026-09-28** (see `docs/INGESTION.md` for
-  the full account and the exact before/after numbers): the "107
-  unresolved ingredient references" figure below this bullet in earlier
-  versions of this report was itself understating a real correctness
-  problem, not just a coverage gap — those 107 unresolved references had
-  been silently attached as `alias` names on the **referencing**
-  formulation's own concept, which in turn caused **109** of the 683
-  `HAS_INGREDIENT` relationships reported elsewhere in this document to be
-  **wrong**: the "ingredient" was actually just whichever unrelated
-  formulation happened to mention that unresolved name first (e.g. every
-  formulation genuinely containing "Triphala" ended up linked to
-  "Avipattikar Churna," an unrelated formulation, instead of to no
-  relationship at all). That 109 figure was measured precisely by running
-  the fixed code against a fresh, disposable database and diffing every
-  count against the still-live pre-fix database — an initial spot check of
-  6 ingredient names had found only 68 wrong rows, which turned out to be
-  a lower bound, not the real total; the docs are corrected to the
-  verified 109, not the earlier partial estimate. The code is fixed and
-  covered by 8 new tests (`tests/unit/test_bhaishajya_ingredient_matching.py`,
-  `tests/integration/test_bhaishajya_ingestion.py`), and the fix also adds
-  honest new resolutions via the source's own "Primary (Gloss)"
-  parenthetical convention (e.g. "Dhatri (Amalaki)" now resolves via
-  "Amalaki") — but **the live dev database has not yet been re-ingested**
-  with the fix, so the 683 relationship count and the 107/466 split
-  reported elsewhere in this document are still the PRE-FIX, partially-
-  wrong numbers as of this writing. After a correct re-ingestion, the real
-  unresolved count would be 218 (up from 107) — the honest number, since
-  most of what the old count called "resolved" was actually a false
-  match. A full truncate + re-ingestion (this project's own established
-  pattern) would apply this fix to the live data, but that is a real
-  deletion of existing database rows and was deliberately not performed
-  without the user's explicit go-ahead.
+- **218 ingredient references** in the Bhaishajya Kalpana Kosha data
+  (`main_ingredients[]`, out of 573 total) have no exact-normalized-name
+  match against any existing HERB or FORMULATION concept, even after
+  trying the source's own "Primary (Gloss)" parenthetical splitting (e.g.
+  "Dhatri (Amalaki)" → tries "Dhatri", then "Amalaki"). These are NOT
+  recorded as a name on the referencing formulation (see the bug note
+  below for why), but the raw ingredient text is never lost — it's always
+  preserved verbatim in the formulation's own `Concept.definition` via its
+  "Ingredients:" segment. 355 ingredient references WERE successfully
+  resolved and linked via a real `HAS_INGREDIENT` relationship.
+
+  **A real bug found and fixed 2026-09-28, applied to this live database
+  2026-09-29** (full account in `docs/INGESTION.md`): until this fix, an
+  unresolved ingredient reference was wrongly recorded as an `alias` name
+  on the **referencing** formulation's own concept, which then corrupted
+  later matching — every other formulation mentioning the same
+  never-modeled ingredient (e.g. "Triphala," which has no top-level
+  formulation entry of its own in this dataset) exact-matched onto
+  whichever formulation happened to mention it first instead. Measured
+  precisely (not estimated) by diffing a disposable fixed-code run against
+  the still-buggy live database, then re-verified identically once applied
+  for real: **109 of the previous 683 relationships and 107 of the
+  previous 7,366 names were wrong** and are now gone (an initial 6-name
+  spot check had found only 68 wrong rows — a lower bound, not the true
+  total). The previously-reported "107 unresolved, 466 resolved" split was
+  itself wrong; 218 unresolved / 355 resolved is the honest number. Fixed
+  and covered by 8 new tests
+  (`tests/unit/test_bhaishajya_ingredient_matching.py`,
+  `tests/integration/test_bhaishajya_ingestion.py`).
 - **22 of 162** Siddhanta Kosha records' `name` field didn't match the
   expected `"Latin (Devanagari)"` format — used verbatim as a single name
   rather than split, and counted, not silently mishandled.

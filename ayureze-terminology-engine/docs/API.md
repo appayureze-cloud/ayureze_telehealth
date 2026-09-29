@@ -76,15 +76,19 @@ the 6 adapter-only biomedical terminologies with `record_count: 0` — see
   "total_concepts": 5085,
   "concepts_by_domain": {"AYURVEDA": 4858, "BIOMEDICAL": 213, "INTEROP": 14},
   "concepts_by_category": {"AYURVEDIC_CONCEPT": 206, "DISEASE": 213, "FORMULATION": 176, "HERB": 2575, "MEDICINE_TERM": 1536, "NAMASTE_CODE": 14, "PATHOLOGY_TERM": 203, "SIDDHANTA": 162},
-  "total_names": 7366,
-  "total_relationships": 683,
+  "total_names": 7259,
+  "total_relationships": 574,
   "total_source_records": 4872,
   "total_sources": 12,
-  "deduplication_candidates_pending": 802,
+  "deduplication_candidates_pending": 798,
   "deduplication_candidates_accepted": 0,
   "deduplication_candidates_rejected": 0
 }
 ```
+
+(`total_names`/`total_relationships`/`deduplication_candidates_pending`
+updated 2026-09-29 after the Bhaishajya ingredient-matching bug fix — see
+`docs/INGESTION.md` — was 7366/683/802 before.)
 
 ## Security behavior (spec section 23), verified with real requests
 

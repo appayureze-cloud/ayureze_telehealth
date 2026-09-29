@@ -25,15 +25,13 @@ resolution API. Built from scratch, isolated from the rest of the
 - Runs a staged deduplication pipeline that flags likely duplicates for
   human review — it never auto-merges.
 
-**Real numbers from this build's own last run**: 5,085 canonical concepts,
-7,366 names, 683 evidenced relationships, 4,872 source records, 802
-deduplication candidates. See `docs/DATA_QUALITY_REPORT.md`. **Known
-caveat as of 2026-09-28**: 109 of those 683 relationships (and 107 of the
-7,366 names) are confirmed wrong — a real Bhaishajya ingredient-matching
-bug, fixed in code and tested and precisely measured against a disposable
-database, but not yet re-ingested into this live database (corrected
-numbers would be 5,085 / 7,259 / 574 / 4,872 / 798 — see "Limitations"
-below and `docs/DATA_QUALITY_REPORT.md`).
+**Real numbers from this build's own last run (2026-09-29)**: 5,085
+canonical concepts, 7,259 names, 574 evidenced relationships, 4,872 source
+records, 798 deduplication candidates. See `docs/DATA_QUALITY_REPORT.md`.
+(A real Bhaishajya ingredient-matching bug found 2026-09-28 had put these
+at 7,366 / 683 / 802 — 109 wrong relationships and 107 wrong names; fixed
+in code, tested, and applied to this database via a full re-ingestion on
+2026-09-29 — see "Limitations" below.)
 
 ## What this does NOT do
 
@@ -118,8 +116,8 @@ pytest tests/unit                # no database required
 ```
 
 Real search latency benchmark: `python scripts/benchmark.py` — this
-build's own last run: **p95 = 8.97ms** against the full 5,085-concept
-database (target: <100ms).
+build's own last run (2026-09-29): **p95 = 10.16ms** against the full
+5,085-concept database (target: <100ms).
 
 ## Licensing
 
@@ -158,26 +156,23 @@ target markets, but not yet obtained) before its adapter can be enabled.
 - NAMASTE ingestion covers 14 real sample rows, not the full 7,363-code
   dataset (which lives in a live external system outside this phase's
   approved sources).
-- **A real bug found 2026-09-28, fixed in code, NOT yet applied to this
-  live database**: 109 of the 683 `HAS_INGREDIENT` relationships (and 107
-  of the 7,366 names) are confirmed wrong, caused by a Bhaishajya
-  ingestion bug where an unresolved ingredient reference got wrongly
-  recorded as an alias of the formulation that merely *mentioned* it,
-  corrupting later exact-name matches — precisely measured by running the
-  fix against a disposable database and diffing every count against this
-  live one (an initial 6-name spot check had found only 68 wrong rows,
-  which turned out to be a lower bound, not the true total). Fixed and
-  covered by 8 new tests (`tests/unit/test_bhaishajya_ingredient_matching.py`,
-  `tests/integration/test_bhaishajya_ingestion.py`) — see
-  `docs/INGESTION.md` for the full account and exact before/after numbers.
-  Clearing the wrong rows from the live database needs a truncate +
-  re-ingestion, which is a real deletion of existing data and was
-  deliberately left for the user to authorize rather than performed
-  unasked.
+- ~~A real bug found 2026-09-28, NOT yet applied to this live database~~
+  **applied 2026-09-29** — a Bhaishajya ingestion bug had wrongly recorded
+  an unresolved ingredient reference as an alias of the formulation that
+  merely *mentioned* it, corrupting later exact-name matches; 109 of 683
+  `HAS_INGREDIENT` relationships and 107 of 7,366 names were confirmed
+  wrong (an initial 6-name spot check had found only 68, a lower bound,
+  not the true total). Fixed in code, covered by 8 new tests
+  (`tests/unit/test_bhaishajya_ingredient_matching.py`,
+  `tests/integration/test_bhaishajya_ingestion.py`), and applied for real
+  via a truncate + re-ingestion (explicit user authorization) — the
+  corrected live counts (7,259 names / 574 relationships / 798 dedup
+  candidates) matched the pre-computed dry-run prediction exactly. See
+  `docs/INGESTION.md` for the full before/after account.
 - Deduplication candidates are flagged, and can now be reviewed via
   `GET/POST /v1/deduplication/candidates` (**added 2026-09-28**, see
   `docs/API.md`) — accepting records a human-evidenced `SYNONYM_OF`
-  relationship, never a merge; 802 candidates currently await that review,
+  relationship, never a merge; 798 candidates currently await that review,
   including the real, high-confidence Giloy/Amrita case (both *Tinospora
   cordifolia*) found in this build's own data, confirmed still listed via
   a real request against the live database.
