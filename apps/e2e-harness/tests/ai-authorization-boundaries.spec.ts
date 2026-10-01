@@ -2,9 +2,13 @@ import { expect, test } from "@playwright/test";
 import { seedTenant } from "./helpers/seed";
 import { initSdk, joinAsDoctor } from "./helpers/webClient";
 
-const API_BASE_URL = "http://localhost:8080";
-const LIVEKIT_URL = "ws://localhost:7880";
-const AI_AGENT_URL = "http://localhost:8090";
+// 127.0.0.1, not localhost: these fetch()/WebSocket calls run inside
+// the Chromium page (not Node), and on GitHub Actions' Ubuntu 24.04
+// runner "localhost" resolves to IPv6 first, where nothing is
+// listening — same root cause as vite.config.ts's host binding.
+const API_BASE_URL = "http://127.0.0.1:8080";
+const LIVEKIT_URL = "ws://127.0.0.1:7880";
+const AI_AGENT_URL = "http://127.0.0.1:8090";
 
 async function waitFor(predicate: () => Promise<boolean>, timeoutMs: number, intervalMs = 500): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;

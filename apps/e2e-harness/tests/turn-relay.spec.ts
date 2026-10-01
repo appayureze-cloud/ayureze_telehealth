@@ -5,8 +5,12 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Browser } from "@playwright/test";
 import { seedTenant } from "./helpers/seed";
 
-const API_BASE_URL = "http://localhost:8080";
-const LIVEKIT_URL = "ws://localhost:7880";
+// 127.0.0.1, not localhost: these fetch()/WebSocket calls run inside
+// the Chromium page (not Node), and on GitHub Actions' Ubuntu 24.04
+// runner "localhost" resolves to IPv6 first, where nothing is
+// listening — same root cause as vite.config.ts's host binding.
+const API_BASE_URL = "http://127.0.0.1:8080";
+const LIVEKIT_URL = "ws://127.0.0.1:7880";
 const TURN_URL = "turn:127.0.0.1:3478";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
