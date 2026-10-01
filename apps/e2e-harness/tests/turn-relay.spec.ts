@@ -37,7 +37,15 @@ const ROOT_DIR = path.resolve(__dirname, "../../..");
  */
 function turnCredential(secret: string): { username: string; credential: string } {
   const username = String(Math.floor(Date.now() / 1000) + 3600);
-  const credential = createHmac("sha1", secret).update(username).digest("base64");
+  // CodeQL flags sha1 here, but this isn't a free algorithm choice: coturn's
+  // --use-auth-secret REST API mechanism (the one this harness verifies
+  // against) is specified and implemented as HMAC-SHA1 — the server
+  // independently recomputes this exact HMAC to validate the credential, so
+  // using any other digest would make every TURN connection in this test
+  // fail auth. HMAC-SHA1's security as a MAC doesn't depend on SHA-1's
+  // (broken) collision resistance, which is what the "weak hash" class of
+  // finding is really about. See docs/deployment/turn-verification.md.
+  const credential = createHmac("sha1", secret).update(username).digest("base64"); // lgtm[js/weak-cryptographic-algorithm]
   return { username, credential };
 }
 

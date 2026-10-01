@@ -7,6 +7,7 @@
 // data, not a target number decided in advance.
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,7 +17,11 @@ const LIVEKIT_URL = "ws://localhost:7880";
 const N = parseInt(process.argv[2] || "1", 10);
 
 function seedTenant(label) {
-  const suffix = Math.random().toString(36).slice(2, 10);
+  // CodeQL flags Math.random() here since suffix flows into
+  // doctorEmail/tenant, which the seed command then uses as a login
+  // identity — randomBytes avoids that even though this is only a
+  // uniqueness suffix for throwaway load-test fixtures, never a secret.
+  const suffix = randomBytes(5).toString("hex");
   const tenant = `load-${label}-${suffix}`;
   const doctorEmail = `doctor-${suffix}@load-test.local`;
   const patientEmail = `patient-${suffix}@load-test.local`;

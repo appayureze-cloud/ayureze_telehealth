@@ -77,9 +77,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// CodeQL flags these two as clear-text logging of a password, but
+	// printing it back is this dev-only command's actual purpose: password
+	// is immediately hashed above (line 58) and never otherwise retrievable,
+	// so this stdout line is the only way the caller learns the credential
+	// for the tenant it just created. Gated by the ENVIRONMENT=production
+	// refusal at the top of main() — never runs against a real deployment.
 	fmt.Printf("Seeded tenant %q (%s)\n", tenant.Name, tenant.ID)
-	fmt.Printf("  doctor:  %s / %s (id=%s)\n", doctor.Email, password, doctor.ID)
-	fmt.Printf("  patient: %s / %s (id=%s)\n", patient.Email, password, patient.ID)
+	fmt.Printf("  doctor:  %s / %s (id=%s)\n", doctor.Email, password, doctor.ID)   // lgtm[go/clear-text-logging]
+	fmt.Printf("  patient: %s / %s (id=%s)\n", patient.Email, password, patient.ID) // lgtm[go/clear-text-logging]
 }
 
 func envDefault(key, def string) string {
