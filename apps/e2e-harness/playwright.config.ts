@@ -28,15 +28,17 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://127.0.0.1:4174",
     reuseExistingServer: true,
-    // 30s wasn't enough on this job's first real CI run (ci.yml's
-    // e2ee-harness job, gated behind go/python/web passing, had never
-    // completed a full run before) — Playwright reported a plain timeout,
-    // no crash. A local cold `vite` start here took ~1-2s, so the CI
-    // runner's slower disk/CPU closing the gap to 30s is the most likely
-    // explanation, but that's not fully confirmed. Bumped to 90s for
-    // headroom, and piping stdout/stderr below so a repeat failure shows
-    // vite's actual output in the job log instead of nothing.
-    timeout: 90_000,
+    // Root cause of the original 30s timeout (confirmed with stdout: "pipe"
+    // below, added for exactly this diagnosis): Vite reported "ready" in
+    // ~100ms and was genuinely listening — the health check itself could
+    // never connect. Without an explicit host, Vite binds whatever
+    // "localhost" resolves to, which on GitHub Actions' Ubuntu 24.04 image
+    // is IPv6 (::1); this config's url is explicit IPv4 (127.0.0.1), so
+    // every probe failed regardless of how long the timeout was. Fixed for
+    // real in vite.config.ts (server/preview host: "127.0.0.1"). Left at
+    // 60s rather than reverting to 30s as harmless extra headroom now that
+    // the actual fix is elsewhere.
+    timeout: 60_000,
     stdout: "pipe",
     stderr: "pipe",
   },
