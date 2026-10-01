@@ -13,3 +13,19 @@
 # vendoring refresh. Re-check (and remove this line) next time
 # .github/workflows/security.yml's container-scan job is touched.
 CVE-2026-23949
+
+# Same "vendoring lag" situation, one level up: these three are vendored
+# INSIDE pip itself (pip/_vendor/, per pip's own vendor.txt), not inside
+# anything this repo installs. Confirmed by upgrading pip to the latest
+# available release (26.2.1 as of this writing — the same version our own
+# Dockerfile's `pip install --upgrade pip` reaches with real network
+# access) and reading its vendor.txt directly: msgpack==1.1.2,
+# setuptools==70.3.0, urllib3==2.7.0 (nested under its own vendored
+# requests==2.34.2) are exactly what it bundles. No pip release has
+# refreshed these yet, so there is nothing further to upgrade to. Re-check
+# (and remove the lines that no longer apply) next time this job is
+# touched.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
+CVE-2026-97687
+CVE-2026-97689
