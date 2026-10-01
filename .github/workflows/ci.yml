@@ -87,10 +87,25 @@ jobs:
             curl -sf http://localhost:7880/ && break
             sleep 1
           done
+      # test/integration/env.go's loadRootEnv() requires a real .env file at
+      # the repo root to exist (os.Open fails hard otherwise) — it reads
+      # defaults from it for any variable not already set in the process
+      # environment, then unconditionally recomputes DATABASE_URL itself
+      # from POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB against a
+      # hardcoded "localhost:5432" (matching this job's postgres service
+      # port mapping above). Setting DATABASE_URL directly in `env:` below
+      # has no effect — loadRootEnv overwrites it — so the three POSTGRES_*
+      # vars are what actually need to match the service container's
+      # credentials; they're also what .env.example's own (different,
+      # placeholder) values would otherwise silently override.
+      - name: Create .env (test loader requires the file to exist)
+        run: cp .env.example .env
       - name: go test (integration)
         working-directory: apps/api
         env:
-          DATABASE_URL: postgres://ayureze:ci-postgres-password@localhost:5432/ayureze_telehealth?sslmode=disable
+          POSTGRES_USER: ayureze
+          POSTGRES_PASSWORD: ci-postgres-password
+          POSTGRES_DB: ayureze_telehealth
           REDIS_HOST: localhost
           REDIS_PORT: "6379"
           REDIS_PASSWORD: ""
@@ -114,6 +129,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # requirements-pipeline.txt is also needed here even though
+          # pytest.ini's "not models" addopt skips model-loading tests at
+          # EXECUTION time: several Day 6 test modules import onnxruntime/
+          # langid/torch unconditionally at module scope (app/pipeline/lid.py,
+          # vad.py), so pytest fails during COLLECTION — before marker
+          # filtering ever applies — without these packages installed. This
+          # does not download any model weights (those are fetched lazily on
+          # first real use, which the skipped tests never reach).
+          pip install -r requirements-pipeline.txt --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
           pip install ruff
       - name: ruff (lint)
         run: ruff check .
