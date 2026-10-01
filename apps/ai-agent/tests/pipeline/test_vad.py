@@ -3,6 +3,12 @@ import pytest
 
 from app.pipeline.vad import FRAME_SAMPLES, SileroVAD, TurnSegmenter
 
+# Every test here constructs a real SileroVAD, which loads the Silero ONNX
+# weights from models/silero_vad.onnx (gitignored, fetched by
+# scripts/download_models.sh) — same reason test_vad_tts_compatibility.py
+# carries this marker.
+pytestmark = pytest.mark.models
+
 
 @pytest.fixture(scope="module")
 def vad():

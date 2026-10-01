@@ -200,6 +200,7 @@ def test_streaming_call_site_contains_pipeline_exceptions(caplog):
         pipeline=_ExplodingPipeline(),
         logger=logging.getLogger("test.streaming"),
         session_id="test-session",
+        vad=object(),  # _process_segment never touches self._vad/self._segmenter
     )
 
     class _FakeParticipant:
@@ -264,6 +265,7 @@ def test_barge_in_cancels_in_flight_publish_task():
         pipeline=_QuietPipeline(),
         logger=logging.getLogger("test.bargein"),
         session_id="test-session",
+        vad=object(),  # _process_segment never touches self._vad/self._segmenter
     )
 
     class _FakeParticipant:

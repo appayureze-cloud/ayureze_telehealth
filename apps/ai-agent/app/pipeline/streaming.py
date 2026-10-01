@@ -57,6 +57,7 @@ class LiveAudioProcessor:
         executor: ThreadPoolExecutor | None = None,
         on_publish_start: Callable[[], None] | None = None,
         on_publish_end: Callable[[], None] | None = None,
+        vad: SileroVAD | None = None,
     ):
         self._room = room
         self._pipeline = pipeline
@@ -65,7 +66,10 @@ class LiveAudioProcessor:
         self._on_publish_start = on_publish_start
         self._on_publish_end = on_publish_end
         self._executor = executor or ThreadPoolExecutor(max_workers=2, thread_name_prefix="ayureze-pipeline")
-        self._vad = SileroVAD()
+        # Injectable so tests exercising only _process_segment (no
+        # handle_track/VAD path at all, e.g. test_failure_handling.py's
+        # fail-closed tests) don't need the real downloaded Silero weights.
+        self._vad = vad or SileroVAD()
         self._segmenter = TurnSegmenter(self._vad)
         self._sample_buffer = np.zeros((0,), dtype=np.float32)
         self._output_track: rtc.LocalAudioTrack | None = None
