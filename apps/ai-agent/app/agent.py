@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from livekit import rtc
 
@@ -27,8 +28,20 @@ from .metrics import (
     AI_AGENT_JOIN_TOTAL,
     AI_AGENT_STATE_TRANSITIONS_TOTAL,
 )
-from .pipeline.orchestrator import TranslationPipeline
-from .pipeline.streaming import LiveAudioProcessor
+
+# Deferred to TYPE_CHECKING (type annotations only, thanks to `from
+# __future__ import annotations` above) rather than imported at module
+# level: orchestrator.py/streaming.py transitively import onnxruntime and
+# langid, which main.py's own _get_pipeline() already goes out of its way
+# to load lazily "so /health and lifecycle-only operation never pay this
+# cost when AI_AGENT_ENABLE_PIPELINE=false" — a top-level import here
+# defeated that entirely, since main.py imports AIAgent unconditionally at
+# startup. LiveAudioProcessor is imported for real at its one actual call
+# site below, in _on_track_subscribed, which only runs once self._pipeline
+# is already set.
+if TYPE_CHECKING:
+    from .pipeline.orchestrator import TranslationPipeline
+    from .pipeline.streaming import LiveAudioProcessor
 
 PARTICIPANT_REMOVED = 4  # rtc.DisconnectReason.PARTICIPANT_REMOVED
 
@@ -172,6 +185,8 @@ class AIAgent:
             return  # no ML pipeline wired in — state machine only (Day 5 mode)
 
         if self._audio_processor is None:
+            from .pipeline.streaming import LiveAudioProcessor
+
             self._audio_processor = LiveAudioProcessor(
                 room=self._room,
                 pipeline=self._pipeline,
