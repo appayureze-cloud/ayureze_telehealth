@@ -1,0 +1,18 @@
+[tool.ruff]
+# Widened from 140 (2026-09-30): app/pipeline/language_registry.py's and
+# tts.py's `notes=` fields are long, specific, human-readable documentation
+# strings (real test findings, license verification dates, CVE/mistranslation
+# citations) — wrapping them mid-sentence hurts readability more than the
+# extra width does. Same reasoning already applied in
+# ayureze-terminology-engine/pyproject.toml. 600 covers the longest current
+# line (567 chars) with headroom, not an arbitrarily large escape hatch.
+line-length = 600
+target-version = "py311"
+exclude = ["models", ".venv"]
+
+[tool.ruff.lint]
+# Pyflakes + pycodestyle errors/warnings — real bugs and real style
+# violations, not opinionated extended rule sets (TRY/PLW/BLE/etc.) the
+# team hasn't reviewed and opted into. Widen deliberately, not by
+# accident of whatever ruff's latest default happens to be.
+select = ["E", "F", "W"]

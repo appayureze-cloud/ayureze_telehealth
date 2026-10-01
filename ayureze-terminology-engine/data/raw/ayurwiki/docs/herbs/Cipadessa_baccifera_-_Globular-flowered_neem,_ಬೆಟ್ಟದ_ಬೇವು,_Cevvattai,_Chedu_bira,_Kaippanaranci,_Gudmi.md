@@ -1,0 +1,80 @@
+---
+title: "Cipadessa baccifera - Globular-flowered neem, ಬೆಟ್ಟದ ಬೇವು, Cevvattai, Chedu bira, Kaippanaranci, Gudmi"
+categories:
+  - "Herbs_with_common_name_in_Malayalam"
+  - "Herbs_with_Root_used_in_medicine"
+  - "Herbs_that_are_commonly_seen_in_the_region_of"
+  - "Herbs_with_used_in_medicine"
+  - "Herbs_with_common_name_in_Tamil"
+  - "Pages_that_are_stubs"
+  - "Herbs_with_common_name_in_Marathi"
+  - "Herbs_with_stem_used_in_medicine"
+  - "Herbs_with_leaves_used_in_medicine"
+  - "Index_of_Plants_which_can_be_propagated_by"
+  - "Herbs_with_common_name_in_Kannada"
+  - "Herbs_with_common_name_in_English"
+  - "Herbs_with_common_name_in_Telugu"
+  - "Ayurvedic_Herbs_known_to_be_helpful_to_treat"
+  - "Habit_-"
+  - "Herbs"
+date: 2020-06-19
+---
+## Uses
+, , , , , , , , , , .
+
+## Parts Used
+, stem, leaves, Root.
+
+## Chemical Composition
+
+## Common names
+| Language | Names |
+| --- | --- |
+| English | Globular-flowered neem, Hill neem |
+| Kannada | ಬೆಟ್ಟದ ಬೇವು Bettada bevu, ಚೇಡುಬೀರ Chedubira |
+| Malayalam | Kaippanaranci |
+| Marathi | Gudmi |
+| Tamil | Cevvattai |
+| Telugu | Chedu bira |
+
+## Properties
+Reference: Dravya - Substance, Rasa - Taste, Guna - Qualities, Veerya - Potency, Vipaka - Post-digesion effect, Karma - Pharmacological activity, Prabhava - Therepeutics.
+### Dravya
+### Rasa
+### Guna
+### Veerya
+### Vipaka
+### Karma
+### Prabhava
+## Habit
+## Identification
+### Leaf
+
+### Flower
+### Fruit
+### Other features
+## List of Ayurvedic medicine in which the herb is used
+## Where to get the saplings
+## Mode of Propagation
+## How to plant/cultivate
+
+## Commonly seen growing in areas
+, , , , .
+
+## Photo Gallery
+
+## References
+
+## External Links
+* [ ]
+* [ ]
+* [ ]
+
+## References
+
+1. ["Chemistry"]
+2. ["Morphology"]
+3. [ "Cultivation"]
+4. Indian Medicinal Plants by C.P.Khare
+5. **Daitota, P. S. Venkatarama. *Auṣadhīya Sasyagaḷu (ಔಷಧೀಯ ಸಸ್ಯಗಳು; Medicinal Plants)*. Vivekananda Samshodhana Kendra, Vivekananda Vidyavardhaka Sangha, Puttur, 2016, p. 400.**
+   Medicinal uses as mentioned in Daitota's Auṣadhīya Sasyagaḷu: presented as a remedy for lymphatic glands (rasa-granthi bāvige). All parts used. Lymphatic swellings: bark-and-leaf paste applied as external lepa for 2–3 hours; 3 days.

@@ -1,0 +1,79 @@
+{
+  "title": "AyurEze Telehealth — Security",
+  "uid": "ayureze-security",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "security"],
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Authorization denials by action/reason (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "description": "Covers every denial the build spec's security-events list calls out: unauthorized participant, wrong room/tenant, expired/invalid token, AI without/after-revoked consent, invalid role, ended-session access.",
+      "targets": [
+        { "expr": "sum(rate(ayureze_api_security_denied_total[5m])) by (action, reason)", "legendFormat": "{{action}} / {{reason}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Total denials (last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 9 },
+      "targets": [{ "expr": "sum(increase(ayureze_api_security_denied_total[24h]))" }]
+    },
+    {
+      "id": 3,
+      "title": "Failed logins (last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 9 },
+      "targets": [{ "expr": "sum(increase(ayureze_api_auth_login_total{outcome=\"denied\"}[24h]))" }]
+    },
+    {
+      "id": 4,
+      "title": "Rate-limited requests (last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 9 },
+      "targets": [{ "expr": "sum(increase(ayureze_api_rate_limited_total[24h]))" }]
+    },
+    {
+      "id": 5,
+      "title": "AI agent authorization denials (last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 9 },
+      "targets": [{ "expr": "sum(increase(ai_agent_authorize_total{outcome=\"denied\"}[24h]))" }]
+    },
+    {
+      "id": 6,
+      "title": "Denial reasons, top 10 (table)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "expr": "topk(10, sum(increase(ayureze_api_security_denied_total[24h])) by (action, reason))",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "AI translation consent grant/revoke (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "targets": [{ "expr": "rate(ayureze_api_ai_consent_total[5m])", "legendFormat": "{{action}}" }]
+    },
+    {
+      "id": 8,
+      "title": "Audit + security log stream",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "{service=~\"ayureze-api|ayureze-ai-agent\"} |~ \"denied|panic_recovered|livekit_webhook_rejected|unauthorized\"" }
+      ]
+    }
+  ]
+}

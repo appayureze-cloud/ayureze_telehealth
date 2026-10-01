@@ -1,0 +1,11 @@
+---
+title: "Human liquor"
+categories:
+  - "Physiology"
+date: 2016-11-29
+---
+# Human liquor
+
+Human liquor means waste content from bowels isolated to investigate specific enzymes and peptidases involved in enteric contraction and digestion of compounds.
+
+P-endopeptidase isolated from human liquor inactivates tachykinins. Hydrolysis of Substance P by P-endopeptidase yields the active fragment of substance P. A neuroactive peptide, Substance P is found throughout the central and peripheral nervous system. It has mostly been studied for its contractive effect on enteric musculature.

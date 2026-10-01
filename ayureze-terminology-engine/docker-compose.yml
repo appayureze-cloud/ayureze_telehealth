@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: terminology-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TERMINOLOGY_POSTGRES_DB:-ayureze_terminology}
+      POSTGRES_USER: ${TERMINOLOGY_POSTGRES_USER:-terminology}
+      POSTGRES_PASSWORD: ${TERMINOLOGY_POSTGRES_PASSWORD:?TERMINOLOGY_POSTGRES_PASSWORD is required}
+    ports:
+      # Deliberately NOT 5432 — the existing telehealth stack's own
+      # Postgres already uses that port on this host. A separate port +
+      # separate container name + separate volume + separate network
+      # means this can run alongside the existing stack with zero
+      # interference (see docs/ARCHITECTURE.md).
+      - "${TERMINOLOGY_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - terminology-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-terminology} -d $${POSTGRES_DB:-ayureze_terminology}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - terminology-net
+
+  terminology-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # host networking at BUILD time only (this has no effect on the
+      # running container, which stays on terminology-net below) — lets
+      # `pip install` reach the network from behind a build host's own
+      # local proxy (e.g. a corporate proxy, or this sandbox's
+      # TLS-intercepting proxy at 127.0.0.1, see /root/.ccr/README.md)
+      # that would otherwise be unreachable from a container's isolated
+      # network namespace. A no-op on a host with normal, unrestricted
+      # network access.
+      network: host
+      args:
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+    container_name: terminology-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TERMINOLOGY_DATABASE_URL: postgresql+psycopg://${TERMINOLOGY_POSTGRES_USER:-terminology}:${TERMINOLOGY_POSTGRES_PASSWORD}@postgres:5432/${TERMINOLOGY_POSTGRES_DB:-ayureze_terminology}
+      TERMINOLOGY_ENVIRONMENT: ${TERMINOLOGY_ENVIRONMENT:-production}
+    ports:
+      - "${TERMINOLOGY_HTTP_PORT:-8100}:8100"
+    networks:
+      - terminology-net
+
+networks:
+  terminology-net:
+    name: ayureze-terminology-net
+
+volumes:
+  terminology-postgres-data:
+    name: ayureze-terminology-postgres-data

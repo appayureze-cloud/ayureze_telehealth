@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AyurEze Telehealth — Playground</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; }
+      #status { white-space: pre; font-size: 13px; background: #000; padding: 8px; border-radius: 4px; }
+      video { width: 320px; height: 240px; background: #222; border-radius: 4px; margin: 4px; }
+      .row { display: flex; flex-wrap: wrap; }
+      .tile { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h2 id="title">AyurEze Telehealth Playground</h2>
+    <div id="status">initializing…</div>
+    <div class="row" id="videos"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

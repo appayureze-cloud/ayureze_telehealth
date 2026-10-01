@@ -1,0 +1,31 @@
+# Trivy ignore list for the container-scan job (see
+# .github/workflows/security.yml). One CVE per line, as Trivy prints it.
+#
+# CVE-2026-23949 (jaraco.context path traversal, fixed upstream in
+# jaraco.context 6.1.0): this package is not a direct or transitive
+# dependency of anything this repo installs — it is vendored INSIDE
+# setuptools itself, at setuptools/_vendor/jaraco.context-*.dist-info.
+# Confirmed by installing the latest available setuptools (84.0.0 as of
+# this writing) into a clean venv and inspecting its _vendor directory: it
+# still bundles the vulnerable 5.3.0 copy. There is no newer setuptools
+# release yet whose vendored copy is patched, so no `pip install --upgrade`
+# on our side can reach a fix — this has to wait on setuptools' own next
+# vendoring refresh. Re-check (and remove this line) next time
+# .github/workflows/security.yml's container-scan job is touched.
+CVE-2026-23949
+
+# Same "vendoring lag" situation, one level up: these three are vendored
+# INSIDE pip itself (pip/_vendor/, per pip's own vendor.txt), not inside
+# anything this repo installs. Confirmed by upgrading pip to the latest
+# available release (26.2.1 as of this writing — the same version our own
+# Dockerfile's `pip install --upgrade pip` reaches with real network
+# access) and reading its vendor.txt directly: msgpack==1.1.2,
+# setuptools==70.3.0, urllib3==2.7.0 (nested under its own vendored
+# requests==2.34.2) are exactly what it bundles. No pip release has
+# refreshed these yet, so there is nothing further to upgrade to. Re-check
+# (and remove the lines that no longer apply) next time this job is
+# touched.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
+CVE-2026-97687
+CVE-2026-97689

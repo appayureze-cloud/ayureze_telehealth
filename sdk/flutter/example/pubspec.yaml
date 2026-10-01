@@ -1,0 +1,28 @@
+name: e2ee_test_harness
+description: >
+  External Flutter E2EE interoperability test harness for the AyurEze
+  Telehealth Flutter SDK — see sdk/flutter/README.md's "External E2EE
+  device test harness" section. Not published; not used by production
+  apps. Exercises AyurezeTelehealthClient exactly as a real app would,
+  and surfaces its e2eeStateChanges/getE2EETrackStates() diagnostics on
+  screen for a human tester to read off during a real Android
+  device/emulator run.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ayureze_telehealth:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

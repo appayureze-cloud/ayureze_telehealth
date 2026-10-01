@@ -1,0 +1,94 @@
+{
+  "title": "AyurEze Telehealth — AI Translation",
+  "uid": "ayureze-ai",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "ai", "translation"],
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active AI agent sessions",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "ai_agent_active_sessions" }]
+    },
+    {
+      "id": 2,
+      "title": "Authorization attempts by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 9, "x": 6, "y": 0 },
+      "targets": [{ "expr": "rate(ai_agent_authorize_total[5m])", "legendFormat": "{{outcome}}" }]
+    },
+    {
+      "id": 3,
+      "title": "LiveKit join attempts by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 9, "x": 15, "y": 0 },
+      "targets": [{ "expr": "rate(ai_agent_join_total[5m])", "legendFormat": "{{outcome}}" }]
+    },
+    {
+      "id": 4,
+      "title": "Pipeline stage latency, p50 (all stages)",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 6 },
+      "description": "VAD, STT, language ID, terminology, translation, safety validation, TTS, total — one line per stage, matching build spec section 13's AI latency metrics.",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(ayureze_ai_pipeline_stage_latency_seconds_bucket[5m])) by (le, stage))",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Pipeline stage latency, p95 (all stages)",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ayureze_ai_pipeline_stage_latency_seconds_bucket[5m])) by (le, stage))",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Total translation latency, p50/p95/p99 (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(ayureze_ai_pipeline_stage_latency_seconds_bucket{stage=\"total\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ayureze_ai_pipeline_stage_latency_seconds_bucket{stage=\"total\"}[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ayureze_ai_pipeline_stage_latency_seconds_bucket{stage=\"total\"}[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Segments processed vs. blocked by safety validator (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "targets": [
+        { "expr": "rate(ayureze_ai_pipeline_segments_processed_total[5m])", "legendFormat": "processed" },
+        { "expr": "rate(ayureze_ai_pipeline_segments_blocked_total[5m])", "legendFormat": "blocked_by_safety" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Lifecycle state transitions (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "targets": [{ "expr": "rate(ai_agent_state_transitions_total[5m])", "legendFormat": "{{state}}" }]
+    }
+  ]
+}
