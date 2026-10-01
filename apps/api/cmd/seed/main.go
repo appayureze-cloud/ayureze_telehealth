@@ -84,8 +84,10 @@ func main() {
 	// for the tenant it just created. Gated by the ENVIRONMENT=production
 	// refusal at the top of main() — never runs against a real deployment.
 	fmt.Printf("Seeded tenant %q (%s)\n", tenant.Name, tenant.ID)
-	fmt.Printf("  doctor:  %s / %s (id=%s)\n", doctor.Email, password, doctor.ID)   // lgtm[go/clear-text-logging]
-	fmt.Printf("  patient: %s / %s (id=%s)\n", patient.Email, password, patient.ID) // lgtm[go/clear-text-logging]
+	// codeql[go/clear-text-logging]
+	fmt.Printf("  doctor:  %s / %s (id=%s)\n", doctor.Email, password, doctor.ID)
+	// codeql[go/clear-text-logging]
+	fmt.Printf("  patient: %s / %s (id=%s)\n", patient.Email, password, patient.ID)
 }
 
 func envDefault(key, def string) string {

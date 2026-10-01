@@ -45,7 +45,8 @@ function turnCredential(secret: string): { username: string; credential: string 
   // fail auth. HMAC-SHA1's security as a MAC doesn't depend on SHA-1's
   // (broken) collision resistance, which is what the "weak hash" class of
   // finding is really about. See docs/deployment/turn-verification.md.
-  const credential = createHmac("sha1", secret).update(username).digest("base64"); // lgtm[js/weak-cryptographic-algorithm]
+  // codeql[js/weak-cryptographic-algorithm]
+  const credential = createHmac("sha1", secret).update(username).digest("base64");
   return { username, credential };
 }
 
