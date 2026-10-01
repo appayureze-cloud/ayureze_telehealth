@@ -12,7 +12,7 @@ import pytest
 
 from app.pipeline.language_registry import Certification, LanguagePairConfig, LanguageRegistry, LicenseStatus
 from app.pipeline.model_lifecycle import ModelHealth, ModelMetadata
-from app.pipeline.streaming_pipeline import CommittedPhrase, StreamingPipelineConfig, StreamingSessionPipeline
+from app.pipeline.streaming_pipeline import CommittedPhrase, StreamingSessionPipeline
 from app.pipeline.translation_router import TranslationRouter
 from app.pipeline.tts_router import TTSRouter
 from app.pipeline.types import SynthesizedAudio

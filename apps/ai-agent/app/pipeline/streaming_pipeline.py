@@ -20,7 +20,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ..logging_setup import log
 from .audio_output_buffer import AudioOutputBuffer

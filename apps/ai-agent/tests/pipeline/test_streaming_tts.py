@@ -6,7 +6,7 @@ convention as tests/pipeline/test_pipeline_models.py.
 import numpy as np
 import pytest
 
-from app.pipeline.tts import MmsTTSProvider, StreamingMmsTTSProvider
+from app.pipeline.tts import StreamingMmsTTSProvider
 
 pytestmark = pytest.mark.models
 

@@ -61,7 +61,6 @@ def test_build_translator_rejects_an_unconfigured_language_pair_before_touching_
     ("en", "pt"), ("en", "tr"), ("tr", "en"), ("en", "zh"), ("zh", "en"),
 ])
 def test_opus_mt_routes_table_has_a_real_checkpoint_and_correct_tag_semantics(pair):
-    from app.pipeline.factory import _OPUS_MT_ROUTES
 
     checkpoint, tag = _OPUS_MT_ROUTES[pair]
     assert checkpoint.startswith("Helsinki-NLP/opus-mt-")
@@ -76,7 +75,6 @@ def test_opus_mt_routes_table_has_a_real_checkpoint_and_correct_tag_semantics(pa
 
 
 def test_opus_mt_routes_excludes_known_license_traps():
-    from app.pipeline.factory import _OPUS_MT_ROUTES
 
     # opus-mt-tr-en and opus-mt-tc-big-en-tr/en-pt are CC-BY-4.0 traps —
     # the table must route Turkish/Portuguese through the Apache-2.0 group

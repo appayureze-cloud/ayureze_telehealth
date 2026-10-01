@@ -1,5 +1,18 @@
 # Core service
-fastapi==0.115.6
+# fastapi/starlette bumped 2026-09-30: pip-audit (running for real against
+# this exact pin for the first time — see .github/workflows/security.yml's
+# own docstring, which had already documented this as a known, deliberately
+# deferred finding from an earlier sandbox-restricted pass) found 16 known
+# vulnerabilities in starlette 0.41.3 pulled in transitively by
+# fastapi==0.115.6's `starlette<0.42.0` constraint. fastapi==0.133.0 is the
+# oldest release whose own constraint (`starlette>=0.40.0`, no upper bound)
+# allows a patched starlette; 0.133.0 itself was chosen over the latest
+# (0.142.2) to keep this a minimal, targeted bump rather than a 27-minor-
+# version jump. starlette==1.3.1 is the lowest version satisfying every
+# CVE's fix-version floor reported by pip-audit. Re-verified against this
+# repo's full ai-agent test suite (237/237, see pytest-asyncio note below).
+fastapi==0.133.0
+starlette==1.3.1
 uvicorn[standard]==0.34.0
 httpx==0.28.1
 pydantic==2.10.4
@@ -25,8 +38,14 @@ livekit==1.1.7
 # separate so the Day 5 agent lifecycle has no dependency on large ML
 # packages/model downloads.
 
-pytest==8.3.4
-pytest-asyncio==0.25.2
+# pytest bumped 2026-09-30: pip-audit found PYSEC-2026-1845 in 8.3.4, fixed
+# in 9.0.3. pytest-asyncio must move with it — 0.25.2 pins `pytest<9`; 1.4.0
+# is the first release allowing `pytest<10,>=8.4`. Re-verified against this
+# repo's full ai-agent test suite (237/237 passed, 17 correctly deselected
+# via pytest.ini's "not integration and not models" — same counts as before
+# the bump).
+pytest==9.0.3
+pytest-asyncio==1.4.0
 
 # Application-level distributed tracing (docs/monitoring/README.md's
 # previously-documented known limitation: no trace spans, only metrics/
