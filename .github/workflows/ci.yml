@@ -125,6 +125,15 @@ jobs:
           LIVEKIT_URL: ws://localhost:7880
           LIVEKIT_API_KEY: ci-key
           LIVEKIT_API_SECRET: ci-secret-at-least-32-bytes-long
+          # .env.example's own API_E2EE_MASTER_KEY_HEX is a deliberately
+          # invalid placeholder ("change-me-..."), same intent as its
+          # POSTGRES_PASSWORD placeholder — it forces a real value in any
+          # real deployment. Unlike the POSTGRES_*/REDIS_*/LIVEKIT_* vars
+          # above, config.go reads this one directly via requireEnv (not
+          # recomputed by loadRootEnv), so it needs its own override here;
+          # a fixed, non-secret value is fine since this key only protects
+          # ephemeral per-run test data.
+          API_E2EE_MASTER_KEY_HEX: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
         run: go test -tags integration ./test/integration/...
 
   python:
