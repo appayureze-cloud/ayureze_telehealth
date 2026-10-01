@@ -270,7 +270,7 @@ jobs:
             sleep 2
           done
           echo "::error::API never became ready"
-          docker compose -f infrastructure/docker/docker-compose.yml logs
+          docker compose --env-file .env -f infrastructure/docker/docker-compose.yml logs
           exit 1
       - uses: actions/setup-python@v5
         with:
@@ -306,7 +306,13 @@ jobs:
           fi
       - name: Docker compose logs (on failure)
         if: failure()
-        run: docker compose -f infrastructure/docker/docker-compose.yml logs
+        # --env-file .env is required here too, not just on the "up" step
+        # above: docker compose re-interpolates the whole compose file's
+        # environment blocks (POSTGRES_PASSWORD, AI_AGENT_SERVICE_SECRET,
+        # ...) for ANY subcommand, logs and down included, not just up.
+        # Without it this step itself errored out, which meant a failed
+        # run never actually printed the diagnostic logs it exists for.
+        run: docker compose --env-file .env -f infrastructure/docker/docker-compose.yml logs
       - name: Tear down
         if: always()
-        run: docker compose -f infrastructure/docker/docker-compose.yml down -v
+        run: docker compose --env-file .env -f infrastructure/docker/docker-compose.yml down -v

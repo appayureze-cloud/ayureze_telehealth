@@ -28,6 +28,16 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://127.0.0.1:4174",
     reuseExistingServer: true,
-    timeout: 30_000,
+    // 30s wasn't enough on this job's first real CI run (ci.yml's
+    // e2ee-harness job, gated behind go/python/web passing, had never
+    // completed a full run before) — Playwright reported a plain timeout,
+    // no crash. A local cold `vite` start here took ~1-2s, so the CI
+    // runner's slower disk/CPU closing the gap to 30s is the most likely
+    // explanation, but that's not fully confirmed. Bumped to 90s for
+    // headroom, and piping stdout/stderr below so a repeat failure shows
+    // vite's actual output in the job log instead of nothing.
+    timeout: 90_000,
+    stdout: "pipe",
+    stderr: "pipe",
   },
 });
