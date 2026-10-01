@@ -125,6 +125,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # tests/conftest.py's _load_env() requires a real repo-root .env to
+      # exist (hard RuntimeError otherwise) — same requirement as the
+      # go-integration job above, just for the ai-agent's own test suite.
+      # Working-directory is repo root here, overriding this job's default
+      # of apps/ai-agent, since that's where .env.example actually lives.
+      - name: Create .env (test loader requires the file to exist)
+        working-directory: .
+        run: cp .env.example .env
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
