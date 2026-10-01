@@ -104,13 +104,13 @@ jobs:
       - name: Build ai-agent image
         run: docker build -t ayureze-ai-agent:scan apps/ai-agent
       - name: Scan api image
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ayureze-api:scan
           severity: CRITICAL,HIGH
           exit-code: "1"
       - name: Scan ai-agent image
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ayureze-ai-agent:scan
           severity: CRITICAL,HIGH
