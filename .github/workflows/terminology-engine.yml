@@ -102,4 +102,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: docker compose build
         working-directory: ayureze-terminology-engine
+        # TERMINOLOGY_POSTGRES_PASSWORD only needs a value here, never a
+        # real one: `docker compose build` interpolates every service's
+        # environment block while parsing the file, including postgres's
+        # required password, even though postgres itself is never started
+        # or built in this job (only terminology-api is).
+        env:
+          TERMINOLOGY_POSTGRES_PASSWORD: ci-build-only-unused
         run: docker compose build terminology-api
