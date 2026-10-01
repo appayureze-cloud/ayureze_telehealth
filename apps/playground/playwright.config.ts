@@ -9,7 +9,10 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4173",
     launchOptions: {
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || "/opt/pw-browsers/chromium",
+      // See apps/e2e-harness/playwright.config.ts's comment: no hardcoded
+      // fallback path here — that's one specific sandbox's own Chromium
+      // location, not something `playwright install` sets up elsewhere.
+      ...(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {}),
       args: [
         // Chromium's built-in synthetic camera (moving test pattern) + mic
         // (a tone), so WebRTC media flows without real hardware/a display.

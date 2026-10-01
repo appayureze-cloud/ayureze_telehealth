@@ -14,7 +14,16 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4174",
     launchOptions: {
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || "/opt/pw-browsers/chromium",
+      // PLAYWRIGHT_CHROMIUM_PATH is an opt-in override for sandboxes that
+      // pre-install Chromium outside Playwright's own management (e.g. at
+      // /opt/pw-browsers/chromium). It must never have a hardcoded fallback
+      // to that same sandbox-specific path: this failed in real CI with
+      // "executable doesn't exist at /opt/pw-browsers/chromium", because
+      // ci.yml's `npx playwright install --with-deps chromium` installs
+      // into Playwright's own default cache location, not that path.
+      // Omitting executablePath entirely (when the env var isn't set) lets
+      // Playwright resolve whatever `playwright install` actually set up.
+      ...(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {}),
       args: [
         // Chromium's synthetic camera (moving test pattern) + tone
         // generator, so real WebRTC media capture/encode/E2EE-encrypt/
