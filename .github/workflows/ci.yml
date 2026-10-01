@@ -87,6 +87,19 @@ jobs:
             curl -sf http://localhost:7880/ && break
             sleep 1
           done
+      # The full docker-compose stack enables these via
+      # infrastructure/docker/postgres/init/001_extensions.sql, mounted
+      # into /docker-entrypoint-initdb.d/ on first container start. A plain
+      # `services:` container (used here) has no such init-script hook, so
+      # apps/api's migrations — which use CITEXT and gen_random_uuid() from
+      # Day 3 onward — fail with 'type "citext" does not exist' without
+      # this. Reproduced and confirmed fixed locally against a real
+      # Postgres 16.4-alpine container, running the actual db.Migrate() Go
+      # code (not just the raw SQL).
+      - name: Enable required Postgres extensions (citext, pgcrypto)
+        run: |
+          PGPASSWORD=ci-postgres-password psql -h localhost -U ayureze -d ayureze_telehealth \
+            -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto"; CREATE EXTENSION IF NOT EXISTS "citext";'
       # test/integration/env.go's loadRootEnv() requires a real .env file at
       # the repo root to exist (os.Open fails hard otherwise) — it reads
       # defaults from it for any variable not already set in the process
