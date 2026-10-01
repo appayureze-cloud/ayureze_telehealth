@@ -1,0 +1,15 @@
+# Trivy ignore list for the container-scan job (see
+# .github/workflows/security.yml). One CVE per line, as Trivy prints it.
+#
+# CVE-2026-23949 (jaraco.context path traversal, fixed upstream in
+# jaraco.context 6.1.0): this package is not a direct or transitive
+# dependency of anything this repo installs — it is vendored INSIDE
+# setuptools itself, at setuptools/_vendor/jaraco.context-*.dist-info.
+# Confirmed by installing the latest available setuptools (84.0.0 as of
+# this writing) into a clean venv and inspecting its _vendor directory: it
+# still bundles the vulnerable 5.3.0 copy. There is no newer setuptools
+# release yet whose vendored copy is patched, so no `pip install --upgrade`
+# on our side can reach a fix — this has to wait on setuptools' own next
+# vendoring refresh. Re-check (and remove this line) next time
+# .github/workflows/security.yml's container-scan job is touched.
+CVE-2026-23949

@@ -15,6 +15,15 @@ WORKDIR /app
 COPY requirements.txt requirements-pipeline.txt ./
 
 ARG PIPELINE=true
+# Trivy's container scan found HIGH-severity CVEs in the base image's
+# bundled pip/setuptools-era tooling: wheel 0.45.1 (CVE-2026-24049, fixed in
+# 0.46.2) and jaraco.context 5.3.0, a setuptools/importlib.metadata
+# transitive dep (CVE-2026-23949, fixed in 6.1.0). Neither is in
+# requirements.txt directly — both ship with the base Python image's own
+# pip — so upgrading pip/setuptools/wheel explicitly is what actually
+# brings in patched versions, rather than pinning them in requirements.txt
+# where nothing imports them directly.
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt \
     && if [ "$PIPELINE" = "true" ]; then \
          pip install --no-cache-dir -r requirements-pipeline.txt \

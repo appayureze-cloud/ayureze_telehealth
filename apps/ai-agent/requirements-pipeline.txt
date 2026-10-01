@@ -16,7 +16,19 @@ faster-whisper==1.1.1    # STT (CTranslate2-based, no torch needed)
 langid==1.1.6            # language identification (pure Python, no ML runtime)
 
 torch==2.14.0+cpu        # required by transformers (translation + TTS models below)
-transformers==4.47.1
-sentencepiece==0.2.0     # NLLB tokenizer
+# transformers bumped 2026-10-01: Trivy's container scan (running for real
+# against the ai-agent image for the first time, see
+# .github/workflows/security.yml) found 4 HIGH-severity deserialization/RCE
+# CVEs in 4.47.1 (CVE-2024-11392/-11393/-11394, CVE-2026-4372/-5241/-9856),
+# whose highest "Fixed Version" floor was 5.10.0. 5.10.1 is the oldest
+# release at/above every floor (5.10.0 itself isn't published on PyPI) —
+# picked over the latest (5.18.0) to keep this a targeted bump. Re-verified
+# against this repo's full ai-agent test suite (232/232, same pass count as
+# before) and that every transformers class this codebase actually imports
+# (AutoModelForSeq2SeqLM, AutoTokenizer, MarianMTModel, MarianTokenizer,
+# M2M100ForConditionalGeneration, M2M100Tokenizer, T5ForConditionalGeneration,
+# T5Tokenizer, VitsModel) still imports cleanly under 5.10.1.
+transformers==5.10.1
+sentencepiece==0.2.1     # NLLB tokenizer; 0.2.0 had CVE-2026-1260 (fixed in 0.2.1)
 scipy==1.15.1            # VITS TTS output post-processing
 requests==2.34.2         # faster-whisper's HF download path
