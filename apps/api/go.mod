@@ -1,6 +1,12 @@
 module github.com/ayureze/telehealth/api
 
-go 1.26.0
+// Bumped from 1.26.0 2026-09-30: govulncheck (running for real against this
+// exact pin for the first time, see .github/workflows/security.yml) found 24
+// Go standard library vulnerabilities whose highest "Fixed in" version among
+// them was 1.26.6 (net/url, html/template, crypto/tls, net/http,
+// encoding/xml, encoding/asn1) — actions/setup-go reads this line via
+// go-version-file and installs exactly this patch version.
+go 1.26.6
 
 require (
 	github.com/go-chi/chi/v5 v5.3.2
