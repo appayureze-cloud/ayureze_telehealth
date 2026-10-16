@@ -38,8 +38,17 @@ type Config struct {
 
 	// E2EEMasterKeyHex envelope-encrypts per-session media keys at rest
 	// (internal/e2ee). In production this should come from a real KMS —
-	// a static env var is a documented local-dev simplification.
+	// a static env var is a documented local-dev simplification. Only
+	// read/required when E2EEMasterKeyProvider is "env" (the default).
 	E2EEMasterKeyHex string
+
+	// E2EEMasterKeyProvider selects which e2ee.MasterKeyProvider backs
+	// KeyManager: "env" (default, local-dev) or "vault" (HashiCorp Vault
+	// Transit engine, production — see internal/e2ee/vault_provider.go).
+	E2EEMasterKeyProvider string
+	VaultAddr             string
+	VaultTransitKeyName   string
+	VaultK8sRole          string
 
 	// AIAgentServiceSecret authenticates the AI agent (Day 5) to the
 	// internal authorization endpoint — a service credential, not a human
@@ -119,9 +128,28 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.E2EEMasterKeyHex, err = requireEnv("API_E2EE_MASTER_KEY_HEX")
-	if err != nil {
-		return nil, err
+	cfg.E2EEMasterKeyProvider = getEnvDefault("E2EE_MASTER_KEY_PROVIDER", "env")
+	switch cfg.E2EEMasterKeyProvider {
+	case "env":
+		cfg.E2EEMasterKeyHex, err = requireEnv("API_E2EE_MASTER_KEY_HEX")
+		if err != nil {
+			return nil, err
+		}
+	case "vault":
+		cfg.VaultAddr, err = requireEnv("VAULT_ADDR")
+		if err != nil {
+			return nil, err
+		}
+		cfg.VaultTransitKeyName, err = requireEnv("VAULT_TRANSIT_KEY_NAME")
+		if err != nil {
+			return nil, err
+		}
+		cfg.VaultK8sRole, err = requireEnv("VAULT_K8S_ROLE")
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid E2EE_MASTER_KEY_PROVIDER %q: must be \"env\" or \"vault\"", cfg.E2EEMasterKeyProvider)
 	}
 	cfg.AIAgentServiceSecret, err = requireEnv("AI_AGENT_SERVICE_SECRET")
 	if err != nil {

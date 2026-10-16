@@ -33,15 +33,38 @@ type MasterKeyProvider interface {
 
 `KeyManager` (what `internal/sessionsvc` actually calls —
 `GenerateSessionKey`, `Encrypt`, `Decrypt`) holds a `MasterKeyProvider`
-and knows nothing about how it works. `EnvMasterKeyProvider` implements
-it today (AES-256-GCM over the hex env var, unchanged behavior — all 5
-existing unit tests and all 14 integration tests still pass against it,
-re-verified this pass). Swapping to a real KMS/Vault backend in
-production is **one call site**
-(`internal/appwire/appwire.go:67`, currently
-`e2ee.NewKeyManager(cfg.E2EEMasterKeyHex)`) — nothing in
-`internal/sessionsvc`, `internal/consentsvc`, or any HTTP handler needs
-to know or care.
+and knows nothing about how it works. `EnvMasterKeyProvider`
+(AES-256-GCM over the hex env var) remains the local-dev default.
+
+A second, real implementation now exists:
+`VaultMasterKeyProvider` (`apps/api/internal/e2ee/vault_provider.go`),
+backed by HashiCorp Vault's Transit secrets engine. It is selected by
+setting `E2EE_MASTER_KEY_PROVIDER=vault` (see `.env.example`), which
+`internal/appwire.buildKeyManager` reads to choose between the two —
+nothing in `internal/sessionsvc`, `internal/consentsvc`, or any HTTP
+handler needs to know or care which one is active. `VaultMasterKeyProvider`:
+
+- Authenticates via Vault's **Kubernetes auth method** — a direct
+  `POST /v1/auth/kubernetes/login` call using the pod's own projected
+  ServiceAccount token (`/var/run/secrets/kubernetes.io/serviceaccount/token`),
+  not the Vault Agent Injector sidecar. This keeps the API container
+  self-contained: no sidecar/webhook coordination beyond what every pod
+  already gets from its ServiceAccount.
+- Calls `POST /v1/transit/encrypt/<key>` / `/v1/transit/decrypt/<key>`
+  per operation — the master key material never leaves Vault, and this
+  process only ever holds per-call ciphertext/plaintext and a
+  short-lived Vault token (cached in memory, transparently re-acquired
+  within 30s of lease expiry or on a 403 from a revoked/expired token).
+- Is unit-tested against a fake in-process Vault HTTP server
+  (`vault_provider_test.go`): login, encrypt/decrypt round trip, the
+  403-then-relogin retry path, and config validation. **Not yet
+  verified against a real Vault server** — no Vault instance exists in
+  this sandbox; see `infrastructure/k8s/` for the ClusterRole/Role
+  binding Vault's Kubernetes auth method needs on the cluster side, and
+  run the same three `EnvMasterKeyProvider` test shapes (tamper-fails,
+  fresh-nonce-per-call isn't applicable here since Transit handles that
+  server-side, mismatched-key-fails-closed) against a real `vault -dev`
+  server before trusting this in production.
 
 This is deliberately the *only* abstraction introduced. The other
 secrets above (`API_JWT_SIGNING_SECRET`, `LIVEKIT_API_KEY/SECRET`,
@@ -61,11 +84,12 @@ only deployment tooling.
 ## Choosing a `MasterKeyProvider` backend
 
 Do not implement all three "just in case" — pick one based on where the
-system actually deploys, and implement only that one for real (with
-integration tests against a real instance/emulator of it, not just a
-unit test with a fake). This build does not deploy anywhere yet, so none
-is implemented; the interface exists so this decision is deferred
-without blocking anything else.
+system actually deploys. This repo targets vanilla Kubernetes (see
+`infrastructure/k8s/`), so **HashiCorp Vault (Transit engine)** is the
+one implemented for real (`VaultMasterKeyProvider`, above). AWS KMS and
+GCP KMS remain sketches only — implement one of those instead of Vault
+only if the actual deploy target changes to that cloud's managed k8s,
+and give it the same real-backend verification Vault still needs.
 
 | Backend | When to pick it | Sketch |
 |---|---|---|

@@ -6,6 +6,7 @@ package appwire
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -71,7 +72,7 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	logger := logging.New("ayureze-api", cfg.Environment)
 
-	keys, err := e2ee.NewKeyManager(cfg.E2EEMasterKeyHex)
+	keys, err := buildKeyManager(cfg)
 	if err != nil {
 		pool.Close()
 		_ = redisClient.Close()
@@ -115,6 +116,28 @@ func Build(ctx context.Context, cfg *config.Config) (*App, error) {
 	handler := httpapi.NewRouter(srv, logger, cfg.CORSAllowedOrigins, rateLimiter)
 
 	return &App{Server: srv, Handler: handler, Logger: logger, Pool: pool, Redis: redisClient, Stores: stores, tracerCleanup: tracerCleanup}, nil
+}
+
+// buildKeyManager selects the e2ee.MasterKeyProvider backend per
+// cfg.E2EEMasterKeyProvider — "env" (local-dev, the default) or "vault"
+// (HashiCorp Vault Transit engine, production). config.Load already
+// validates that the fields each branch needs are non-empty before this
+// runs, and rejects any other value outright.
+func buildKeyManager(cfg *config.Config) (*e2ee.KeyManager, error) {
+	switch cfg.E2EEMasterKeyProvider {
+	case "vault":
+		provider, err := e2ee.NewVaultMasterKeyProvider(e2ee.VaultProviderConfig{
+			Addr:           cfg.VaultAddr,
+			TransitKeyName: cfg.VaultTransitKeyName,
+			K8sRole:        cfg.VaultK8sRole,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("vault master key provider: %w", err)
+		}
+		return e2ee.NewKeyManagerWithProvider(provider), nil
+	default:
+		return e2ee.NewKeyManager(cfg.E2EEMasterKeyHex)
+	}
 }
 
 // Close releases the database and Redis connections and flushes any
