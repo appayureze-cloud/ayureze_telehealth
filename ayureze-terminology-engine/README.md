@@ -140,10 +140,14 @@ target markets, but not yet obtained) before its adapter can be enabled.
   `/health`, `/v1/stats`, and `/v1/terminology/search` responses against
   the live 5,085-concept database: (1) the sandbox's outbound HTTPS proxy
   binds to host-local loopback, unreachable from a container's isolated
-  network namespace — fixed with `network: host` on the build (a no-op on
-  a normal host with unrestricted network access) plus an optional
-  proxy-CA-trust step in the Dockerfile that only activates if a
-  `ca-bundle.crt` file is present in the build context; (2) a genuine,
+  network namespace — fixed with an opt-in `TERMINOLOGY_BUILD_NETWORK=host`
+  build-time network override (see `.env.example`; defaults to normal
+  bridge networking everywhere else, since a bare `network: host` is a
+  privileged Buildx entitlement that broke this exact build on GitHub
+  Actions once this repo had real CI — see PR #1's `docker compose build
+  (terminology-api image)` check) plus an optional proxy-CA-trust step in
+  the Dockerfile that only activates if a `ca-bundle.crt` file is present
+  in the build context; (2) a genuine,
   sandbox-independent Dockerfile bug — `COPY pyproject.toml` ran before
   `COPY . .`, so `pip install .` failed with "package directory 'api' does
   not exist" on ANY machine, since this project's `pyproject.toml` lists

@@ -28,15 +28,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # host networking at BUILD time only (this has no effect on the
+      # Opt-in host networking at BUILD time only (never affects the
       # running container, which stays on terminology-net below) — lets
       # `pip install` reach the network from behind a build host's own
-      # local proxy (e.g. a corporate proxy, or this sandbox's
+      # local proxy (e.g. a corporate proxy, or a sandbox's
       # TLS-intercepting proxy at 127.0.0.1, see /root/.ccr/README.md)
       # that would otherwise be unreachable from a container's isolated
-      # network namespace. A no-op on a host with normal, unrestricted
-      # network access.
-      network: host
+      # network namespace. Defaults to "default" (normal bridge build
+      # network) — NOT a bare `network: host`, which Docker Buildx
+      # treats as a privileged entitlement a CI runner doesn't grant by
+      # default (`docker compose build` on GitHub Actions fails outright
+      # with "additional privileges requested: pass
+      # --allow=network.host"). Set TERMINOLOGY_BUILD_NETWORK=host only
+      # in an environment that actually needs it (see .env.example).
+      network: ${TERMINOLOGY_BUILD_NETWORK:-default}
       args:
         HTTPS_PROXY: ${HTTPS_PROXY:-}
     container_name: terminology-api
