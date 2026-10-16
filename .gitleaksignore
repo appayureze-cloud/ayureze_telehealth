@@ -1,0 +1,17 @@
+# gitleaks fingerprint allowlist (see .github/workflows/security.yml's
+# secret-scan job). Format: one Fingerprint value per line, exactly as
+# gitleaks itself prints it ("commit:file:rule:line") — see
+# https://github.com/gitleaks/gitleaks#gitleaksignore.
+#
+# These 4 are confirmed-fake, hardcoded CI-only placeholder values in
+# .github/workflows/ci.yml (e.g. "ci-secret-at-least-32-bytes-long",
+# "ci-jwt-signing-secret-at-least-32-bytes") that LiveKit/the Go API
+# require to be >=32 bytes just to start, used only inside ephemeral
+# GitHub Actions runners — never a real secret for any live system. Each
+# fingerprint names the historical commit that introduced the line, so it
+# stays valid even as ci.yml is edited later. A genuinely new secret
+# anywhere else in the repo still fails the scan as intended.
+d728a0515ca7d6b320e9a9f8135ece394b3b1b0a:.github/workflows/ci.yml:generic-api-key:83
+d728a0515ca7d6b320e9a9f8135ece394b3b1b0a:.github/workflows/ci.yml:generic-api-key:99
+d728a0515ca7d6b320e9a9f8135ece394b3b1b0a:.github/workflows/ci.yml:generic-api-key:191
+d728a0515ca7d6b320e9a9f8135ece394b3b1b0a:.github/workflows/ci.yml:generic-api-key:198

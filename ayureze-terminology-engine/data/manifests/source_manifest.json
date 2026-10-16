@@ -1,0 +1,195 @@
+{
+  "generated_at": "2026-09-26",
+  "note": "Every field below was verified directly (git clone + file inspection, or live license-page fetch) on 2026-09-26 — none is guessed. See docs/LICENSE_MATRIX.md for the full legal analysis this manifest feeds.",
+  "sources": [
+    {
+      "source_name": "herb_database",
+      "repository_url": "https://github.com/sciencewithsaucee-sudo/herb-database",
+      "version_or_commit": "9793cd44a6bb9fcebf11e4fea2f646030cf98366",
+      "commit_date": "2026-06-07",
+      "license": "CC-BY-4.0",
+      "retrieved_at": "2026-09-26",
+      "record_count": 360,
+      "files": ["herb.json", "LICENSE", "CITATION.cff"],
+      "schema_summary": {
+        "format": "JSON array of objects",
+        "fields": ["name", "botanical_name", "family", "english_name", "sanskrit_synonyms[]", "part_used[]", "main_indications[]", "image", "link", "preview", "pacify[]", "aggravate[]", "tridosha (bool)", "rasa[]", "guna[]", "virya", "vipaka", "prabhav[]"],
+        "identifier_field": "name (not a stable ID — no numeric/code identifier field exists in this dataset; the ingestion pipeline mints its own source_record_id as a stable row index)",
+        "language_script": "English (herb/family/english_name/part_used/indications labels use IAST-style Sanskrit transliteration in Latin script, e.g. 'Tulsi', 'Kasa') — no Devanagari script present"
+      },
+      "commercial_use_status": "verified",
+      "notes": "CITATION.cff confirms license: CC-BY-4.0 explicitly; LICENSE file body confirmed as the genuine CC BY 4.0 legal text with no ShareAlike/NonCommercial clause (grepped for both terms, zero matches). Published by 'Amidha Ayurveda' (same publisher as the explicitly EXCLUDED 'Amidha Genomics Dataset' — this is a DIFFERENT, separately-licensed dataset from the same org and is explicitly on the approved list; not excluded by association. Attribution required: cite per CITATION.cff (Sparsh Varshney, Amidha Ayurveda & Uttarakhand Ayurved University, DOI 10.5281/zenodo.20581467)."
+    },
+    {
+      "source_name": "bhaishajya_kalpana_kosha",
+      "repository_url": "https://github.com/sciencewithsaucee-sudo/Bhaishajya-Kalpana-Kosha",
+      "version_or_commit": "509f8be30e30062b5c010dfd4f7bb54ac827c40b",
+      "commit_date": "2026-01-23",
+      "license": "CC-BY-4.0",
+      "retrieved_at": "2026-09-26",
+      "record_count": 176,
+      "files": ["Bhaishajya-Kalpana-Kosha.json", "LICENSE"],
+      "schema_summary": {
+        "format": "JSON array of objects",
+        "fields": ["name", "type", "category", "main_ingredients[]", "ingredients (free text)", "reference", "indications (free text)", "dosage (free text)", "anupana (free text)"],
+        "identifier_field": "name (no stable numeric/code ID in source)",
+        "language_script": "English + Latin-script Sanskrit transliteration"
+      },
+      "commercial_use_status": "verified",
+      "notes": "LICENSE file body confirmed as genuine CC BY 4.0 text, no ShareAlike/NonCommercial clause. dosage/ingredients/indications are unstructured free text in the source (e.g. dosage='3-6 grams') — the ingestion pipeline stores these verbatim as concept definition text and does NOT attempt to parse them into structured numeric dosage fields in Phase 1 (that would be inventing structure the source doesn't provide as data)."
+    },
+    {
+      "source_name": "encyclopedia_of_ayurvedic_pathology",
+      "repository_url": "https://github.com/sciencewithsaucee-sudo/Encyclopedia-of-Ayurvedic-Pathology",
+      "version_or_commit": "59d0826f027f74b8fdc60c972bae582d2df6bd70",
+      "commit_date": "2026-01-06",
+      "license": "CC-BY-4.0",
+      "retrieved_at": "2026-09-26",
+      "record_count": 203,
+      "files": ["Encyclopedia-of-Ayurvedic-Pathology.json", "LICENSE"],
+      "schema_summary": {
+        "format": "JSON array of objects",
+        "fields": ["sanskritName (Devanagari)", "transliteratedName", "correlation (a biomedical term, source-asserted)", "system", "sadhyaAsadhyata", "nidana[]", "purvarupa[]", "rupa[]", "upashaya[]", "anupashaya[]", "samprapti", "bheda[]", "chikitsa", "keyFormulations[]", "reference"],
+        "identifier_field": "transliteratedName (no stable numeric/code ID in source)",
+        "language_script": "Devanagari (sanskritName) + Latin-script transliteration + English"
+      },
+      "commercial_use_status": "verified",
+      "notes": "LICENSE file body confirmed genuine CC BY 4.0, no ShareAlike/NonCommercial. The 'correlation' field (e.g. Amavata -> 'Rheumatoid Arthritis') is a REAL, source-provided cross-reference to a biomedical term — used as evidence for a RELATED_TO (not EXACT_MATCH) concept_relationship per spec section 11; this codebase never upgrades it to EXACT_MATCH on its own authority."
+    },
+    {
+      "source_name": "siddhanta_kosha",
+      "repository_url": "https://github.com/sciencewithsaucee-sudo/Siddhanta-Kosha",
+      "version_or_commit": "c7ad045b47035182c81522f5591b2f55702be21e",
+      "commit_date": "2025-10-30",
+      "license": "CC-BY-4.0",
+      "retrieved_at": "2026-09-26",
+      "record_count": 162,
+      "files": ["Siddhanta-Kosha.json", "LICENSE"],
+      "schema_summary": {
+        "format": "JSON array of objects",
+        "fields": ["name (includes Devanagari in parentheses)", "category", "shloka (Devanagari verse)", "shloka_ref", "explanation", "clinical_importance"],
+        "identifier_field": "name (no stable numeric/code ID in source)",
+        "language_script": "English name + Devanagari (name parenthetical + shloka) + English explanation"
+      },
+      "commercial_use_status": "verified",
+      "notes": "LICENSE file body confirmed genuine CC BY 4.0, no ShareAlike/NonCommercial clause."
+    },
+    {
+      "source_name": "ayurwiki",
+      "repository_url": "https://github.com/hpnadig/ayurwiki",
+      "version_or_commit": "0f5fc06a18cf1a7f332e1aaa07fec6a868b74088",
+      "commit_date": "2026-09-19",
+      "license": "CC-BY-SA-4.0",
+      "retrieved_at": "2026-09-26",
+      "record_count": 3957,
+      "files": ["docs/herbs/*.md (2215 files)", "docs/medicines/*.md (1536 files)", "docs/concepts/*.md (38 files)", "docs/physiology/*.md (168 files)", "README.md"],
+      "schema_summary": {
+        "format": "MkDocs Markdown with YAML frontmatter",
+        "fields": ["title", "categories[] (frontmatter)", "date (frontmatter)", "## Uses / ## Parts Used / ## Chemical Composition / ## Common names / ## Properties (Dravya/Rasa/Guna/Veerya/Vipaka/Karma/Prabhava) / ## Identification / etc. (free-text Markdown sections, section presence and naming varies per article)"],
+        "identifier_field": "file path / frontmatter title (no numeric/code ID)",
+        "language_script": "English"
+      },
+      "commercial_use_status": "verified",
+      "notes": "README.md's own License section states verbatim: 'Content is available under Creative Commons Attribution-ShareAlike (https://creativecommons.org/licenses/by-sa/4.0/).' THIS IS A REAL, IMPORTANT DIFFERENCE from the other 4 Ayurveda sources (which are plain CC-BY-4.0, no ShareAlike): CC-BY-SA-4.0 requires that any derivative/adapted database incorporating this content be distributed under the SAME license terms. Commercial use is still permitted, but a fully proprietary, closed canonical concept database that mixes in AyurWiki-derived content may trigger a ShareAlike obligation on the derived data. THIS IS A REAL, UNRESOLVED PRODUCT/LEGAL DECISION — see docs/LICENSE_MATRIX.md's prominent flag. Repository also contains ~380MB of images/books/yoga/traditions/manufacturers content NOT copied into data/raw/ or ingested in this phase (out of the approved domain-type scope: HERB/FORMULATION/AYURVEDIC_CONCEPT/PATHOLOGY_TERM/SIDDHANTA/BOTANICAL_TERM/MEDICINE_TERM — yoga/traditions/manufacturers don't map to any of these). Only herbs/medicines/concepts/physiology sections were retrieved and ingested. Many articles are stub pages with mostly-empty sections (a real, observed data-quality issue — see docs/DATA_QUALITY_REPORT.md) — record_count reflects files present, not files with complete content."
+    },
+    {
+      "source_name": "namaste",
+      "repository_url": "https://github.com/siddhanthsain/NAMASTE/tree/main/namaste-fhir-service",
+      "version_or_commit": "f141d7669e28840c3e3b8ccf793bbc259fbb8311",
+      "commit_date": "2026-04-01",
+      "license": "unknown",
+      "retrieved_at": "2026-09-26",
+      "record_count": 14,
+      "files": ["namaste_sample.csv", "backend/app/models/namaste.py (schema reference only)", "backend/app/fhir/ (FHIR CodeSystem generation reference only)"],
+      "schema_summary": {
+        "format": "CSV (sample) + Pydantic model (schema reference)",
+        "fields": ["namaste_code", "term_english", "term_original", "system (Ayurveda/Siddha/Unani)", "category", "tm2_code (nullable)", "tm2_display (nullable)", "icd_biomedicine_code (nullable)", "icd_biomedicine_display (nullable)", "confidence_score (nullable)", "mapping_status"],
+        "identifier_field": "namaste_code",
+        "language_script": "English"
+      },
+      "commercial_use_status": "unknown",
+      "notes": "IMPORTANT, HONEST FINDING: no LICENSE file exists anywhere in this repository -- commercial_use_status is correctly 'unknown' per this phase's explicit rule ('DO NOT guess licenses... mark unknown'). SEPARATELY IMPORTANT: this repository's own README advertises 'all 7,363 NAMASTE codes' but the actual repository content is a 14-ROW SAMPLE CSV ('namaste_sample.csv') -- the real, full dataset lives in a live external MongoDB instance behind this project's own backend service, which is NOT part of the approved GitHub source and was NOT accessed in this phase. Only the 14 real sample rows were ingested. The Ministry of AYUSH's own live NAMASTE portal (the actual government data source) is a SEPARATE system this phase did not access -- see docs/DATA_QUALITY_REPORT.md and the final report's 'known limitations' for what real full ingestion would require (either the live NAMASTE government portal, out of this phase's approved-source list, or a data-sharing agreement with this repo's own authors for their MongoDB contents)."
+    },
+    {
+      "source_name": "who_icd11_tm2",
+      "repository_url": "https://icd.who.int/icdapi",
+      "version_or_commit": "N/A -- live API, not a versioned file source",
+      "commit_date": "N/A",
+      "license": "CC-BY-ND-3.0-IGO",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {
+        "format": "N/A -- adapter architecture only, no local copy (spec section 18: 'Do NOT blindly copy external terminology databases into PostgreSQL')",
+        "note": "TM2 (Traditional Medicine Module 2) covers 529 Ayurveda/Siddha/Unani-derived disorder categories, part of ICD-11 since its 2019 WHO endorsement (effective for reporting 2022); India's national TM2 implementation launched 2024."
+      },
+      "commercial_use_status": "verified",
+      "notes": "Verified directly from https://icd.who.int/icdapi/docs2/license/ (2026-09-26): CC BY-ND 3.0 IGO. Commercial use IS permitted for lookup/display/incorporation into software, with two real, binding conditions: (1) codes/titles must be reproduced as WHO issued them (ND = No-Derivatives -- cannot alter them or use ICD-11 to build a competing classification), (2) formal citation required ('International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019'). CRITICALLY: WHO's own license text states that mapping/crosswalk/translation work BETWEEN ICD-11 and another system (exactly what a NAMASTE<->ICD-11 or Ayurveda<->ICD-11 mapping is) is NOT covered by the base Classifications License and requires a SEPARATE WRITTEN AGREEMENT from WHO if such a mapping is to be published/distributed (live API lookups are fine without it). This phase's mappings/ adapter only performs live, on-demand API lookups -- it does not compile or distribute a bulk NAMASTE-to-ICD-11 mapping table, so the base license is sufficient for what Phase 1 actually does; publishing such a mapping table would need that separate WHO agreement first. Free registration required (OAuth2 client-credentials) at https://icd.who.int/icdapi; exact API rate limit not published -- unverified, recommend checking the API dashboard before production use."
+    },
+    {
+      "source_name": "snomed_ct",
+      "repository_url": "https://www.snomed.org",
+      "version_or_commit": "N/A -- licensed terminology server required, no local copy",
+      "commit_date": "N/A",
+      "license": "SNOMED-CT-Affiliate-License",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {"format": "N/A -- DISABLED by default per spec section 18 ('SNOMED CT must remain disabled unless valid licensing and an appropriate terminology server are configured')"},
+      "commercial_use_status": "unknown",
+      "notes": "Verified directly from snomed.org/members (2026-09-26): India, UK, Singapore, Malaysia, UAE, Saudi Arabia, and Qatar (all of this product's target markets, per prior work in this repository) are confirmed current SNOMED International Member territories, so a FREE Affiliate License is realistically obtainable -- but ONLY after formally registering through a Member country's National Release Center (NRC) and signing the SNOMED CT Affiliate License Agreement; it is not usable with zero process. UNRESOLVED, recommend legal review: whether one Member country's (e.g. India's) Affiliate License covers a SaaS product serving patients physically located in the OTHER Member markets too, or whether each market needs separate registration. commercial_use_status is 'unknown' because no license has actually been obtained -- this is a real prerequisite, not a formality to skip. The adapter architecture (mappings/snomed.py) is written to call an external, separately-licensed terminology server (e.g. a self-hosted Snowstorm instance) and raises clearly if none is configured -- it never stores SNOMED content locally."
+    },
+    {
+      "source_name": "loinc",
+      "repository_url": "https://loinc.org",
+      "version_or_commit": "N/A -- adapter architecture only",
+      "commit_date": "N/A",
+      "license": "LOINC-License",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {"format": "N/A -- adapter architecture only, not bulk-copied"},
+      "commercial_use_status": "verified",
+      "notes": "Verified via LOINC's own FAQ/KB and Regenstrief's official documentation (2026-09-26; the raw license page itself returned a bot-challenge in this session, so exact clause wording is high-confidence but not verbatim-verified -- flagged honestly rather than claimed as directly read). Commercial and non-commercial use both explicitly permitted, in perpetuity, no fee -- conditioned on attribution/preserving the copyright notice and NOT altering LOINC content or using it to build a competing standard vocabulary. A free loinc.org account + click-through license acceptance is required before downloading/using the table."
+    },
+    {
+      "source_name": "rxnorm",
+      "repository_url": "https://www.nlm.nih.gov/research/umls/rxnorm/",
+      "version_or_commit": "N/A -- adapter architecture only",
+      "commit_date": "N/A",
+      "license": "UMLS-Metathesaurus-License",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {"format": "N/A -- adapter architecture only, not bulk-copied"},
+      "commercial_use_status": "verified",
+      "notes": "Verified via NLM's own RxNorm FAQ/Terms pages (2026-09-26). RxNorm has no separate simpler license of its own -- it is distributed as part of the UMLS Metathesaurus, requiring a free UMLS Metathesaurus License Agreement via a UMLS Terminology Services (UTS) account. Same free terms apply to commercial and non-commercial users. IMPORTANT CAVEAT (unverified in full, recommend legal review): RxNorm's release cross-references atoms from OTHER bundled source vocabularies (some proprietary drug compendia, some SNOMED CT drug content) that retain their OWN source-specific restrictions beyond the base UMLS license -- NLM publishes a per-source 'License Category' table that must be checked against whichever RxNorm content this product actually queries before treating all of it as uniformly free."
+    },
+    {
+      "source_name": "mesh",
+      "repository_url": "https://www.nlm.nih.gov/mesh/",
+      "version_or_commit": "N/A -- adapter architecture only",
+      "commit_date": "N/A",
+      "license": "NLM-MeSH-Terms",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {"format": "N/A -- adapter architecture only, not bulk-copied"},
+      "commercial_use_status": "verified",
+      "notes": "Verified directly from NLM's official terms page (https://www.nlm.nih.gov/databases/download/terms_and_conditions_mesh.html, 2026-09-26). Freely downloadable, no UMLS account needed for the standalone MeSH files, no fee, commercial use fine. Light conditions: acknowledge NLM as source, don't imply NLM endorsement, keep any redistributed copy reasonably current or disclose that it may not reflect the latest NLM data."
+    },
+    {
+      "source_name": "atc",
+      "repository_url": "https://atcddd.fhi.no",
+      "version_or_commit": "N/A -- adapter architecture only",
+      "commit_date": "N/A",
+      "license": "WHOCC-ATC-Restricted",
+      "retrieved_at": "2026-09-26",
+      "record_count": 0,
+      "files": [],
+      "schema_summary": {"format": "N/A -- lookup only, bulk copy explicitly prohibited by the source"},
+      "commercial_use_status": "restricted",
+      "notes": "Verified verbatim from the WHO Collaborating Centre for Drug Statistics Methodology's own disclaimer (https://atcddd.fhi.no/copyright_disclaimer/, fetched live 2026-09-26): 'Use of all or parts of the material requires reference to the WHO Collaborating Centre for Drug Statistics Methodology. Copying and distribution for commercial purposes is not allowed. Changing or manipulating the material is not allowed.' Free web lookup only is permitted; bulk-downloading and embedding the ATC/DDD index in a commercial product is EXPLICITLY PROHIBITED by the source's own published terms -- this is the single clearest license restriction found in this entire audit. No self-serve commercial licensing path was found; the only route is direct email negotiation with the WHO Collaborating Centre in Oslo, terms/cost unverified. mappings/atc.py must only ever perform live reference lookups, never store or redistribute the underlying index."
+    }
+  ]
+}

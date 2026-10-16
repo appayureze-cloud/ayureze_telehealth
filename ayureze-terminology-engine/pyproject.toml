@@ -1,0 +1,45 @@
+[project]
+name = "ayureze-terminology-engine"
+version = "0.1.0"
+description = "Standalone Ayurveda + biomedical terminology registry, search, and resolution API. Phase 1: not connected to the AyurEze AI pipeline, translation models, TTS, Safety Validator, LiveKit, or patient/doctor applications."
+requires-python = ">=3.12"
+readme = "README.md"
+
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "sqlalchemy==2.0.36",
+    "alembic==1.14.0",
+    "psycopg[binary]==3.2.3",
+    "httpx==0.28.1",
+    "pyyaml==6.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.2",
+    "ruff==0.8.4",
+]
+
+[tool.setuptools]
+packages = ["api", "config", "database", "deduplication", "ingestion", "mappings", "models", "normalization", "schemas", "services", "terminology"]
+
+[tool.ruff]
+# Wider than a typical convention deliberately: many lines here are long,
+# specific, human-readable strings (license notes, error messages citing
+# exact source fields) where wrapping mid-sentence hurts readability more
+# than the extra width does.
+line-length = 220
+target-version = "py312"
+exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires a real Postgres database (docker compose up -d postgres)",
+]

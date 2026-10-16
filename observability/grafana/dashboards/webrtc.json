@@ -1,0 +1,107 @@
+{
+  "title": "AyurEze Telehealth — WebRTC",
+  "uid": "ayureze-webrtc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ayureze", "webrtc", "livekit"],
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active rooms",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "livekit_room_total" }]
+    },
+    {
+      "id": 2,
+      "title": "Active participants",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "livekit_participant_total" }]
+    },
+    {
+      "id": 3,
+      "title": "Participant joins (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
+      "targets": [{ "expr": "rate(livekit_participant_join_total[5m])", "legendFormat": "joins/sec" }]
+    },
+    {
+      "id": 4,
+      "title": "Round-trip time (p50/p95/p99, ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 6 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_rtt_ms_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_rtt_ms_bucket[5m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(livekit_rtt_ms_bucket[5m])) by (le))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Jitter (p50/p95, µs)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 6 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_jitter_us_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_jitter_us_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Packet loss % (p50/p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 6 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_packet_loss_percent_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_packet_loss_percent_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Connection quality score (p50/p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 14 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_quality_score_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_quality_score_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "PLI (packet loss indication) total (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
+      "targets": [{ "expr": "rate(livekit_pli_total[5m])", "legendFormat": "pli/sec" }]
+    },
+    {
+      "id": 9,
+      "title": "Session join latency (p50/p95, ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 14 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_session_join_latency_ms_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_session_join_latency_ms_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Room duration (p50/p95, seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(livekit_room_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(livekit_room_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Packet bytes (rate, by direction)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "targets": [{ "expr": "rate(livekit_packet_bytes[5m])", "legendFormat": "{{direction}}" }]
+    }
+  ]
+}

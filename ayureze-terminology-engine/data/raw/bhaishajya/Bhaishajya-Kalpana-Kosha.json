@@ -1,0 +1,1993 @@
+[
+    {
+        "name": "Triphala Churna",
+        "type": "Churna",
+        "category": "Digestive System",
+        "main_ingredients": ["Haritaki", "Bibhitaki", "Amalaki"],
+        "ingredients": "Haritaki (Terminalia chebula), Bibhitaki (Terminalia bellirica), Amalaki (Emblica officinalis) in equal parts.",
+        "reference": "Bhavaprakasha / Sharngadhara Samhita",
+        "indications": "Mild laxative (Anulomana), Eye health (Chakshushya), Rejuvenative (Rasayana), Constipation (Vibandha).",
+        "dosage": "3-6 grams",
+        "anupana": "Warm water or honey & ghee."
+    },
+    {
+        "name": "Trikatu Churna",
+        "type": "Churna",
+        "category": "Digestive System",
+        "main_ingredients": ["Shunthi", "Pippali", "Maricha"],
+        "ingredients": "Shunthi (Zingiber officinale), Pippali (Piper longum), Maricha (Piper nigrum).",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+        "indications": "Indigestion (Ajeerna), Low digestive fire (Mandagni), Cough & Cold (Kasa, Pratishyaya), Obesity (Sthaulya).",
+        "dosage": "1-3 grams",
+        "anupana": "Honey or warm water."
+    },
+    {
+        "name": "Sitopaladi Churna",
+        "type": "Churna",
+        "category": "Respiratory System",
+        "main_ingredients": ["Sitopala", "Vamshalochana", "Pippali", "Ela", "Tvak"],
+        "ingredients": "Sitopala (Rock Sugar), Vamshalochana (Bamboo manna), Pippali (Piper longum), Ela (Elettaria cardamomum), Tvak (Cinnamomum zeylanicum).",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+        "indications": "Kasa (Cough), Shwasa (Asthma), Jwara (Fever), Kshaya (Tuberculosis), Mandagni (Low digestive fire).",
+        "dosage": "1-3 grams",
+        "anupana": "Madhu (Honey) & Ghrita (Ghee)."
+    },
+    {
+        "name": "Hingvashtak Churna",
+        "type": "Churna",
+        "category": "Digestive System",
+        "main_ingredients": ["Hingu", "Trikatu", "Ajamoda", "Jeeraka"],
+        "ingredients": "Shunthi, Maricha, Pippali, Ajamoda, Saindhava Lavana, Shveta Jeeraka, Krishna Jeeraka, Shuddha Hingu.",
+        "reference": "Bhaishajya Ratnavali, Agnimandya Rogadhikara",
+        "indications": "Abdominal bloating (Adhmana), Gas (Anaha), Indigestion (Agnimandya), Abdominal Pain (Shula). Primarily a Vata pacifier.",
+        "dosage": "2-4 grams",
+        "anupana": "Warm water or first morsel of food with ghee."
+    },
+    {
+        "name": "Avipattikar Churna",
+        "type": "Churna",
+        "category": "Digestive System",
+        "main_ingredients": ["Trivrit", "Triphala", "Trikatu", "Musta"],
+        "ingredients": "Trikatu, Triphala, Musta, Vida Lavana, Vidanga, Ela, Tejapatra, Trivrit, Lavanga, Sharkara.",
+        "reference": "Bhaishajya Ratnavali, Amlapitta Rogadhikara",
+        "indications": "Hyperacidity (Amlapitta), Constipation (Vibandha), Piles (Arsha). Primarily a Pitta pacifier.",
+        "dosage": "3-6 grams",
+        "anupana": "Cold water or coconut water."
+    },
+    {
+        "name": "Chandraprabha Vati",
+        "type": "Vati/Gutika",
+        "category": "Urinary System",
+        "main_ingredients": ["Shilajatu", "Guggulu", "Triphala", "Vacha", "Musta"],
+        "ingredients": "Vacha, Musta, Guduchi, Devadaru, Haridra, Ativisha, Daruharidra, Pippalimoola, Chitraka, Dhanyaka, Triphala, Chavya, Vidanga, Gaja Pippali, Trikatu, Makshika Bhasma, Yavakshara, Sarjikshara, Saindhava Lavana, Sauvarchala Lavana, Vida Lavana, Trivrit, Danti, Tejapatra, Tvak, Ela, Vamshalochana, Loha Bhasma, Sita, Shilajatu, Guggulu.",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+        "indications": "Urinary tract disorders (Mutraghata), Diabetes (Prameha), Kidney stones (Ashmari), General debility.",
+        "dosage": "1-2 tablets (250-500mg)",
+        "anupana": "Milk, water, or as prescribed."
+    },
+    {
+        "name": "Arogyavardhini Vati",
+        "type": "Vati/Gutika",
+        "category": "Detox (Ama Pachana)",
+        "main_ingredients": ["Kutaki", "Guggulu", "Chitrak", "Triphala", "Tamra Bhasma"],
+        "ingredients": "Shuddha Parada, Shuddha Gandhaka, Loha Bhasma, Abhraka Bhasma, Tamra Bhasma, Triphala, Shuddha Shilajatu, Shuddha Guggulu, Chitrakamoola, Kutaki.",
+        "reference": "Bhaishajya Ratnavali, Kushtha Rogadhikara",
+        "indications": "Liver disorders (Yakrit Vikara), Skin diseases (Kushtha), Chronic fever (Jeerna Jwara), Obesity (Sthaulya). Excellent for detox (Ama Pachana).",
+        "dosage": "1-2 tablets (250-500mg)",
+        "anupana": "Warm water or honey."
+    },
+    {
+        "name": "Sanjivani Vati",
+        "type": "Vati/Gutika",
+        "category": "Fever (Jwara)",
+        "main_ingredients": ["Vatsanabha", "Bhallataka", "Guduchi", "Triphala"],
+        "ingredients": "Vidanga, Shunthi, Pippali, Haritaki, Amalaki, Bibhitaki, Vacha, Guduchi, Shuddha Bhallataka, Shuddha Vatsanabha.",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+        "indications": "Fever (Jwara), Gastroenteritis (Visuchika), Indigestion with Ama, Snake bite and other toxic conditions.",
+        "dosage": "1-2 tablets (125-250mg)",
+        "anupana": "Ginger juice or warm water."
+    },
+    {
+        "name": "Triphala Guggulu",
+        "type": "Vati/Gutika",
+        "category": "Musculoskeletal System",
+        "main_ingredients": ["Triphala", "Guggulu", "Pippali"],
+        "ingredients": "Haritaki, Bibhitaki, Amalaki, Pippali, Shuddha Guggulu.",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+        "indications": "Joint pain with swelling (Amavata, Sandhivata), Piles (Arsha), Fistula (Bhagandara), Obesity (Sthaulya).",
+        "dosage": "2-4 tablets",
+        "anupana": "Warm water."
+    },
+    {
+        "name": "Triphala Ghrita",
+        "type": "Ghrita",
+        "category": "Nervous System",
+        "main_ingredients": ["Triphala", "Ghrita"],
+        "ingredients": "Ghee processed with a decoction of Haritaki, Bibhitaki, and Amalaki.",
+        "reference": "Ashtanga Hrudayam, Uttarasthana 13",
+        "indications": "Primary medicine for all eye diseases (Netra Roga), improves vision (Chakshushya), useful for hair fall (Khalitya).",
+        "dosage": "6-12 grams",
+        "anupana": "Warm milk or water."
+    },
+    {
+        "name": "Brahmi Ghrita",
+        "type": "Ghrita",
+        "category": "Nervous System",
+        "main_ingredients": ["Brahmi", "Ghrita", "Vacha", "Shankhpushpi"],
+        "ingredients": "Ghee processed with the juice and paste of Brahmi, and powders of Vacha, Kushtha, and Shankhpushpi.",
+        "reference": "Charaka Samhita, Chikitsasthana 10",
+        "indications": "Improves memory (Smriti), intellect (Dhi), and speech (Vak). Used in epilepsy (Apasmara) and insanity (Unmada).",
+        "dosage": "6-12 grams",
+        "anupana": "Warm milk."
+    },
+    {
+        "name": "Phala Ghrita",
+        "type": "Ghrita",
+        "category": "Reproductive System",
+        "main_ingredients": ["Manjistha", "Madhuka", "Triphala", "Ashwagandha"],
+        "ingredients": "Ghee processed with Manjistha, Madhuka, Kushtha, Triphala, Sharkara, Bala, Meda, Ashwagandha, and multiple other herbs.",
+        "reference": "Ashtanga Hrudayam, Uttarasthana 34",
+        "indications": "Female and male infertility (Vandhyatva), uterine disorders (Yoni Roga), acts as a general tonic during pregnancy.",
+        "dosage": "6-12 grams",
+        "anupana": "Warm milk."
+    },
+    {
+        "name": "Mahanarayana Taila",
+        "type": "Taila",
+        "category": "Musculoskeletal System",
+        "main_ingredients": ["Bilva", "Ashwagandha", "Bala", "Shatavari", "Dashamoola"],
+        "ingredients": "A complex oil made with Bilva, Ashwagandha, Bala, Shatavari, Dashamoola group, and many other herbs processed in sesame oil, cow's milk, and Shatavari juice.",
+        "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+        "indications": "All types of Vata disorders, especially Arthritis (Sandhivata), Paralysis (Pakshaghata), and nerve pain. For external massage (Abhyanga).",
+        "dosage": "For external use",
+        "anupana": "N/A"
+    },
+    {
+        "name": "Anu Taila",
+        "type": "Taila",
+        "category": "Nervous System",
+        "main_ingredients": ["Jivanti", "Devadaru", "Tvak", "Musta"],
+        "ingredients": "Sesame oil processed with a large number of herbs including Jivanti, Devadaru, Tvak, Musta, Shatavari, and goat's milk.",
+        "reference": "Ashtanga Hrudayam, Sutrasthana 20",
+        "indications": "For Nasya therapy. Strengthens all sense organs of the head, prevents hair fall and graying, relieves sinusitis and headache.",
+        "dosage": "2-4 drops in each nostril",
+        "anupana": "N/A"
+    },
+    {
+        "name": "Dashamularishta",
+        "type": "Asava/Arishta",
+        "category": "Rejuvenative (Rasayana)",
+        "main_ingredients": ["Dashamoola", "Chitrak", "Guduchi"],
+        "ingredients": "A fermented decoction of Dashamoola (ten roots), Chitrak, Pushkarmool, Guduchi, Draksha, and other herbs.",
+        "reference": "Bhaishajya Ratnavali",
+        "indications": "A general health tonic, used post-delivery (Sutika Roga), for Vata disorders, cough, and to improve strength and stamina.",
+        "dosage": "15-30 ml",
+        "anupana": "With an equal quantity of water after meals."
+    },
+    {
+        "name": "Arjunarishta",
+        "type": "Asava/Arishta",
+        "category": "Rejuvenative (Rasayana)",
+        "main_ingredients": ["Arjuna", "Draksha", "Dhataki"],
+        "ingredients": "A fermented decoction of Arjuna bark, Draksha (grapes), Madhuka flowers, and Dhataki flowers.",
+        "reference": "Bhaishajya Ratnavali, Hridroga Rogadhikara",
+        "indications": "Premier cardiotonic (Hridya). Used for all types of heart diseases, strengthens the heart muscle, and regulates blood pressure.",
+        "dosage": "15-30 ml",
+        "anupana": "With an equal quantity of water after meals."
+    },
+    {
+        "name": "Ashokarishta",
+        "type": "Asava/Arishta",
+        "category": "Reproductive System",
+        "main_ingredients": ["Ashoka", "Dhataki", "Musta", "Triphala"],
+        "ingredients": "A fermented decoction of Ashoka bark, Dhataki, Musta, Shunthi, Daruharidra, Utpala, Haritaki, Bibhitaki, and Amalaki.",
+        "reference": "Bhaishajya Ratnavali, Stri Roga Adhikara",
+        "indications": "A primary uterine tonic. Used for heavy menstrual bleeding (Asrigdara), painful menstruation (Kashtartava), and other female reproductive issues.",
+        "dosage": "15-30 ml",
+        "anupana": "With an equal quantity of water after meals."
+    },
+    {
+        "name": "Chyawanprash",
+        "type": "Avaleha/Leha",
+        "category": "Rejuvenative (Rasayana)",
+        "main_ingredients": ["Amalaki", "Dashamoola", "Ashtavarga"],
+        "ingredients": "A complex herbal jam with Amalaki as the primary ingredient, along with Dashamoola, Ashtavarga herbs, Pippali, Vamshalochana, and many others.",
+        "reference": "Charaka Samhita, Chikitsasthana 1",
+        "indications": "The foremost rejuvenative (Rasayana). Boosts immunity, strengthens the respiratory system (Kasa, Shwasa), and promotes longevity.",
+        "dosage": "1-2 teaspoons",
+        "anupana": "With warm milk."
+    },
+    {
+        "name": "Agastya Haritaki Rasayana",
+        "type": "Avaleha/Leha",
+        "category": "Respiratory System",
+        "main_ingredients": ["Haritaki", "Dashamoola", "Pippali"],
+        "ingredients": "A jam-like preparation of Dashamoola, Haritaki, Pippali, Chitraka, Yava, Guda (jaggery), and other herbs.",
+        "reference": "Charaka Samhita, Chikitsasthana 17",
+        "indications": "Specifically for chronic respiratory problems like asthma (Shwasa), bronchitis (Kasa), hiccups (Hikka), and tuberculosis (Kshaya).",
+        "dosage": "6-12 grams",
+        "anupana": "With warm water or milk."
+    },
+    {
+        "name": "Mahamanjisthadi Kwath",
+        "type": "Kwatha/Kashayam",
+        "category": "Skin (Twak Roga)",
+        "main_ingredients": ["Manjistha", "Musta", "Kutaja", "Guduchi", "Triphala"],
+        "ingredients": "A decoction of Manjistha, Musta, Kutaja, Guduchi, Kushtha, Nimba, Daruharidra, Triphala, and many other blood-purifying herbs.",
+        "reference": "Sharngadhara Samhita, Madhyama Khanda 2",
+        "indications": "A potent blood purifier (Raktashodhaka). Used for all types of skin diseases (Kushtha), gout (Vatarakta), and obesity (Sthaulya).",
+        "dosage": "15-30 ml (if liquid extract)",
+        "anupana": "With water before food."
+    },
+    {
+        "name": "Rasnairandadi Kwath",
+        "type": "Kwatha/Kashayam",
+        "category": "Musculoskeletal System",
+        "main_ingredients": ["Rasna", "Eranda", "Bala", "Sahachara"],
+        "ingredients": "A decoction of Rasna, Eranda, Bala, Sahachara, Shunthi, Guduchi, and other Vata-pacifying herbs.",
+        "reference": "Sahasrayogam",
+        "indications": "For Vata disorders, especially lower back pain (Katishula), sciatica, and arthritis (Amavata).",
+        "dosage": "15-30 ml (if liquid extract)",
+        "anupana": "With water before food."
+    },
+    {
+        "name": "Godanti Bhasma",
+        "type": "Bhasma/Pishti",
+        "category": "Fever (Jwara)",
+        "main_ingredients": ["Godanti (Gypsum)"],
+        "ingredients": "A fine ash (Bhasma) prepared from purified Gypsum.",
+        "reference": "Rasa Tarangini",
+        "indications": "Used for fever (Jwara), especially with high temperature, headache, and body aches. Also used for hyperacidity.",
+        "dosage": "125-250 mg",
+        "anupana": "Honey or Tulsi juice."
+    },
+    {
+        "name": "Pravala Pishti",
+        "type": "Bhasma/Pishti",
+        "category": "Digestive System",
+        "main_ingredients": ["Pravala (Coral)"],
+        "ingredients": "A fine paste (Pishti) prepared from purified Coral, processed with rose water.",
+        "reference": "Ayurveda Sara Sangraha",
+        "indications": "Excellent Pitta pacifier. Used for hyperacidity (Amlapitta), bleeding disorders (Raktapitta), and as a natural calcium supplement.",
+        "dosage": "125-250 mg",
+        "anupana": "Honey or ghee."
+    },
+    {
+        "name": "Yashada Bhasma",
+        "type": "Bhasma/Pishti",
+        "category": "Skin (Twak Roga)",
+        "main_ingredients": ["Yashada (Zinc)"],
+        "ingredients": "A fine ash (Bhasma) prepared from purified Zinc.",
+        "reference": "Rasa Tarangini",
+        "indications": "Used for eye diseases (Netra Roga), diabetes (Prameha), and as an immune booster. Also used topically in skin conditions.",
+        "dosage": "60-125 mg",
+        "anupana": "Honey or ghee."
+    },
+    {
+        "name": "Loha Bhasma",
+        "type": "Bhasma/Pishti",
+        "category": "Rejuvenative (Rasayana)",
+        "main_ingredients": ["Loha (Iron)"],
+        "ingredients": "A fine ash (Bhasma) prepared from purified Iron, often processed 100 or 1000 times (Shataputi/Sahasraputi).",
+        "reference": "Rasa Ratna Samucchaya",
+        "indications": "Primary remedy for iron-deficiency anemia (Pandu). It is also a powerful rejuvenative (Rasayana) that enhances strength and vitality.",
+        "dosage": "60-125 mg",
+        "anupana": "Honey, ghee, or Triphala."
+    },
+    {
+        "name": "Swarna Bhasma",
+        "type": "Bhasma/Pishti",
+        "category": "Rejuvenative (Rasayana)",
+        "main_ingredients": ["Swarna (Gold)"],
+        "ingredients": "The legendary ash of purified Gold, processed with various herbal juices.",
+        "reference": "Rasa Ratna Samucchaya",
+        "indications": "The ultimate rejuvenator (Rasayana) and immunomodulator. Used as a powerful cardiotonic (Hridya), brain tonic (Medhya), and aphrodisiac (Vajikarana).",
+        "dosage": "15-30 mg",
+        "anupana": "Honey or ghee."
+    },
+
+{
+    "name": "Kaishore Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Guggulu", "Guduchi", "Triphala"],
+    "ingredients": "Guduchi, Haritaki, Bibhitaki, Amalaki, Shuddha Guggulu, Shunthi, Maricha, Pippali, Vidanga, Danti, Trivrit, Ghrita.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+    "indications": "Gout (Vatarakta), Skin diseases (Kushtha), Wounds (Vrana), Arthritis. Excellent blood purifier (Raktashodhaka).",
+    "dosage": "2-4 tablets",
+    "anupana": "Warm water or Manjishthadi Kwath."
+},
+{
+    "name": "Yogaraja Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Guggulu", "Chitrak", "Triphala", "Vidanga"],
+    "ingredients": "Chitraka, Pippalimoola, Yavani, Karavi, Ajamoda, Jeeraka, Suradaru, Chavya, Ela, Saindhava Lavana, Kushtha, Rasna, Gokshura, Dhanyaka, Triphala, Musta, Trikatu, Tvak, Usheera, Taleesapatra, Patra, Shuddha Guggulu.",
+    "reference": "Bhaishajya Ratnavali, Amavata Rogadhikara",
+    "indications": "All types of Vata disorders, especially joint pain with stiffness (Amavata, Sandhivata), and neurological conditions.",
+    "dosage": "1-2 tablets",
+    "anupana": "Warm water or Rasnadi Kwath."
+},
+{
+    "name": "Simhanada Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Guggulu", "Triphala", "Gandhaka", "Eranda Taila"],
+    "ingredients": "Triphala, Shuddha Gandhaka, Shuddha Guggulu, processed with Eranda Taila (Castor Oil).",
+    "reference": "Bhaishajya Ratnavali, Amavata Rogadhikara",
+    "indications": "Severe rheumatoid arthritis (Amavata), Gout (Vatarakta), Skin diseases (Kushtha), and respiratory conditions. Potent anti-inflammatory.",
+    "dosage": "2-4 tablets",
+    "anupana": "Warm water."
+},
+{
+    "name": "Gokshuradi Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Urinary System",
+    "main_ingredients": ["Gokshura", "Guggulu", "Triphala", "Trikatu"],
+    "ingredients": "Gokshura, Shuddha Guggulu, Shunthi, Maricha, Pippali, Haritaki, Bibhitaki, Amalaki, Musta.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+    "indications": "Urinary tract disorders (Mutrakrichhra), Kidney stones (Ashmari), Diabetes (Prameha), and prostate issues.",
+    "dosage": "2-4 tablets",
+    "anupana": "Warm water or Punarnavasava."
+},
+{
+    "name": "Kanchanara Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Kanchanara", "Guggulu", "Triphala", "Trikatu"],
+    "ingredients": "Kanchanara bark, Haritaki, Bibhitaki, Amalaki, Shunthi, Maricha, Pippali, Varuna, Ela, Tvak, Tejapatra, Shuddha Guggulu.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 7",
+    "indications": "Thyroid imbalances (Galaganda), Glandular swellings (Granthi), Tumors (Arbuda), PCOD, and other Kapha accumulations.",
+    "dosage": "2-4 tablets",
+    "anupana": "Warm water."
+},
+{
+    "name": "Abhayarishta",
+    "type": "Asava/Arishta",
+    "category": "Digestive System",
+    "main_ingredients": ["Haritaki", "Draksha", "Vidanga"],
+    "ingredients": "A fermented decoction of Haritaki, Draksha (Grapes), Vidanga, Madhuka, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Arsha Rogadhikara",
+    "indications": "Excellent laxative and carminative. Used for Piles (Arsha), Constipation (Vibandha), and bloating.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Amritarishta",
+    "type": "Asava/Arishta",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Guduchi", "Dashamoola", "Jeeraka"],
+    "ingredients": "A fermented decoction of Guduchi, Dashamoola, Jeeraka, Parpataka, Saptaparna, Shunthi, Maricha, Pippali, Musta, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Jwara Rogadhikara",
+    "indications": "Used for all types of fevers (Jwara), especially chronic fever. It's a potent immunomodulator (Rasayana) and digestive (Deepana).",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Kutajarishta",
+    "type": "Asava/Arishta",
+    "category": "Digestive System",
+    "main_ingredients": ["Kutaja", "Draksha", "Dhataki"],
+    "ingredients": "A fermented decoction of Kutaja bark, Draksha (Grapes), Madhuka, Gambhari, and Dhataki flowers.",
+    "reference": "Bhaishajya Ratnavali, Atisara Rogadhikara",
+    "indications": "A specific remedy for diarrhea (Atisara), dysentery (Pravahika), Irritable Bowel Syndrome (Grahani), and bleeding piles.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Saraswatarishta",
+    "type": "Asava/Arishta",
+    "category": "Nervous System",
+    "main_ingredients": ["Brahmi", "Shatavari", "Ashwagandha"],
+    "ingredients": "A fermented tonic containing Brahmi, Shatavari, Vidari, Haritaki, Ushira, Shunthi, and many other nervine herbs. A 'Swarna' version also contains gold.",
+    "reference": "Bhaishajya Ratnavali",
+    "indications": "A famous brain tonic (Medhya Rasayana). Used to improve memory, concentration, and calm the mind. Beneficial for students and for anxiety.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Kumaryasava",
+    "type": "Asava/Arishta",
+    "category": "Reproductive System",
+    "main_ingredients": ["Kumari (Aloe Vera)", "Triphala", "Loha Bhasma"],
+    "ingredients": "A fermented tonic with Kumari juice, Haritaki, Loha Bhasma, Trikatu, Dhanyaka, and many other herbs.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 10",
+    "indications": "Used for liver disorders, loss of appetite, menstrual problems (amenorrhea, dysmenorrhea), and anemia.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+
+{
+    "name": "Vasavaleha",
+    "type": "Avaleha/Leha",
+    "category": "Respiratory System",
+    "main_ingredients": ["Vasa", "Pippali", "Ghrita", "Madhu"],
+    "ingredients": "A jam-like preparation of Vasa (Adhatoda vasica) juice, Pippali, Ghrita, Madhu, and Sharkara.",
+    "reference": "Bhaishajya Ratnavali, Kasa Rogadhikara",
+    "indications": "Used for all types of cough (Kasa), asthma (Shwasa), bronchitis, and bleeding conditions like Raktapitta.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm water or milk."
+},
+{
+    "name": "Chitrakaharitaki",
+    "type": "Avaleha/Leha",
+    "category": "Respiratory System",
+    "main_ingredients": ["Chitraka", "Haritaki", "Dashamoola"],
+    "ingredients": "A formulation of Chitraka, Haritaki, Amalaki, Guduchi, Dashamoola, Trikatu, and Guda (jaggery).",
+    "reference": "Bhaishajya Ratnavali, Kasa Rogadhikara",
+    "indications": "For chronic respiratory conditions with mucus (Kapha-dominant Kasa), chronic rhinitis (Pratishyaya), and poor digestion.",
+    "dosage": "5-10 grams",
+    "anupana": "With warm milk."
+},
+{
+    "name": "Mahatiktaka Ghrita",
+    "type": "Ghrita",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Saptaparna", "Patola", "Nimba", "Katuki"],
+    "ingredients": "A highly bitter medicated ghee prepared with Saptaparna, Patola, Nimba, Katuki, Guduchi, Vasa, and many other Pitta-pacifying herbs.",
+    "reference": "Ashtanga Hrudayam, Chikitsasthana 19",
+    "indications": "Used for a wide range of Pitta-dominant skin diseases like psoriasis, eczema, and erysipelas. Also used in bleeding disorders and for blood purification.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk or water."
+},
+{
+    "name": "Kalyanaka Ghrita",
+    "type": "Ghrita",
+    "category": "Nervous System",
+    "main_ingredients": ["Triphala", "Vidanga", "Priyangu", "Daruharidra"],
+    "ingredients": "Ghee processed with Vidanga, Priyangu, Triphala, Daruharidra, Manjistha, and many other herbs.",
+    "reference": "Ashtanga Hrudayam, Uttarasthana 6",
+    "indications": "A brain tonic (Medhya) used for psychological disorders (Unmada), epilepsy (Apasmara), speech problems, and to improve memory.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk."
+},
+
+{
+    "name": "Dadimashtaka Churna",
+    "type": "Churna",
+    "category": "Digestive System",
+    "main_ingredients": ["Dadima", "Vamshalochana", "Trikatu", "Tvak", "Ela"],
+    "ingredients": "Dadima (Pomegranate), Vamshalochana, Trikatu, Tvak, Ela, Patra, Nagakesara.",
+    "reference": "Bhaishajya Ratnavali, Atisara Rogadhikara",
+    "indications": "Excellent for treating diarrhea (Atisara), Irritable Bowel Syndrome (Grahani), and improving digestive function.",
+    "dosage": "3-5 grams",
+    "anupana": "With honey or buttermilk."
+},
+{
+    "name": "Talisadi Churna",
+    "type": "Churna",
+    "category": "Respiratory System",
+    "main_ingredients": ["Talisapatra", "Trikatu", "Vamshalochana"],
+    "ingredients": "Talisapatra, Maricha, Shunthi, Pippali, Vamshalochana, Ela, Tvak, Sharkara.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+    "indications": "A formulation for cough, cold, fever, and digestive issues. It's more heating than Sitopaladi Churna.",
+    "dosage": "1-3 grams",
+    "anupana": "With honey."
+},
+{
+    "name": "Eladi Vati",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Ela", "Patra", "Tvak", "Pippali"],
+    "ingredients": "Ela, Patra, Tvak, Pippali, Madhuka (Yashtimadhu), Kharjura (Dates), Draksha (Grapes), Madhu (Honey).",
+    "reference": "Charaka Samhita, Chikitsasthana 26",
+    "indications": "A lozenge used to soothe sore throat, hoarseness of voice, cough, and bad breath.",
+    "dosage": "1-2 tablets to be chewed or sucked.",
+    "anupana": "N/A"
+},
+{
+    "name": "Khadiradi Vati",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Khadira", "Javitri", "Kankola"],
+    "ingredients": "Khadira Sara, Javitri, Kankola, Bhimseni Karpoora, Supari.",
+    "reference": "Bhavaprakasha",
+    "indications": "An astringent tablet for mouth ulcers, sore throat, tonsillitis, and other oral cavity problems.",
+    "dosage": "1-2 tablets to be kept in the mouth and sucked.",
+    "anupana": "N/A"
+},
+{
+    "name": "Lavangadi Vati",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Lavanga", "Maricha", "Bibhitaki"],
+    "ingredients": "Lavanga (Clove), Maricha (Black Pepper), Bibhitaki, Khadira Sara.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "A lozenge specifically for productive cough (Kapha Kasa) and cold. It has expectorant properties.",
+    "dosage": "1-2 tablets to be sucked.",
+    "anupana": "N/A"
+},
+
+{
+    "name": "Krimi Kuthar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Parada", "Gandhaka", "Vidanga", "Vatsanabha"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Vidanga, Shuddha Vatsanabha, Ajamoda, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Krimi Rogadhikara",
+    "indications": "A potent formulation used specifically for destroying all types of intestinal worms and parasites (Krimi).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Tribhuvan Kirti Rasa",
+    "type": "Vati/Gutika",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Vatsanabha", "Trikatu", "Tankana"],
+    "ingredients": "Shuddha Hingula, Shuddha Vatsanabha, Trikatu, Pippalimoola, Tankana Bhasma, processed with Tulsi, Ardraka, and Dhattura juice.",
+    "reference": "Bhaishajya Ratnavali, Jwara Rogadhikara",
+    "indications": "A classical herbo-mineral formulation for all types of fever (Jwara), cold, cough, and body aches. It induces sweating (Swedajanana).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or ginger juice."
+},
+{
+    "name": "Vasant Kusumakar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Swarna Bhasma", "Pravala Pishti", "Raupya Bhasma"],
+    "ingredients": "A premium formulation with Swarna Bhasma, Raupya Bhasma, Vanga Bhasma, Naga Bhasma, Loha Bhasma, Abhraka Bhasma, Pravala Bhasma, and Mukta Bhasma.",
+    "reference": "Bhaishajya Ratnavali, Prameha Rogadhikara",
+    "indications": "A powerful rejuvenative (Rasayana), aphrodisiac (Vajikarana), and is highly beneficial in diabetes (Prameha) and its complications.",
+    "dosage": "125 mg",
+    "anupana": "With honey, ghee, or milk."
+},
+
+{
+    "name": "Shadbindu Taila",
+    "type": "Taila",
+    "category": "Nervous System",
+    "main_ingredients": ["Eranda", "Tagara", "Shunthi", "Bhringaraja"],
+    "ingredients": "Sesame oil processed with Eranda, Tagara, Shatahva, Jivanti, Rasna, Saindhava, Bhringaraja juice, and goat's milk.",
+    "reference": "Bhaishajya Ratnavali, Shiro Roga Adhikara",
+    "indications": "A classical oil for Nasya (nasal administration) used to treat sinusitis, headache, hair fall, and to strengthen the sense organs.",
+    "dosage": "2-6 drops in each nostril",
+    "anupana": "N/A"
+},
+{
+    "name": "Jatyadi Taila",
+    "type": "Taila",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Jati (Jasmine)", "Nimba", "Patola", "Karanja"],
+    "ingredients": "Medicated oil prepared with Jati (Jasmine) leaves, Nimba (Neem) leaves, Patola leaves, Karanja, Madhuka, and other herbs.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 9",
+    "indications": "Renowned for its remarkable wound-healing (Vranaropana) properties. Used for all types of non-healing ulcers, burns, and skin lesions.",
+    "dosage": "For external application",
+    "anupana": "N/A"
+},
+{
+    "name": "Saptamrit Lauh",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Loha Bhasma", "Triphala", "Madhuka"],
+    "ingredients": "Loha Bhasma, Haritaki, Bibhitaki, Amalaki, and Madhuka (Yashtimadhu).",
+    "reference": "Bhaishajya Ratnavali, Netra Roga Adhikara",
+    "indications": "An iron-based formulation specifically for eye (Chakshushya) and hair (Keshya) health, improving vision and preventing premature graying.",
+    "dosage": "250-500 mg",
+    "anupana": "With ghee and honey."
+},
+
+{
+    "name": "Mahalakshmi Vilas Rasa",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Abhraka Bhasma", "Gandhaka", "Vanga Bhasma", "Swarna Bhasma"],
+    "ingredients": "Shuddha Gandhaka, Abhraka Bhasma, Shuddha Parada, Vanga Bhasma, Tamra Bhasma, Swarna Bhasma, Raupya Bhasma, Mukta Bhasma. Processed with Bhringaraja juice and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Kasa Rogadhikara",
+    "indications": "Severe respiratory conditions (Kasa, Shwasa), Tuberculosis (Kshaya), Chronic rhinitis (Pratishyaya), and as a powerful cardiotonic (Hridya).",
+    "dosage": "125 mg",
+    "anupana": "With honey and Pippali."
+},
+{
+    "name": "Vatagajankush Rasa",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Parada", "Gandhaka", "Vatsanabha", "Loha Bhasma"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Loha Bhasma, Shuddha Vatsanabha, Trikatu, Haritaki, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+    "indications": "A powerful formulation for severe Vata disorders like paralysis (Pakshaghata), sciatica, convulsions (Akshepaka), and severe joint pain.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or Dashamoola Kwath."
+},
+{
+    "name": "Agnitundi Vati",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Kupilu (Nux-vomica)", "Parada", "Gandhaka", "Trikatu"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Shuddha Vatsanabha, Ajamoda, Triphala, Saindhava Lavana, Jeeraka, Shuddha Kupilu.",
+    "reference": "Bhaishajya Ratnavali, Agnimandya Rogadhikara",
+    "indications": "A potent tablet used to ignite digestive fire (Agni) in cases of severe indigestion, loss of appetite, and Grahani (IBS).",
+    "dosage": "1-2 tablets (125-250mg)",
+    "anupana": "With warm water after meals."
+},
+{
+    "name": "Ichhabhedi Rasa",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Jayapala", "Shunthi", "Maricha"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Shunthi, Maricha, Shuddha Tankana, Shuddha Jayapala Beeja.",
+    "reference": "Bhaishajya Ratnavali, Jwara Rogadhikara",
+    "indications": "A potent purgative (Virechana) formulation, used for rapid detoxification in cases of severe constipation, ascites (Jalodara), and Ama.",
+    "dosage": "1 tablet (60-125mg)",
+    "anupana": "With cold water."
+},
+{
+    "name": "Anandabhairava Rasa",
+    "type": "Vati/Gutika",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Hingula", "Vatsanabha", "Pippali"],
+    "ingredients": "Shuddha Hingula, Shuddha Vatsanabha, Shunthi, Maricha, Pippali, Shuddha Tankana.",
+    "reference": "Bhaishajya Ratnavali, Atisara Rogadhikara",
+    "indications": "Used for fever (Jwara), diarrhea (Atisara), cough (Kasa), and rheumatoid arthritis (Amavata).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+
+{
+    "name": "Lasunadi Vati",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Lasuna (Garlic)", "Jeeraka", "Hingu"],
+    "ingredients": "Lasuna, Shveta Jeeraka, Saindhava Lavana, Shuddha Gandhaka, Trikatu, Shuddha Hingu.",
+    "reference": "Siddha Yoga Sangraha, Gulma Prakarana",
+    "indications": "Used for diarrhea (Atisara), gastroenteritis (Visuchika), indigestion, bloating, and abdominal pain.",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water."
+},
+{
+    "name": "Chitrakadi Vati",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Chitraka", "Pippalimoola", "Panchalavana"],
+    "ingredients": "Chitraka, Pippalimoola, Yavakshara, Sarjikshara, Saindhava Lavana, Sauvarchala Lavana, Vida Lavana, Samudra Lavana, Audbhida Lavana, Trikatu, Hingu, Ajamoda, Chavya.",
+    "reference": "Charaka Samhita, Chikitsasthana 15",
+    "indications": "A powerful tablet to stimulate digestive fire (Agni) and digest toxins (Ama). Used for loss of appetite and indigestion.",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water or buttermilk."
+},
+{
+    "name": "Shankha Vati",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Shankha Bhasma", "Panchalavana", "Hingu"],
+    "ingredients": "Panchalavana, Shankha Bhasma, Hingu, Chincha Kshara, Trikatu, Shuddha Vatsanabha.",
+    "reference": "Bhaishajya Ratnavali, Agnimandya Rogadhikara",
+    "indications": "A fast-acting carminative for severe indigestion, hyperacidity (Amlapitta), and abdominal pain (Shula).",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water."
+},
+
+
+{
+    "name": "Dashamoola Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Dashamoola"],
+    "ingredients": "Decoction of the ten roots (Dashamoola): Bilva, Agnimantha, Shyonaka, Patala, Gambhari, Brihati, Kantakari, Shalaparni, Prishniparni, Gokshura.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 2",
+    "indications": "A premier decoction for all Vata disorders, including body aches, fever, cough, and post-partum care.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Varunadi Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Urinary System",
+    "main_ingredients": ["Varuna", "Pashanabheda", "Shigru"],
+    "ingredients": "A decoction of Varuna, Pashanabheda, Shigru, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Chikitsasthana 11",
+    "indications": "Used to reduce fat (Medohara), treat obesity (Sthaulya), Kapha headaches, and urinary calculi (Ashmari).",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Drakshadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Draksha", "Madhuka", "Lodhra"],
+    "ingredients": "A cooling decoction of Draksha (Grapes), Madhuka (Licorice), Lodhra, Sariva, and other Pitta-pacifying herbs.",
+    "reference": "Ashtanga Hrudayam, Jwara Chikitsa",
+    "indications": "Used for hangovers (Madatyaya), fever with burning sensation (Pitta Jwara), vomiting, and other Pitta imbalances.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Gandharvahastadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Digestive System",
+    "main_ingredients": ["Gandharvahasta (Eranda)", "Shunthi", "Chirabilva"],
+    "ingredients": "A decoction with Gandharvahasta (Eranda - Castor root), Shunthi, Chirabilva, and other Vata-pacifying herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "A safe and effective laxative (Anulomana) and carminative for Vata conditions like low back pain, gas, and bloating.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food, can be mixed with castor oil."
+},
+
+
+{
+    "name": "Narayan Churna",
+    "type": "Churna",
+    "category": "Digestive System",
+    "main_ingredients": ["Triphala", "Trikatu", "Chitraka", "Vidanga"],
+    "ingredients": "Chitraka, Triphala, Trikatu, Vidanga, Trivrit, Danti, and all five types of salt (Panchalavana).",
+    "reference": "Bhaishajya Ratnavali, Udara Rogadhikara",
+    "indications": "Used for ascites (Jalodara), abdominal distension, constipation, and piles (Arsha).",
+    "dosage": "3-6 grams",
+    "anupana": "With buttermilk or warm water."
+},
+{
+    "name": "Panchakola Churna",
+    "type": "Churna",
+    "category": "Digestive System",
+    "main_ingredients": ["Pippali", "Pippalimoola", "Chavya", "Chitraka", "Shunthi"],
+    "ingredients": "Pippali (Long Pepper), Pippalimoola (Root of Long Pepper), Chavya, Chitraka, Shunthi (Dry Ginger).",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+    "indications": "A powerful appetizer (Deepana) and digestive (Pachana). Used for loss of appetite, bloating, and spleen disorders.",
+    "dosage": "1-3 grams",
+    "anupana": "With honey or warm water."
+},
+
+
+{
+    "name": "Kushmanda Avaleha",
+    "type": "Avaleha/Leha",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Kushmanda (Ash Gourd)", "Pippali", "Ghrita"],
+    "ingredients": "A nourishing jam of Kushmanda, Pippali, Ghrita, Madhu, and other strength-promoting herbs.",
+    "reference": "Bhaishajya Ratnavali, Raktapitta Rogadhikara",
+    "indications": "A powerful rejuvenative (Rasayana) and aphrodisiac (Vajikarana). Used to increase strength, stamina, and weight (Brimhana).",
+    "dosage": "10-20 grams",
+    "anupana": "With milk."
+},
+{
+    "name": "Brahma Rasayana",
+    "type": "Avaleha/Leha",
+    "category": "Nervous System",
+    "main_ingredients": ["Haritaki", "Amalaki", "Shankhpushpi"],
+    "ingredients": "A powerful rejuvenative jam for the mind containing Haritaki, Amalaki, Shankhpushpi, Vacha, and many other Medhya herbs.",
+    "reference": "Charaka Samhita, Chikitsasthana 1",
+    "indications": "A supreme brain tonic (Medhya Rasayana) for improving memory, intelligence, and promoting longevity. Reduces mental fatigue.",
+    "dosage": "10-15 grams",
+    "anupana": "With milk in the morning."
+},
+{
+    "name": "Vilwadi Leham",
+    "type": "Avaleha/Leha",
+    "category": "Digestive System",
+    "main_ingredients": ["Bilva", "Trikatu", "Jeeraka"],
+    "ingredients": "A jam-like preparation of Bilva (Bael) root, Musta, Jeeraka, Trikatu, Ela, and other digestive herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "Used to treat nausea, vomiting, loss of appetite, and other digestive issues. It has a carminative effect.",
+    "dosage": "5-10 grams",
+    "anupana": "To be licked as is, or with honey."
+},
+
+
+{
+    "name": "Kottamchukkadi Thailam",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Kottam (Kushtha)", "Chukku (Shunthi)", "Vacha"],
+    "ingredients": "A South Indian medicated oil with Kushtha, Shunthi, Vacha, Shigru, Lasuna, and other herbs in a base of sesame oil and tamarind juice.",
+    "reference": "Sahasrayogam",
+    "indications": "For external application on painful joints, inflammation, and stiffness due to Vata. Relieves numbness and pain.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Kumkumadi Thailam",
+    "type": "Taila",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Kumkuma (Saffron)", "Chandana", "Manjistha"],
+    "ingredients": "A renowned facial oil made with Saffron, Sandalwood, Manjistha, Madhuka, Laksha, and other complexion-enhancing herbs in a sesame oil base.",
+    "reference": "Bhaishajya Ratnavali",
+    "indications": "Improves complexion (Varnya), reduces blemishes, dark spots, and adds a natural glow to the skin.",
+    "dosage": "A few drops for facial massage",
+    "anupana": "N/A"
+},
+{
+    "name": "Neelibringadi Thailam",
+    "type": "Taila",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Nili (Indigo)", "Bhringaraja", "Amalaki"],
+    "ingredients": "A famous herbal hair oil made with Nili, Bhringaraja, Amalaki, and other herbs processed in coconut oil and milk.",
+    "reference": "Sahasrayogam",
+    "indications": "Promotes hair growth (Keshya), prevents hair fall, and delays premature graying.",
+    "dosage": "For scalp massage",
+    "anupana": "N/A"
+},
+
+
+{
+    "name": "Sukumaram Ghritam",
+    "type": "Ghrita",
+    "category": "Reproductive System",
+    "main_ingredients": ["Punarnava", "Dashamoola", "Eranda"],
+    "ingredients": "A medicated ghee with Punarnava, Dashamoola, Shatavari, Eranda, Ashwagandha, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Chikitsasthana 13",
+    "indications": "A gentle tonic primarily for gynecological disorders, hernia, and digestive issues. It is Vata-pacifying.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk."
+},
+{
+    "name": "Dadimadi Ghrita",
+    "type": "Ghrita",
+    "category": "Reproductive System",
+    "main_ingredients": ["Dadima (Pomegranate)", "Dhanyaka", "Chitraka"],
+    "ingredients": "Medicated ghee with Pomegranate, Dhanyaka, Chitraka, and Trikatu.",
+    "reference": "Ashtanga Hrudayam, Sharirasthana 2",
+    "indications": "Used during pregnancy for nourishment (Garbhaposhaka), to treat anemia, and to correct digestive issues. It is also a heart tonic (Hridya).",
+    "dosage": "6-12 grams",
+    "anupana": "With warm water or milk."
+},
+
+
+{
+    "name": "Abhraka Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Abhraka (Mica)"],
+    "ingredients": "Purified mica ash, often processed 100 (Shataputi) or 1000 (Sahasraputi) times.",
+    "reference": "Rasa Ratna Samucchaya",
+    "indications": "A potent rejuvenative (Rasayana) used for respiratory diseases, debility, and as a powerful tonic. It is tridoshic.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey and ghee."
+},
+{
+    "name": "Shankha Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Digestive System",
+    "main_ingredients": ["Shankha (Conch shell)"],
+    "ingredients": "Ash of purified conch shell.",
+    "reference": "Rasa Tarangini",
+    "indications": "A rich source of calcium, used for acid peptic disorders (Amlapitta), indigestion, and malabsorption.",
+    "dosage": "250-500 mg",
+    "anupana": "With lemon juice or honey."
+},
+{
+    "name": "Mandura Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Mandura (Iron rust)"],
+    "ingredients": "Purified and processed old iron rust.",
+    "reference": "Rasa Ratna Samucchaya",
+    "indications": "An iron-rich formulation for anemia (Pandu), jaundice (Kamala), edema (Shotha), and to support liver and spleen function.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or Punarnavasava."
+},
+{
+    "name": "Smritisagar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Nervous System",
+    "main_ingredients": ["Parada", "Gandhaka", "Haratala", "Manashila", "Vacha"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Shuddha Haratala, Manashila, Tamra Bhasma, processed with Vacha, Brahmi, and Jyotishmati.",
+    "reference": "Bhaishajya Ratnavali, Apasmara Rogadhikara",
+    "indications": "A potent brain tonic (Medhya) used for improving memory (Smriti), intellect, and treating neurological conditions like epilepsy (Apasmara).",
+    "dosage": "125 mg",
+    "anupana": "With ghee or honey."
+},
+{
+    "name": "Ekangveer Rasa",
+    "type": "Vati/Gutika",
+    "category": "Nervous System",
+    "main_ingredients": ["Parada", "Gandhaka", "Loha Bhasma", "Trikatu"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Loha Bhasma, Vanga Bhasma, Abhraka Bhasma, Tamra Bhasma, Trikatu, Triphala, and many other herbs.",
+    "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+    "indications": "Specifically used for treating paralysis (Pakshaghata), hemiplegia, facial palsy, and other severe Vata neurological disorders.",
+    "dosage": "125-250 mg",
+    "anupana": "With Rasnadi Kwath or honey."
+},
+{
+    "name": "Pradarantak Lauh",
+    "type": "Vati/Gutika",
+    "category": "Reproductive System",
+    "main_ingredients": ["Loha Bhasma", "Tamra Bhasma", "Haratala", "Triphala"],
+    "ingredients": "Loha Bhasma, Tamra Bhasma, Shuddha Haratala, Vanga Bhasma, Triphala, Trikatu, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Stri Roga Adhikara",
+    "indications": "An iron-based formulation specifically used for treating excessive menstrual bleeding (menorrhagia or Pradara) and leucorrhea.",
+    "dosage": "250-500 mg",
+    "anupana": "With honey or rice water."
+},
+{
+    "name": "Navayasa Loha",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Loha Bhasma", "Trikatu", "Triphala", "Vidanga", "Musta"],
+    "ingredients": "Loha Bhasma combined with nine herbs: Trikatu, Triphala, Musta, Vidanga, and Chitraka.",
+    "reference": "Charaka Samhita, Chikitsasthana 16 (Pandu)",
+    "indications": "Used to treat anemia (Pandu), jaundice (Kamala), skin diseases (Kushtha), and piles (Arsha).",
+    "dosage": "250-500 mg",
+    "anupana": "With honey and ghee."
+},
+{
+    "name": "Punarnavadi Mandura",
+    "type": "Vati/Gutika",
+    "category": "Urinary System",
+    "main_ingredients": ["Mandura Bhasma", "Punarnava", "Trivrit", "Trikatu"],
+    "ingredients": "Mandura Bhasma, Punarnava, Trivrit, Shunthi, Pippali, Maricha, Vidanga, Devadaru, Chitraka, and many other herbs processed in Gomutra (cow's urine).",
+    "reference": "Bhaishajya Ratnavali, Shotha Rogadhikara",
+    "indications": "A premier formulation for edema (Shotha), anemia (Pandu), spleen enlargement (Plihodara), and liver disorders.",
+    "dosage": "500 mg - 1 gram",
+    "anupana": "With buttermilk or Punarnavasava."
+},
+{
+    "name": "Laghu Sutshekhar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Gairika", "Shunthi"],
+    "ingredients": "Shuddha Gairika (Red Ochre), Shunthi, processed with Nagavalli (Betel leaf) juice.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "A simple but effective formulation for hyperacidity (Amlapitta), headache with a burning sensation, and other Pitta-dominant conditions.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or ghee."
+},
+
+
+{
+    "name": "Sarivadyasava",
+    "type": "Asava/Arishta",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Sariva", "Musta", "Lodhra", "Guduchi"],
+    "ingredients": "A fermented tonic of Sariva (Anantamul), Musta, Lodhra, Nyagrodha, Ashwattha, Guduchi, and many other blood-purifying herbs.",
+    "reference": "Bhaishajya Ratnavali, Vatarakta Rogadhikara",
+    "indications": "A potent blood purifier (Raktashodhaka) used for skin diseases, gout (Vatarakta), syphilis, and boils.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Punarnavasava",
+    "type": "Asava/Arishta",
+    "category": "Urinary System",
+    "main_ingredients": ["Punarnava", "Gokshura", "Kantakari"],
+    "ingredients": "A fermented tonic of Punarnava, Gokshura, Kantakari, Vasa, Guduchi, and other diuretic and anti-inflammatory herbs.",
+    "reference": "Bhaishajya Ratnavali, Shotha Rogadhikara",
+    "indications": "A powerful diuretic and liver tonic, used for edema (Shotha), ascites (Jalodara), and kidney or liver disorders.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Drakshasava",
+    "type": "Asava/Arishta",
+    "category": "Digestive System",
+    "main_ingredients": ["Draksha (Grapes)", "Pippali", "Tvak", "Ela"],
+    "ingredients": "A fermented preparation of Draksha, Tvak, Ela, Patra, Nagakesara, Priyangu, Maricha, Pippali, and other herbs.",
+    "reference": "Gada Nigraha",
+    "indications": "A general tonic used for improving digestion and strength, especially in cases of debility, indigestion, and piles (Arsha).",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Lohasava",
+    "type": "Asava/Arishta",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Loha Bhasma", "Triphala", "Trikatu", "Vidanga"],
+    "ingredients": "An iron-rich fermented tonic made with processed Loha Bhasma, Triphala, Trikatu, Vidanga, Musta, Chitraka, and other herbs.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 10",
+    "indications": "Used for iron-deficiency anemia (Pandu), swelling (Shotha), and liver and spleen enlargement.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Pippalyasava",
+    "type": "Asava/Arishta",
+    "category": "Digestive System",
+    "main_ingredients": ["Pippali", "Maricha", "Chavya", "Haridra"],
+    "ingredients": "A fermented tonic with Pippali, Maricha, Chavya, Haridra, Chitraka, Musta, Vidanga, Triphala, and other herbs.",
+    "reference": "Gada Nigraha",
+    "indications": "Used for malabsorption syndrome (Grahani), digestive issues, abdominal tumors (Gulma), and respiratory ailments.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+
+
+{
+    "name": "Pathyadi Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Nervous System",
+    "main_ingredients": ["Pathya (Haritaki)", "Triphala", "Bhunimba", "Nimba"],
+    "ingredients": "A decoction of Haritaki, Bibhitaki, Amalaki, Bhunimba (Kalmegh), Nimba, Guduchi, and Haridra.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 2",
+    "indications": "Specifically used for all types of headaches (Shirashula), especially migraines, sinus headaches, and tension headaches.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Maharasnadi Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Rasna", "Dhanvayasa", "Bala", "Eranda", "Devadaru"],
+    "ingredients": "A complex decoction with Rasna, Dhanvayasa, Bala, Eranda Moola, Devadaru, Vacha, Shunthi, Guduchi, and many other Vata-pacifying herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "A highly effective formulation for all types of Vata disorders, including paralysis, sciatica, and chronic arthritis.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Panchatikta Ghrita Guggulu",
+    "type": "Vati/Gutika",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Nimba", "Patola", "Guduchi", "Vasa", "Guggulu"],
+    "ingredients": "A combination of five bitter herbs (Nimba, Patola, Guduchi, Vasa, Kantakari) with Triphala, Guggulu, and processed in Ghrita.",
+    "reference": "Bhaishajya Ratnavali, Vatarakta Rogadhikara",
+    "indications": "Used for deep-seated inflammation, bone and joint disorders, skin diseases, and non-healing ulcers.",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water or milk."
+},
+{
+    "name": "Amritottaram Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Amrita (Guduchi)", "Shunthi", "Haritaki"],
+    "ingredients": "A simple but effective decoction of Guduchi, Shunthi (Dry Ginger), and Haritaki.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for all types of fevers (Jwara), especially with digestive complaints. It digests Ama (Amapachana) and acts as a mild laxative.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+
+
+{
+    "name": "Kushmanda Rasayana",
+    "type": "Avaleha/Leha",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Kushmanda", "Pippali", "Ghrita"],
+    "ingredients": "A nourishing jam of Kushmanda (Ash Gourd), Pippali, Ghrita, Madhu, and other strength-promoting herbs. Often used interchangeably with Kushmanda Avaleha.",
+    "reference": "Bhaishajya Ratnavali, Raktapitta Rogadhikara",
+    "indications": "A powerful rejuvenative (Rasayana) and aphrodisiac (Vajikarana). Used to increase strength, stamina, and weight (Brimhana).",
+    "dosage": "10-20 grams",
+    "anupana": "With milk."
+},
+{
+    "name": "Manibhadra Guda",
+    "type": "Avaleha/Leha",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Vidanga", "Amalaki", "Haritaki", "Trivrit"],
+    "ingredients": "A jaggery-based formulation with Vidanga, Amalaki, Haritaki, Trivrit, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Chikitsasthana 19",
+    "indications": "Used as a laxative and for treating skin diseases (Kushtha), intestinal worms (Krimi), and piles (Arsha).",
+    "dosage": "5-10 grams",
+    "anupana": "With milk or warm water."
+},
+{
+    "name": "Narikel Lavan",
+    "type": "Churna",
+    "category": "Digestive System",
+    "main_ingredients": ["Narikela (Coconut)", "Saindhava Lavana"],
+    "ingredients": "A special preparation made by filling a coconut with rock salt and processing it in fire.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "An excellent remedy for hyperacidity (Amlapitta), abdominal pain, and peptic ulcers.",
+    "dosage": "1-2 grams",
+    "anupana": "With ghee."
+},
+
+
+{
+    "name": "Panchagavya Ghrita",
+    "type": "Ghrita",
+    "category": "Nervous System",
+    "main_ingredients": ["Gomutra", "Dadhi", "Ksheera", "Gomaya", "Ghrita"],
+    "ingredients": "A medicated ghee made from the five products of the cow: milk, curd, ghee, urine, and dung.",
+    "reference": "Charaka Samhita, Chikitsasthana 10",
+    "indications": "Used for neurological and psychological disorders like epilepsy (Apasmara), insanity (Unmada), and fever (Jwara).",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk."
+},
+{
+    "name": "Dhanwantaram Gulika",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Ela", "Vishva (Shunthi)", "Abhaya (Haritaki)", "Jeeraka"],
+    "ingredients": "A classical tablet containing Ela, Shunthi, Haritaki, Jeeraka, Chandana, Bhunimba, and other herbs, processed in Jeeraka decoction.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for respiratory issues like cough, breathlessness, and hiccups. Also beneficial for digestive discomfort and nausea.",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water or ginger juice."
+},
+{
+    "name": "Vettumaran Gulika",
+    "type": "Vati/Gutika",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Hingula", "Vatsanabha", "Maricha"],
+    "ingredients": "A potent tablet with Shuddha Hingula, Shuddha Vatsanabha, Maricha (Black Pepper), Pippali, and other heating herbs, processed in ginger juice.",
+    "reference": "Sahasrayogam",
+    "indications": "A fast-acting diaphoretic (induces sweating) used in the early stages of fever, especially with chills, body aches, and indigestion.",
+    "dosage": "1 tablet",
+    "anupana": "With ginger juice or hot water."
+},
+
+
+{
+    "name": "Pushyanuga Churna",
+    "type": "Churna",
+    "category": "Reproductive System",
+    "main_ingredients": ["Patha", "Jambu", "Amra", "Lodhra"],
+    "ingredients": "A complex powder with Patha, Jambu-bija, Amra-bija, Lodhra, Manjistha, Arjuna, and many other astringent herbs.",
+    "reference": "Ashtanga Hrudayam, Uttarasthana 34",
+    "indications": "A classical formulation used for treating all types of gynecological bleeding disorders (Asrigdara, Raktapradara) and leucorrhea (Shveta Pradara).",
+    "dosage": "3-5 grams",
+    "anupana": "With rice water (Tandulodaka) and honey."
+},
+{
+    "name": "Gangadhara Churna",
+    "type": "Churna",
+    "category": "Digestive System",
+    "main_ingredients": ["Musta", "Arjuna", "Lodhra", "Kutaja"],
+    "ingredients": "A classical powder used specifically for diarrhea and dysentery. Two versions exist: one with Musta, Arjuna, Lodhra; another with Musta, Kutaja, Bilva.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+    "indications": "Used for all types of diarrhea (Atisara) and dysentery (Pravahika). It is an excellent astringent (Grahi).",
+    "dosage": "3-6 grams",
+    "anupana": "With buttermilk or honey."
+},
+{
+    "name": "Ajamodadi Churna",
+    "type": "Churna",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Ajamoda", "Vidanga", "Devadaru", "Chitraka"],
+    "ingredients": "Ajamoda, Vidanga, Devadaru, Chitraka, Pippalimoola, Saindhava Lavana, and other Vata-Kapha pacifying herbs.",
+    "reference": "Sharngadhara Samhita, Madhyama Khanda 6",
+    "indications": "A specific remedy for joint pain, rheumatoid arthritis (Amavata), sciatica, and other inflammatory joint conditions.",
+    "dosage": "3-5 grams",
+    "anupana": "With warm water."
+},
+{
+    "name": "Sudarshan Churna",
+    "type": "Churna",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Chirayata (Kalmegh)", "Guduchi", "Triphala"],
+    "ingredients": "A simpler version of Mahasudarshan Churna, with Chirayata as the main ingredient, combined with Guduchi, Triphala, Haridra, and other bitter herbs.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "A bitter powder used effectively for all types of fever (Jwara), especially those associated with liver dysfunction. It is a potent Ama-pachaka.",
+    "dosage": "3-6 grams",
+    "anupana": "With warm water."
+},
+ 
+{
+    "name": "Dhanwantaram Thailam",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Bala", "Yava", "Dashamoola"],
+    "ingredients": "A complex Vata-pacifying oil with Bala, Yava, Kola, Kulattha, Dashamoola, and many other herbs processed in sesame oil and cow's milk.",
+    "reference": "Ashtanga Hrudayam, Sharirasthana 2",
+    "indications": "A versatile oil for Vata conditions, widely used pre and post-natal care, for arthritis, paralysis, and neurological issues.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Kshirabala Thailam",
+    "type": "Taila",
+    "category": "Nervous System",
+    "main_ingredients": ["Bala", "Ksheera (Milk)", "Tila Taila"],
+    "ingredients": "A nourishing and cooling oil made with Bala (Sida cordifolia), cow's milk, and sesame oil. Often processed multiple times (Avarti) for increased potency.",
+    "reference": "Ashtanga Hrudayam, Vata Vyadhi Chikitsa",
+    "indications": "Excellent for neurological Vata disorders, insomnia, facial paralysis, spondylosis, and pain with burning sensation. It's a potent rejuvenative (Rasayana).",
+    "dosage": "For external use; also used for Nasya & Basti",
+    "anupana": "N/A"
+},
+{
+    "name": "Lakshadi Thailam",
+    "type": "Taila",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Laksha", "Ashwagandha", "Haridra"],
+    "ingredients": "A nourishing oil prepared with Laksha (lac), Ashwagandha, Haridra, Musta, and other herbs in a base of sesame oil and curd.",
+    "reference": "Ashtanga Hrudayam, Balopacharaniya Adhyaya",
+    "indications": "A strengthening and nourishing massage oil, especially recommended for babies, children, and convalescing adults to build muscle mass and strength (Balya).",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Murivenna",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Karanja", "Tambula", "Shigru", "Kumari"],
+    "ingredients": "'Wound Oil' made with Karanja leaves, Tambula (Betel leaf), Shigru leaves, Kumari (Aloe Vera), and other herbs in a coconut oil base.",
+    "reference": "Yogagrantham",
+    "indications": "A famous first-aid remedy for acute injuries like cuts, burns, sprains, cramps, and fractures. It promotes wound healing (Vranaropana) and relieves pain.",
+    "dosage": "For external application",
+    "anupana": "N/A"
+},
+{
+    "name": "Pinda Thailam",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Manjistha", "Sariva", "Madhucchishta (Beeswax)"],
+    "ingredients": "A cooling oil made with Madhucchishta (Beeswax), Manjistha, Sariva, and Sarjarasa in a sesame oil base.",
+    "reference": "Ashtanga Hrudayam, Vatarakta Chikitsa",
+    "indications": "Used topically to relieve the pain and burning sensation (Daha) of gout (Vatarakta) and Pitta-type arthritis.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+
+
+{
+    "name": "Sukumaram Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Reproductive System",
+    "main_ingredients": ["Punarnava", "Dashamoola", "Eranda"],
+    "ingredients": "A decoction form of Sukumaram Ghritam, containing Punarnava, Dashamoola, Shatavari, Eranda, Ashwagandha, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Gulma Chikitsa",
+    "indications": "A gentle tonic (Sukumara) for gynecological issues like PCOD, hernia, and digestive disorders like bloating and constipation.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Varanadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Varuna", "Shatavari", "Chitraka", "Shigru"],
+    "ingredients": "A decoction of Varuna, Shatavari, Chitraka, Shigru, Bilva, and other Kapha-pacifying herbs.",
+    "reference": "Ashtanga Hrudayam, Meha Chikitsa",
+    "indications": "Reduces fat (Medohara), treats obesity (Sthaulya), Kapha-type headaches, internal abscesses, and urinary calculi.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Dhanadanayanadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Nervous System",
+    "main_ingredients": ["Dhanadanayana", "Shunthi", "Rasna"],
+    "ingredients": "A classical decoction used for Vata disorders like facial paralysis (Ardita), tremors, and hemiplegia.",
+    "reference": "Sahasrayogam",
+    "indications": "Effective in treating neurological conditions caused by Vata, especially facial paralysis and tremors.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Guluchyadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Guduchi", "Dhanyaka", "Nimba", "Rakta Chandana"],
+    "ingredients": "A decoction with Guduchi, Dhanyaka (Coriander), Nimba (Neem), Rakta Chandana, and Padmaka.",
+    "reference": "Sahasrayogam",
+    "indications": "A potent remedy for Pitta-dominant fevers (Jwara), burning sensation (Daha), vomiting, and excessive thirst (Trishna).",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Elakanadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Respiratory System",
+    "main_ingredients": ["Ela", "Pippali", "Shunthi", "Vasa"],
+    "ingredients": "A classical decoction containing Ela (Cardamom), Pippali, Shunthi, Vasa, Guduchi, and other herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for chronic respiratory conditions like asthma (Shwasa), bronchitis (Kasa), and tuberculosis (Kshaya), especially when Kapha is dominant.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With honey."
+},
+
+
+{
+    "name": "Rajapravartini Vati",
+    "type": "Vati/Gutika",
+    "category": "Reproductive System",
+    "main_ingredients": ["Kanyasara (Aloe)", "Tankana", "Hingu", "Kasis"],
+    "ingredients": "Kanyasara (Aloe Vera extract), Shuddha Tankana, Shuddha Hingu, Kasis Bhasma.",
+    "reference": "Bhaishajya Ratnavali, Stri Roga Adhikara",
+    "indications": "A formulation used to induce and regulate menstrual flow in cases of amenorrhea (loss of menses) and dysmenorrhea (painful menses).",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water."
+},
+{
+    "name": "Krimi Mudgar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Parada", "Gandhaka", "Vidanga", "Palasha"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Vidanga, Palasha bija, Ajamoda, Shuddha Kupilu.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "A potent formulation for destroying and expelling all types of intestinal worms and parasites (Krimi).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Nityananda Rasa",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Hingula", "Vanga Bhasma", "Kanta Loha Bhasma"],
+    "ingredients": "A complex formula with Shuddha Hingula, Vanga Bhasma, Kanta Loha Bhasma, Tamra Bhasma, Triphala, Trikatu, and many other herbs.",
+    "reference": "Bhaishajya Ratnavali, Shlipada Rogadhikara",
+    "indications": "A classical formulation used for treating filariasis (elephantiasis or Shlipada), tumors, and other glandular swellings.",
+    "dosage": "1-2 tablets",
+    "anupana": "With warm water."
+},
+{
+    "name": "Swarna Vasant Malti Rasa",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Swarna Bhasma", "Mukta Bhasma", "Maricha"],
+    "ingredients": "Swarna Bhasma, Mukta Bhasma, Shuddha Hingula, Maricha (Black Pepper), Yashada Bhasma, processed in butter and lemon juice.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "A precious formulation used as a powerful immunomodulator for chronic fevers, tuberculosis (Kshaya), debility, and as a general rejuvenative.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey and Pippali."
+},
+{
+    "name": "Makaradhwaj Vati",
+    "type": "Vati/Gutika",
+    "category": "Aphrodisiac (Vajikarana)",
+    "main_ingredients": ["Makaradhwaja", "Swarna Bhasma", "Jatiphala"],
+    "ingredients": "Siddha Makaradhwaja (a sublimate of gold, mercury, and sulfur), Swarna Bhasma, Jatiphala (Nutmeg), Lavanga, and other herbs.",
+    "reference": "Bhaishajya Ratnavali",
+    "indications": "A famous aphrodisiac and rejuvenative formulation, used to enhance vitality, strength, and sexual wellness.",
+    "dosage": "1-2 tablets",
+    "anupana": "With milk or betel leaf."
+},
+
+
+{
+    "name": "Swarna Makshika Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Swarna Makshika (Chalcopyrite)"],
+    "ingredients": "Ash of purified Chalcopyrite (an ore of copper and iron).",
+    "reference": "Rasa Ratna Samucchaya",
+    "indications": "Used for anemia (Pandu), jaundice (Kamala), diabetes (Prameha), and as a rejuvenative that pacifies Pitta.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey and ghee."
+},
+{
+    "name": "Hajrul Yahood Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Urinary System",
+    "main_ingredients": ["Hajrul Yahood (Fossilized stone)"],
+    "ingredients": "Ash of a fossilized stone (a type of lime silicate).",
+    "reference": "Ayurveda Sara Sangraha",
+    "indications": "A potent diuretic and lithotriptic (stone-breaking), used for kidney and bladder stones (Ashmari) and painful urination (Mutrakrichhra).",
+    "dosage": "250-500 mg",
+    "anupana": "With coconut water or Varunadi Kwath."
+},
+{
+    "name": "Kaharuba Pishti",
+    "type": "Bhasma/Pishti",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Kaharuba (Amber)"],
+    "ingredients": "A fine powder (Pishti) of purified Amber processed with rose water.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "A powerful hemostatic (stops bleeding), used for bleeding piles, menorrhagia, ulcers, and as a cardiac tonic.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or milk."
+},
+{
+    "name": "Akika Pishti",
+    "type": "Bhasma/Pishti",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Akika (Agate)"],
+    "ingredients": "A fine powder (Pishti) of purified Agate gem processed with various herbal juices.",
+    "reference": "Rasa Tarangini",
+    "indications": "A potent cardiotonic (Hridya) and Pitta pacifier, used for heart health, palpitations, and bleeding disorders.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or rose water."
+},
+
+
+{
+    "name": "Dhatupaushtik Churna",
+    "type": "Churna",
+    "category": "Aphrodisiac (Vajikarana)",
+    "main_ingredients": ["Shatavari", "Gokshura", "Ashwagandha", "Musli"],
+    "ingredients": "A nutritive powder with Shatavari, Gokshura, Bala, Ashwagandha, Shveta Musli, and many other aphrodisiac and tonic herbs.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "Nourishes all body tissues (dhatus) and is used as a powerful aphrodisiac (Vajikarana), strength-promoter (Balya), and rejuvenative.",
+    "dosage": "3-6 grams",
+    "anupana": "With milk and ghee."
+},
+{
+    "name": "Haridra Khanda",
+    "type": "Avaleha/Leha",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Haridra", "Trikatu", "Triphala", "Ghrita"],
+    "ingredients": "A granular preparation of Haridra (Turmeric), Trikatu, Triphala, Trivrit, and other herbs processed with milk, ghee, and sugar.",
+    "reference": "Bhaishajya Ratnavali, Shita-Pitta-Udarda-Kotha Adhikara",
+    "indications": "A famous remedy for all types of skin allergies, hives (Urticaria), itching (Kandu), and allergic rhinitis.",
+    "dosage": "5-10 grams",
+    "anupana": "With warm milk or water."
+},
+{
+    "name": "Drakshavaleha",
+    "type": "Avaleha/Leha",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Draksha (Grapes)", "Pippali", "Madhuka"],
+    "ingredients": "A jam-like preparation of Draksha, Pippali, Madhuka (Licorice), Sharkara, and other herbs.",
+    "reference": "Gada Nigraha",
+    "indications": "Used to treat anemia (Pandu), jaundice (Kamala), hyperacidity, and as a nourishing tonic to improve strength and digestion.",
+    "dosage": "6-12 grams",
+    "anupana": "With milk."
+},
+{
+    "name": "Maha Sudarshan Churna",
+    "type": "Churna",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Chirayata", "Guduchi", "Triphala", "Haridra"],
+    "ingredients": "A highly bitter powder of over 50 herbs, with Chirayata (Kalmegh) as the main ingredient, along with Guduchi, Triphala, Haridra, Musta, and many others.",
+    "reference": "Bhaishajya Ratnavali, Jwara Rogadhikara",
+    "indications": "One of the foremost remedies for all types of fevers (Jwara), especially chronic and intermittent fevers. It is a potent detoxifier for the liver and blood.",
+    "dosage": "3-6 grams",
+    "anupana": "With warm water."
+},
+{
+    "name": "Bilvadi Gutika",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Bilva", "Surasa (Tulsi)", "Karanja", "Shunthi"],
+    "ingredients": "A tablet made from Bilva root, Surasa, Karanja, Trikatu, and processed in Gomutra (cow's urine).",
+    "reference": "Ashtanga Hrudayam, Jwara Chikitsa",
+    "indications": "Used for gastroenteritis (Visuchika), insect bites, and conditions believed to be caused by toxins (Visha).",
+    "dosage": "1-2 tablets",
+    "anupana": "With honey or ginger juice."
+},
+{
+    "name": "Sameer Pannag Rasa",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Parada", "Gandhaka", "Haratala", "Manashila"],
+    "ingredients": "A potent herbo-mineral formulation made by the sublimation of Shuddha Parada, Gandhaka, Haratala, and Manashila, processed with Aloe Vera juice.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "Used for respiratory and neurological conditions with severe pain and stiffness, such as asthma and rheumatoid arthritis. It acts as a bronchodilator.",
+    "dosage": "60-125 mg",
+    "anupana": "With honey and betel leaf juice."
+},
+{
+    "name": "Vatavidhwansan Rasa",
+    "type": "Vati/Gutika",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Parada", "Gandhaka", "Vatsanabha", "Trikatu"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Naga Bhasma, Vanga Bhasma, Loha Bhasma, Tamra Bhasma, Abhraka Bhasma, Shuddha Vatsanabha, Trikatu, and many other herbs.",
+    "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+    "indications": "A potent formulation for severe Vata disorders like neuritis, neuralgia, paralysis, and abdominal colic. It is a strong analgesic.",
+    "dosage": "125 mg",
+    "anupana": "With honey or ginger juice."
+},
+{
+    "name": "Pratap Lankeshwar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Reproductive System",
+    "main_ingredients": ["Parada", "Gandhaka", "Abhraka Bhasma", "Loha Bhasma"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Abhraka Bhasma, Loha Bhasma, Raupya Bhasma, processed with Kumari (Aloe Vera) juice.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "Used as a puerperal tonic (for post-delivery care), and for intermittent fevers, cough, and digestive weakness.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Rasamanikya",
+    "type": "Bhasma/Pishti",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Haratala (Arsenic Trisulphide)"],
+    "ingredients": "A jewel-like preparation made from purified Haratala (Orpiment).",
+    "reference": "Rasa Tarangini",
+    "indications": "A potent medicine for skin diseases like psoriasis, eczema, leucoderma, and other chronic conditions. Also used in respiratory ailments.",
+    "dosage": "60-125 mg",
+    "anupana": "With ghee or butter."
+},
+{
+    "name": "Hinguleshwar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Hingula (Cinnabar)", "Pippali", "Vatsanabha"],
+    "ingredients": "Shuddha Hingula, Pippali, and Shuddha Vatsanabha.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "Used for treating fever (Jwara) and body aches, especially fevers that are difficult to manage.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Krimi Mudgar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Parada", "Gandhaka", "Vidanga", "Palasha"],
+    "ingredients": "Shuddha Parada, Shuddha Gandhaka, Vidanga, Palasha bija, Ajamoda, Shuddha Kupilu.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "A potent formulation for destroying and expelling all types of intestinal worms and parasites (Krimi).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+
+
+{
+    "name": "Karpasasthyadi Thailam",
+    "type": "Taila",
+    "category": "Nervous System",
+    "main_ingredients": ["Karpasa (Cotton seed)", "Bala", "Masha (Black Gram)"],
+    "ingredients": "Medicated oil with Karpasa Asthi, Bala, Masha, Devadaru, Rasna, and other herbs, processed in sesame oil and goat's milk.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for Vata disorders like paralysis, facial palsy (Ardita), spondylosis, and other neurological conditions.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Balaswagandhadi Thailam",
+    "type": "Taila",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Bala", "Ashwagandha", "Laksha"],
+    "ingredients": "A highly nourishing oil combining Bala, Ashwagandha, Laksha, and other herbs in a sesame oil base.",
+    "reference": "Sahasrayogam",
+    "indications": "Used to build muscle mass, strengthen nerves, and for rejuvenation after debilitating diseases. Excellent for general body massage.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Sahacharadi Thailam",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Sahachara", "Dashamoola", "Manjistha"],
+    "ingredients": "A medicated oil with Sahachara, Dashamoola, Manjistha, and other herbs, processed in sesame oil and milk.",
+    "reference": "Ashtanga Hrudayam, Vata Vyadhi Chikitsa",
+    "indications": "Primarily used for Vata disorders affecting the lower limbs, such as sciatica, varicose veins, and muscle stiffness.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Eladi Thailam",
+    "type": "Taila",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Ela", "Kushtha", "Tagara", "Saffron"],
+    "ingredients": "An aromatic oil with Ela, Kushtha, Tagara, Jati, Kumkuma (Saffron), and other herbs in a sesame or coconut oil base.",
+    "reference": "Ashtanga Hrudayam, Sutrasthana 15",
+    "indications": "Used for skin detoxification, improving complexion (Varnya), and treating skin issues like allergic dermatitis, itching, and scabies.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+{
+    "name": "Nalpamaradi Thailam",
+    "type": "Taila",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Nalpamara (Ficus barks)", "Haridra", "Chandana"],
+    "ingredients": "An oil made with the four Ficus barks (Nalpamara), Haridra (Turmeric), Chandana (Sandalwood), Ushira, and other cooling herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "A famous skin brightening and de-tanning oil. Used for improving complexion and treating minor skin irritations and sun damage.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+
+{
+    "name": "Patolamuladi Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Patola", "Triphala", "Guduchi"],
+    "ingredients": "A bitter decoction of Patola (Pointed Gourd root), Triphala, Guduchi, Katuki, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Kushtha Chikitsa",
+    "indications": "Used for a variety of skin diseases (Kushtha), fevers, liver issues, and toxic conditions. Excellent Pitta pacifier.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Phalatrikadi Kwath",
+    "type": "Kwatha/Kashayam",
+    "category": "Digestive System",
+    "main_ingredients": ["Triphala", "Amrita (Guduchi)", "Vasa"],
+    "ingredients": "A decoction of Triphala (Phalatrika), Amrita, Vasa, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Chardi Chikitsa",
+    "indications": "Used for vomiting (Chardi), hyperacidity (Amlapitta), anorexia, and other digestive issues with a Pitta predominance.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With honey."
+},
+{
+    "name": "Brihatyadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Urinary System",
+    "main_ingredients": ["Brihati", "Kantakari", "Gokshura"],
+    "ingredients": "A decoction including the two types of Brihati, Prishniparni, Shalaparni, and Gokshura.",
+    "reference": "Ashtanga Hrudayam, Mutraghata Chikitsa",
+    "indications": "Used for urinary tract disorders like painful urination (dysuria or Mutrakrichhra) and cystitis.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Indukantham Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Dashamoola", "Pippali", "Chavya", "Chitraka"],
+    "ingredients": "A decoction containing Dashamoola, Pippali, Chavya, Chitraka, and other herbs. It is the decoction form of Indukantham Ghrita.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for enhancing immunity, treating chronic fevers, debility, and Vata disorders, especially of the abdomen.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+
+
+{
+    "name": "Vidangarishta",
+    "type": "Asava/Arishta",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Vidanga", "Pippalimoola", "Triphala"],
+    "ingredients": "A fermented tonic with Vidanga, Pippalimoola, Rasna, Kutaja, Triphala, and other herbs.",
+    "reference": "Bhaishajya Ratnavali, Krimi Rogadhikara",
+    "indications": "The foremost remedy for all types of intestinal worms and parasites (Krimi). Also used for fistula and abdominal tumors.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Rohitakarishta",
+    "type": "Asava/Arishta",
+    "category": "Digestive System",
+    "main_ingredients": ["Rohitaka", "Triphala", "Trikatu"],
+    "ingredients": "A fermented formulation of Rohitaka bark, Triphala, Trikatu, Chitraka, and other digestive herbs.",
+    "reference": "Bhaishajya Ratnavali, Plihayakrid Rogadhikara",
+    "indications": "Used primarily for liver and spleen enlargement (Plihayakrid Roga), ascites, and other related digestive disorders.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Jeerakarishtam",
+    "type": "Asava/Arishta",
+    "category": "Reproductive System",
+    "main_ingredients": ["Jeeraka (Cumin)", "Dhataki", "Shunthi"],
+    "ingredients": "A fermented tonic with Jeeraka, Dhataki, Shunthi, Jatiphala, Tvak, Ela, and other herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "Specifically used for post-natal care (Sutika) to improve digestion, restore strength, and promote lactation. Also used for chronic indigestion.",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+
+{
+    "name": "Guggulutiktakam Ghritam",
+    "type": "Ghrita",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Guggulu", "Nimba", "Patola", "Vasa"],
+    "ingredients": "A bitter medicated ghee with Guggulu, Nimba, Patola, Vasa, Guduchi, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Vatarakta Chikitsa",
+    "indications": "Used for chronic skin diseases (Kushtha), arthritis (Vatarakta, Sandhivata), and deep-seated inflammation.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm water or milk."
+},
+{
+    "name": "Drakshadi Leham",
+    "type": "Avaleha/Leha",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Draksha (Grapes)", "Pippali", "Madhuka"],
+    "ingredients": "A jam-like preparation of Draksha, Pippali, Madhuka (Licorice), Sharkara, and other herbs. Same as Drakshavaleha.",
+    "reference": "Gada Nigraha",
+    "indications": "Used to treat anemia (Pandu), jaundice (Kamala), hyperacidity, and as a nourishing tonic to improve strength and digestion.",
+    "dosage": "6-12 grams",
+    "anupana": "With milk."
+},
+{
+    "name": "Madhusnuhi Rasayana",
+    "type": "Avaleha/Leha",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Madhusnuhi (Chopchini)", "Guggulu", "Triphala"],
+    "ingredients": "A rejuvenative formulation with Madhusnuhi (Chopchini), Guggulu, Triphala, Trikatu, Vidanga, and other herbs in a base of ghee and jaggery.",
+    "reference": "Rasa Tarangini",
+    "indications": "Used for chronic skin diseases, diabetes (Prameha), and as a powerful detoxifier and rejuvenative.",
+    "dosage": "5-10 grams",
+    "anupana": "With milk."
+},
+
+
+{
+    "name": "Mahasudarshan Churna",
+    "type": "Churna",
+    "category": "Fever (Jwara)",
+    "main_ingredients": ["Chirayata (Kalmegh)", "Guduchi", "Triphala", "Haridra"],
+    "ingredients": "A highly bitter powder of over 50 herbs, with Chirayata (Kalmegh) as the main ingredient, along with Guduchi, Triphala, Haridra, Musta, and many others.",
+    "reference": "Bhaishajya Ratnavali, Jwara Rogadhikara",
+    "indications": "One of the foremost remedies for all types of fevers (Jwara), especially chronic and intermittent fevers. It is a potent detoxifier for the liver and blood.",
+    "dosage": "3-6 grams",
+    "anupana": "With warm water."
+},
+{
+    "name": "Vyoshadi Vati",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Vyosha (Trikatu)", "Talisapatra", "Chitraka"],
+    "ingredients": "A pungent tablet containing Trikatu, Talisapatra, Chitraka, Jeeraka, and other Kapha-pacifying herbs.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "Used for cough, cold, rhinitis (Pratishyaya), and to clear sinus congestion. It stimulates appetite.",
+    "dosage": "1-2 tablets",
+    "anupana": "To be chewed or taken with warm water."
+},
+{
+    "name": "Marichyadi Vati",
+    "type": "Vati/Gutika",
+    "category": "Respiratory System",
+    "main_ingredients": ["Maricha", "Pippali", "Yavakshara"],
+    "ingredients": "A pungent tablet with Maricha (Black Pepper), Pippali, Yavakshara, and Dadima (Pomegranate) skin.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "Very effective in clearing productive cough (Kapha Kasa) and congestion in the throat and chest.",
+    "dosage": "1-2 tablets",
+    "anupana": "To be chewed or taken with warm water."
+},
+{
+    "name": "Gandhak Rasayan",
+    "type": "Vati/Gutika",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Gandhaka (Sulphur)", "Guduchi", "Triphala"],
+    "ingredients": "A formulation of purified sulfur (Gandhaka) processed multiple times with various herbal juices like Guduchi, Triphala, and Bhringaraja.",
+    "reference": "Bhaishajya Ratnavali, Kushtha Rogadhikara",
+    "indications": "A potent medicine for skin diseases (Kushtha), allergies, itching (Kandu), and blood purification. It is also a rejuvenative (Rasayana).",
+    "dosage": "125-250 mg",
+    "anupana": "With milk or ghee."
+},
+{
+    "name": "Dhanwantaram Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Bala", "Yava", "Dashamoola"],
+    "ingredients": "A decoction form of Dhanwantaram Thailam, used internally for Vata disorders, especially post-delivery care, hernia, and arthritis.",
+    "reference": "Sahasrayogam",
+    "indications": "Relieves pain and inflammation in Vata disorders, strengthens nerves, and is a tonic for women after childbirth.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Brihat Vata Chintamani Rasa",
+    "type": "Vati/Gutika",
+    "category": "Nervous System",
+    "main_ingredients": ["Swarna Bhasma", "Raupya Bhasma", "Abhraka Bhasma", "Loha Bhasma"],
+    "ingredients": "Swarna Bhasma, Raupya Bhasma, Abhraka Bhasma, Loha Bhasma, Pravala Bhasma, Mukta Bhasma, Rasa Sindura, processed with Kumari (Aloe Vera) juice.",
+    "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+    "indications": "A supreme rejuvenative for Vata disorders. Used for paralysis, hemiplegia, psychosis, and as a potent cardiotonic and anti-aging medicine.",
+    "dosage": "125 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Kamadugha Rasa (with Mukta)",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Pravala Pishti", "Guduchi Satva", "Shankha Bhasma", "Mukta Pishti"],
+    "ingredients": "Pravala Pishti, Guduchi Satva, Shankha Bhasma, Kapardika Bhasma, Shuddha Gairika, and Mukta Pishti (Pearl).",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "An excellent Pitta pacifier. Used for hyperacidity (Amlapitta), ulcers, bleeding disorders (Raktapitta), and burning sensations (Daha).",
+    "dosage": "125-250 mg",
+    "anupana": "With sugar, water, or milk."
+},
+{
+    "name": "Sutshekhar Rasa",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Parada", "Gandhaka", "Swarna Bhasma", "Tankana"],
+    "ingredients": "Shuddha Parada, Swarna Bhasma, Shuddha Gandhaka, Tankana Bhasma, Vatsanabha, Trikatu, Dhattura, and other herbs.",
+    "reference": "Rasa Yoga Sagara",
+    "indications": "Used for hyperacidity with vomiting, headache/migraine, asthma, and other Pitta-dominant conditions.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey and ghee."
+},
+{
+    "name": "Navaratna Raja Mriganka Rasa",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Swarna Bhasma", "Vajra Bhasma", "Manikya Pishti"],
+    "ingredients": "A complex formulation with Bhasmas of Gold, Diamond, Pearl, and other precious gems (Navaratna), along with herbo-mineral ingredients.",
+    "reference": "Bhaishajya Ratnavali, Rajayakshma Rogadhikara",
+    "indications": "Used for chronic Vata diseases, tuberculosis (Rajayakshma), and as a powerful rejuvenative and aphrodisiac for severe debility.",
+    "dosage": "125 mg",
+    "anupana": "With honey."
+},
+
+{
+    "name": "Tamra Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Digestive System",
+    "main_ingredients": ["Tamra (Copper)"],
+    "ingredients": "Ash of purified Copper, processed with various herbal juices.",
+    "reference": "Rasa Ratna Samucchaya",
+    "indications": "A potent medicine for liver and spleen disorders, ascites (Jalodara), obesity, and hyperacidity. It is extremely heating and sharp.",
+    "dosage": "30-60 mg",
+    "anupana": "With honey and Pippali."
+},
+{
+    "name": "Vanga Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Urinary System",
+    "main_ingredients": ["Vanga (Tin)"],
+    "ingredients": "Ash of purified Tin, processed with various herbal juices.",
+    "reference": "Rasa Tarangini",
+    "indications": "Used in Ayurveda for urinary tract disorders, diabetes (Prameha), and as an aphrodisiac, especially for premature ejaculation.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey or butter."
+},
+{
+    "name": "Naga Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Digestive System",
+    "main_ingredients": ["Naga (Lead)"],
+    "ingredients": "Ash of purified Lead, processed with various herbal juices.",
+    "reference": "Rasa Ratna Samucchaya",
+    "indications": "Used in minute doses for diabetes, skin diseases, and chronic digestive issues like Grahani (IBS). Must be used with extreme caution.",
+    "dosage": "30-60 mg",
+    "anupana": "With honey."
+},
+{
+    "name": "Shukti Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Digestive System",
+    "main_ingredients": ["Shukti (Oyster shell)"],
+    "ingredients": "Ash of purified Oyster shell.",
+    "reference": "Siddha Yoga Sangraha",
+    "indications": "A natural calcium source used for hyperacidity, ulcers, and digestive colic. It is a potent antacid (Amlapittahara).",
+    "dosage": "250-500 mg",
+    "anupana": "With lemon juice or warm water."
+},
+{
+    "name": "Kapardika Bhasma",
+    "type": "Bhasma/Pishti",
+    "category": "Digestive System",
+    "main_ingredients": ["Kapardika (Cowrie shell)"],
+    "ingredients": "Ash of purified Cowrie shell.",
+    "reference": "Rasa Tarangini",
+    "indications": "Excellent for digestive issues like colic, malabsorption (Grahani), and bloating. It is a fast-acting carminative.",
+    "dosage": "250-500 mg",
+    "anupana": "With Trikatu or honey."
+},
+
+{
+    "name": "Dhatri Loha",
+    "type": "Vati/Gutika",
+    "category": "Digestive System",
+    "main_ingredients": ["Dhatri (Amalaki)", "Loha Bhasma", "Madhuka"],
+    "ingredients": "Loha Bhasma, Amalaki juice, Madhuka (Licorice).",
+    "reference": "Bhaishajya Ratnavali, Amlapitta Rogadhikara",
+    "indications": "An iron formulation used for anemia (Pandu), jaundice (Kamala), and especially for hyperacidity (Amlapitta).",
+    "dosage": "125-250 mg",
+    "anupana": "With honey and ghee."
+},
+{
+    "name": "Tapyadi Loha",
+    "type": "Vati/Gutika",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Tapyadi (Swarna Makshika)", "Loha Bhasma", "Raupya Bhasma"],
+    "ingredients": "Swarna Makshika Bhasma, Raupya Bhasma, Loha Bhasma, Mandura Bhasma, and many other herbo-mineral ingredients.",
+    "reference": "Bhaishajya Ratnavali, Pandu Rogadhikara",
+    "indications": "Used for anemia, liver conditions (jaundice), and as a general health tonic. It is tridoshic.",
+    "dosage": "125-250 mg",
+    "anupana": "With honey."
+},
+
+
+{
+    "name": "Balarishta",
+    "type": "Asava/Arishta",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Bala", "Ashwagandha", "Dhataki"],
+    "ingredients": "A fermented tonic with Bala, Ashwagandha, Eranda, and other Vata-pacifying herbs.",
+    "reference": "Bhaishajya Ratnavali, Vatavyadhi Rogadhikara",
+    "indications": "A powerful nerve tonic used to treat Vata disorders, general debility, joint pain, and to promote strength (Balya).",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Vidaryadyasava",
+    "type": "Asava/Arishta",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Vidari", "Panchangula (Eranda)", "Musli"],
+    "ingredients": "A fermented tonic with Vidari, Eranda, Musli, Gokshura, and many other nourishing herbs.",
+    "reference": "Ashtanga Hrudayam, Hridroga Chikitsa",
+    "indications": "A cardiac tonic and general health promoter used for emaciation, debility, and as a rejuvenative (Rasayana).",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+{
+    "name": "Patrangasava",
+    "type": "Asava/Arishta",
+    "category": "Reproductive System",
+    "main_ingredients": ["Patranga", "Khadira", "Vasa", "Lodhra"],
+    "ingredients": "A fermented tonic with Patranga (Sappanwood), Khadira, Vasa, Lodhra, Manjistha, and other astringent herbs.",
+    "reference": "Bhaishajya Ratnavali, Stri Roga Adhikara",
+    "indications": "Used as a uterine astringent for heavy menstrual bleeding (menorrhagia) and leucorrhea (Shveta Pradara).",
+    "dosage": "15-30 ml",
+    "anupana": "With an equal quantity of water after meals."
+},
+
+
+{
+    "name": "Varanadi Ghritam",
+    "type": "Ghrita",
+    "category": "Detox (Ama Pachana)",
+    "main_ingredients": ["Varuna", "Shatavari", "Chitraka", "Shigru"],
+    "ingredients": "A medicated ghee containing the herbs of the Varanadi group, such as Varuna, Shatavari, Chitraka, and Shigru.",
+    "reference": "Ashtanga Hrudayam, Gulma Chikitsa",
+    "indications": "A scraping (Lekhana) ghee used for obesity (Sthaulya), high cholesterol, internal abscesses, and Kapha headaches.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm water."
+},
+{
+    "name": "Indukantham Ghritam",
+    "type": "Ghrita",
+    "category": "Rejuvenative (Rasayana)",
+    "main_ingredients": ["Dashamoola", "Pippali", "Chavya", "Chitraka"],
+    "ingredients": "Medicated ghee of the Indukantham Kashayam herbs, including Dashamoola, Pippali, Chavya, and Chitraka.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for enhancing immunity, treating chronic fevers, debility, and Vata disorders of the abdomen.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk."
+},
+{
+    "name": "Mahatriphala Ghrita",
+    "type": "Ghrita",
+    "category": "Nervous System",
+    "main_ingredients": ["Triphala", "Bhringaraja", "Vasa", "Guduchi"],
+    "ingredients": "A potent version of Triphala Ghrita, processed with the juices of Bhringaraja, Vasa, Guduchi, and other herbs.",
+    "reference": "Ashtanga Hrudayam, Uttarasthana 13",
+    "indications": "An excellent medicine for a wide range of eye diseases (Netra Roga), including night blindness and myopia. It improves vision.",
+    "dosage": "6-12 grams",
+    "anupana": "With warm milk."
+},
+{
+    "name": "Dashamoola Haritaki Leham",
+    "type": "Avaleha/Leha",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Dashamoola", "Haritaki", "Trikatu"],
+    "ingredients": "A jam-like preparation of Dashamoola decoction, Haritaki, Trikatu, Guda (jaggery), and other herbs.",
+    "reference": "Charaka Samhita, Chikitsasthana 18",
+    "indications": "Used for chronic inflammatory conditions, swelling (Shotha), Vata disorders, and loss of appetite.",
+    "dosage": "5-10 grams",
+    "anupana": "With warm water or milk."
+},
+
+
+{
+    "name": "Asanavilwadi Thailam",
+    "type": "Taila",
+    "category": "Nervous System",
+    "main_ingredients": ["Asana", "Vilwa", "Bala", "Guduchi"],
+    "ingredients": "A medicated oil with Asana, Vilwa, Bala, Guduchi, and other herbs, processed in sesame oil and milk.",
+    "reference": "Sahasrayogam",
+    "indications": "Primarily for diseases of the head, eyes, and ears. Used for headache, eye pain, and earache.",
+    "dosage": "For head massage or local application",
+    "anupana": "N/A"
+},
+{
+    "name": "Balahatadi Thailam",
+    "type": "Taila",
+    "category": "Nervous System",
+    "main_ingredients": ["Bala", "Hatha (Amalaki)", "Amrita (Guduchi)"],
+    "ingredients": "A cooling oil made with Bala, Amalaki, Guduchi, Chandana, and other Pitta-pacifying herbs.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for head massage to treat Pitta-dominant headaches, burning sensation in the eyes and head, and to promote sleep.",
+    "dosage": "For head massage",
+    "anupana": "N/A"
+},
+{
+    "name": "Karpooradi Thailam",
+    "type": "Taila",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Karpoora (Camphor)", "Ajamoda"],
+    "ingredients": "A simple yet effective oil with Karpoora and Ajamoda processed in a base of coconut or sesame oil.",
+    "reference": "Sahasrayogam",
+    "indications": "Used externally to relieve muscle cramps, stiffness, joint pain, and chest congestion. It is fast-acting.",
+    "dosage": "For external use",
+    "anupana": "N/A"
+},
+
+{
+    "name": "Patolakaturohinyadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Skin (Twak Roga)",
+    "main_ingredients": ["Patola", "Katuki", "Chandana", "Guduchi"],
+    "ingredients": "A bitter decoction of Patola, Katuki, Chandana, Guduchi, Musta, and Patha.",
+    "reference": "Ashtanga Hrudayam, Jwara Chikitsa",
+    "indications": "Used for skin diseases with burning and itching, fevers, and toxic conditions. It is a powerful Pitta pacifier and detoxifier.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Punarnavadi Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Urinary System",
+    "main_ingredients": ["Punarnava", "Daruharidra", "Haritaki"],
+    "ingredients": "A decoction of Punarnava, Daruharidra, Haritaki, Guduchi, and other diuretic herbs.",
+    "reference": "Ashtanga Hrudayam, Shotha Chikitsa",
+    "indications": "An excellent diuretic and anti-inflammatory. Used for edema (Shotha), ascites, anemia, and liver disorders.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Guggulutiktakam Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Guggulu", "Nimba", "Patola", "Vasa"],
+    "ingredients": "A decoction form of Guggulutiktakam Ghritam, containing Guggulu and a group of bitter herbs like Nimba, Patola, and Vasa.",
+    "reference": "Ashtanga Hrudayam, Vatarakta Chikitsa",
+    "indications": "Used for chronic inflammatory conditions of the bones and joints, arthritis, and deep-seated skin diseases.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+},
+{
+    "name": "Rasnasaptakam Kashayam",
+    "type": "Kwatha/Kashayam",
+    "category": "Musculoskeletal System",
+    "main_ingredients": ["Rasna", "Guduchi", "Eranda", "Devadaru"],
+    "ingredients": "A decoction of seven herbs led by Rasna, including Guduchi, Eranda Moola, Devadaru, and Shunthi.",
+    "reference": "Sahasrayogam",
+    "indications": "Used for Vata disorders affecting the hips, back, and legs, such as low back pain, sciatica, and pain in the hip region.",
+    "dosage": "15-30 ml (if liquid extract)",
+    "anupana": "With water before food."
+}
+]

@@ -1,0 +1,15 @@
+namaste_code,term_english,term_original,system,category
+AYU-0001,Jwara (Fever),Jwara,Ayurveda,Infectious Disease
+AYU-0002,Vataj Jwara (Vata type fever),Vataj Jwara,Ayurveda,Infectious Disease
+AYU-0003,Pittaj Jwara (Pitta type fever),Pittaj Jwara,Ayurveda,Infectious Disease
+AYU-0004,Kaphaj Jwara (Kapha type fever),Kaphaj Jwara,Ayurveda,Infectious Disease
+AYU-0005,Amavata (Rheumatoid Arthritis),Amavata,Ayurveda,Musculoskeletal
+AYU-0006,Sandhivata (Osteoarthritis),Sandhivata,Ayurveda,Musculoskeletal
+AYU-0007,Madhumeha (Diabetes Mellitus),Madhumeha,Ayurveda,Metabolic
+AYU-0008,Shwasa (Bronchial Asthma),Shwasa,Ayurveda,Respiratory
+AYU-0009,Arsha (Haemorrhoids),Arsha,Ayurveda,Gastrointestinal
+AYU-0010,Pandu (Anaemia),Pandu,Ayurveda,Blood Disorders
+SID-0001,Azhal Noi (Pitta disorder),Azhal Noi,Siddha,General
+SID-0002,Vali Noi (Vata disorder),Vali Noi,Siddha,General
+UNA-0001,Humma (Fever),Humma,Unani,Infectious Disease
+UNA-0002,Waja ul Mafasil (Joint pain),Waja ul Mafasil,Unani,Musculoskeletal

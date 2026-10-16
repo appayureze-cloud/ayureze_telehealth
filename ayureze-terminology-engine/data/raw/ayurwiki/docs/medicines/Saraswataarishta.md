@@ -1,0 +1,21 @@
+---
+title: "Saraswataarishta"
+categories:
+  - "Ayurvedic Medicine"
+  - "Ayurvedic_Medicine"
+date: 2023-11-06
+---
+# Saraswataarishta
+
+[TOC]
+
+**Saraswataarishta** is used for Brain health and Nervous system. Useful in Dullness, Dementia, Forgetfulness, Depression, Nervousness etc. Consuming it cleanses the throat. Useful for Singers and Lecturers.
+
+## List of Ayurvedic herb in which used in this preparation
+[Centella asiatica](Centella_asiatica.md), [Zingiber officinale](../herbs/Zingiber_officinale_-_Ginger,_Alla,_Adrak,_Ingee,_Allam,_Inchi,_Alha.md), [Embelia ribes](Embelia_ribes.md)
+
+## References
+
+## References
+
+1. "Karnataka Medicinal Plants Volume - 2" by Dr.M. R. Gurudeva, Page No.149, Published by Divyachandra Prakashana, #45, Paapannana Tota, 1st Main road, Basaveshwara Nagara, Bengaluru.

@@ -1,0 +1,22 @@
+{
+  "name": "@ayureze/e2e-harness",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Real cross-platform E2EE acceptance-test harness. Loads the ACTUAL sdk/web source (not a reimplementation) in a real browser and drives it against the real Go API + real LiveKit server. See docs/e2ee/VALIDATION.md.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4174",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "livekit-client": "^2.7.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}

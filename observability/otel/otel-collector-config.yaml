@@ -1,0 +1,49 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  # Strip any attribute that could leak sensitive data into traces. Services
+  # must never attach these in the first place (see docs/monitoring/privacy.md)
+  # but this is a defense-in-depth guard at the collector boundary.
+  attributes/redact:
+    actions:
+      - key: e2ee.key
+        action: delete
+      - key: media.payload
+        action: delete
+      - key: auth.token
+        action: delete
+      - key: auth.password
+        action: delete
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  debug:
+    verbosity: basic
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes/redact, batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [attributes/redact, batch]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [attributes/redact, batch]
+      exporters: [otlphttp/loki, debug]
