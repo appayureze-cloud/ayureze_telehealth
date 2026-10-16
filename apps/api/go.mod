@@ -1,12 +1,14 @@
 module github.com/ayureze/telehealth/api
 
-// Bumped from 1.26.0 2026-09-30: govulncheck (running for real against this
-// exact pin for the first time, see .github/workflows/security.yml) found 24
-// Go standard library vulnerabilities whose highest "Fixed in" version among
-// them was 1.26.6 (net/url, html/template, crypto/tls, net/http,
-// encoding/xml, encoding/asn1) — actions/setup-go reads this line via
+// Bumped from 1.26.0 2026-09-30, then from 1.26.6 2026-10-16: govulncheck
+// (.github/workflows/security.yml) found 3 more Go standard library
+// vulnerabilities disclosed since the first bump — GO-2026-6600/6599
+// (html/template) and their highest "Fixed in" version, 1.26.9 — plus
+// go.opentelemetry.io/otel's exporters/sdk (GO-2026-6505, fixed in 1.45.0)
+// and golang.org/x/net (CVE-2026-78669, fixed in 0.60.0), both bumped
+// alongside this in go.sum. actions/setup-go reads this line via
 // go-version-file and installs exactly this patch version.
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/go-chi/chi/v5 v5.3.2
@@ -18,8 +20,13 @@ require (
 	github.com/livekit/server-sdk-go/v2 v2.18.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.22.0
+	go.opentelemetry.io/otel v1.45.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.45.0
+	go.opentelemetry.io/otel/sdk v1.45.0
+	go.opentelemetry.io/otel/trace v1.45.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/time v0.15.0
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
@@ -84,26 +91,21 @@ require (
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.45.0 // indirect
+	go.opentelemetry.io/otel/metric v1.45.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.2 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
